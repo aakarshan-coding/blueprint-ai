@@ -2130,7 +2130,67 @@ measurement (D51) that everything since D56 has been waiting on.
 
 ---
 
-## Open questions for the Phase 2 sweep
+## D60 — Five runs, identical code: the first number with error bars
+
+Everything since D51 has been waiting on this. Five benchmark runs on commit `ae661ef`,
+nothing changed between them, scored by the same rule (only "correct" counts).
+`graphrag/eval/summarize_runs.py` produces the table from the five result files.
+
+| category | n | hybrid | baseline | delta |
+|---|---|---|---|---|
+| single_hop | 15 | 81.3 [73.3 .. 93.3] | 77.3 [73.3 .. 80.0] | +4.0 [−6.7 .. 20.0] |
+| two_hop | 15 | 65.3 [60.0 .. 73.3] | 46.7 [46.7 .. 46.7] | **+18.6 [13.3 .. 26.6]** |
+| three_hop | 12 | 43.4 [41.7 .. 50.0] | 53.3 [50.0 .. 58.3] | **−10.0 [−16.6 .. −8.3]** |
+| aggregation | 8 | 12.5 [12.5 .. 12.5] | 12.5 [12.5 .. 12.5] | +0.0 |
+| out_of_scope | 10 | 86.0 [80.0 .. 90.0] | 62.0 [60.0 .. 70.0] | **+24.0 [20.0 .. 30.0]** |
+| **pooled** | 60 | 61.3 [58.3 .. 63.3] | 53.7 [51.7 .. 55.0] | **+7.7 [5.0 .. 8.4]** |
+
+**What is now supportable, because the ranges don't overlap:**
+
+- *Pooled, hybrid beats the vector baseline by ~8 points, never less than 5.* The hybrid
+  range [58.3 .. 63.3] sits entirely above the baseline range [51.7 .. 55.0].
+- *On two-hop questions the graph is worth ~19 points.* Baseline is flat at 46.7 in all
+  five runs; hybrid is 60–73. This is the multi-hop claim the project was built to make,
+  and it holds for two hops.
+- *Hybrid refuses out-of-scope questions better, by ~24 points.* Consistent in every run
+  since run 3.
+
+**What is supportable and unflattering:**
+
+- *On three-hop questions hybrid loses, by ~10 points, in every run.* The whole gap is one
+  question. `3h-01` ("what does `verify=False` do, and what does that mean downstream")
+  is hybrid 0/5, baseline 5/5: the planner resolves `verify` to the Parameter node, `T1`
+  returns 10 facts about where the parameter is defined and which concepts mention it —
+  all true, none relevant — and the model, told they are facts, answers from them. Every
+  other three-hop question is tied. Hybrid also records 22 *partial* verdicts on three-hop
+  across the runs to baseline's 8: it gets part of the chain far more often, and partial
+  scores zero. D59's "irrelevant facts override passages" is the mechanism, and it is
+  deterministic, not noise.
+- *Aggregation is dead: 1/8 for both systems, zero variance.* The questions need list and
+  count operations neither system performs. Not noise — a capability gap.
+- *Single-hop is noise, as it should be*: +4.0 with a range that crosses zero. The graph
+  is not expected to help on a one-fact lookup.
+
+**Stability, which is the other thing five runs buy:**
+
+- Hybrid is always right on 33 questions, always wrong on 19, flips on 8. Baseline: 31 /
+  24 / 5. Five of hybrid's eight flips are shared with the baseline (`sh-01`, `sh-11`,
+  `sh-14`, `3h-11`, `oos-04`) — synthesis and router noise, nothing to do with the graph.
+  Hybrid's own three (`th-06`, `th-09`, `th-15`) are D59's irrelevant-fact cases.
+- Graph fact counts are identical across all five runs on 58 of 60 questions. The
+  retrieval instability D53 measured at 10% is gone — resolve-first planning (D59) did
+  what majority voting (D55) could not, because the instability was structural.
+
+**The headline, stated the way the README should state it:** the hybrid system beats
+plain vector retrieval by 5–8 points overall, by 13–27 points on two-hop questions and
+20–30 on out-of-scope refusal, and *loses* 8–17 points on three-hop questions because true
+graph facts about the wrong entity override correct passages. That last clause is the most
+useful sentence in the project.
+
+**Next, in order, each now measurable against these bars:** stop presenting graph facts as
+unconditionally authoritative (synthesis prompt), then rank and cap them by relevance
+(research note item 5). Both target `3h-01` and the 22 partials directly. The voting in
+D55 can be removed — its 1.7-point effect was on an instability that no longer exists.
 
 All of these are recall@k questions. None should be settled by argument.
 
