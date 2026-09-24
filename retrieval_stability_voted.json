@@ -1,0 +1,112 @@
+{
+  "trials": 4,
+  "n": 60,
+  "report": {
+    "hybrid": {
+      "plan": [
+        {
+          "id": "th-08",
+          "values": {
+            "T3_EXCEPTION_WRAP_CHAIN({\"entity_id\": \"requests.exceptions.RetryError\", \"max_hops\": 2})": 3,
+            "T3_EXCEPTION_WRAP_CHAIN({\"entity_id\": \"urllib3.exceptions.MaxRetryError\", \"max_hops\": 2})": 1
+          }
+        },
+        {
+          "id": "3h-05",
+          "values": {
+            "-": 2,
+            "T1_NEIGHBORS({\"entity_id\": \"requests.sessions.Session\"})": 2
+          }
+        },
+        {
+          "id": "3h-08",
+          "values": {
+            "ERROR:ValueError": 3,
+            "T1_NEIGHBORS({\"entity_id\": \"requests\"})": 1
+          }
+        },
+        {
+          "id": "3h-12",
+          "values": {
+            "T5_DELEGATION_CHAIN({\"entity_id\": \"requests.sessions.Session\", \"max_hops\": 2})": 1,
+            "T5_DELEGATION_CHAIN({\"entity_id\": \"requests.sessions.Session\", \"max_hops\": 3})": 3
+          }
+        },
+        {
+          "id": "oos-01",
+          "values": {
+            "-": 3,
+            "T7_DOCS_FOR_SYMBOL({\"entity_id\": \"requests\"})": 1
+          }
+        },
+        {
+          "id": "oos-04",
+          "values": {
+            "ERROR:ValueError": 3,
+            "-": 1
+          }
+        }
+      ],
+      "context_hash": [
+        {
+          "id": "th-08",
+          "values": {
+            "a08ab67da926": 3,
+            "40ae4e1826c5": 1
+          }
+        },
+        {
+          "id": "3h-05",
+          "values": {
+            "0cb4a6fc9aba": 2,
+            "8a580988a5de": 2
+          }
+        },
+        {
+          "id": "3h-08",
+          "values": {
+            "c79ba36f8821": 3,
+            "be753790265d": 1
+          }
+        },
+        {
+          "id": "oos-01",
+          "values": {
+            "refused": 3,
+            "fe0e1fc67a5e": 1
+          }
+        },
+        {
+          "id": "oos-04",
+          "values": {
+            "87ed89dc00d9": 3,
+            "refused": 1
+          }
+        }
+      ],
+      "route": [
+        {
+          "id": "3h-05",
+          "values": {
+            "VECTOR": 2,
+            "BOTH": 2
+          }
+        },
+        {
+          "id": "oos-01",
+          "values": {
+            "REFUSE": 3,
+            "BOTH": 1
+          }
+        },
+        {
+          "id": "oos-04",
+          "values": {
+            "BOTH": 3,
+            "REFUSE": 1
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "trials": 4,
+  "n": 60,
+  "report": {
+    "hybrid": {
+      "plan": [
+        {
+          "id": "th-03",
+          "values": {
+            "T3_EXCEPTION_WRAP_CHAIN({\"entity_id\": \"urllib3.exceptions.ReadTimeoutError\", \"max_hops\": 2})": 3,
+            "T3_EXCEPTION_WRAP_CHAIN({\"entity_id\": \"urllib3.exceptions.ReadTimeoutError\", \"max_hops\": 3})": 1
+          }
+        },
+        {
+          "id": "th-15",
+          "values": {
+            "-": 1,
+            "ERROR:ValueError": 1,
+            "T1_NEIGHBORS({\"entity_id\": \"requests.sessions.Session.request.stream\"})": 2
+          }
+        },
+        {
+          "id": "3h-01",
+          "values": {
+            "-": 1,
+            "ERROR:ValueError": 3
+          }
+        },
+        {
+          "id": "3h-04",
+          "values": {
+            "ERROR:ValueError": 2,
+            "T3_EXCEPTION_WRAP_CHAIN({\"entity_id\": \"requests.exceptions.RequestException\", \"max_hops\": 3})": 2
+          }
+        },
+        {
+          "id": "3h-12",
+          "values": {
+            "T5_DELEGATION_CHAIN({\"entity_id\": \"requests\", \"max_hops\": 2})": 1,
+            "T1_NEIGHBORS({\"entity_id\": \"requests\"})": 3
+          }
+        },
+        {
+          "id": "oos-04",
+          "values": {
+            "ERROR:ValueError": 3,
+            "-": 1
+          }
+        },
+        {
+          "id": "oos-10",
+          "values": {
+            "-": 3,
+            "ERROR:ValueError": 1
+          }
+        }
+      ],
+      "context_hash": [
+        {
+          "id": "th-03",
+          "values": {
+            "3faa18b7c38b": 3,
+            "96c8aec0ab68": 1
+          }
+        },
+        {
+          "id": "th-15",
+          "values": {
+            "c25c7af07e14": 2,
+            "3271f1f1dba8": 2
+          }
+        },
+        {
+          "id": "3h-04",
+          "values": {
+            "f5a6fe6127f1": 2,
+            "d86e967047af": 2
+          }
+        },
+        {
+          "id": "3h-12",
+          "values": {
+            "a614abf603bf": 1,
+            "f54059e97a0f": 3
+          }
+        },
+        {
+          "id": "oos-04",
+          "values": {
+            "87ed89dc00d9": 3,
+            "refused": 1
+          }
+        },
+        {
+          "id": "oos-10",
+          "values": {
+            "refused": 3,
+            "df2b3e0ef9c8": 1
+          }
+        }
+      ],
+      "route": [
+        {
+          "id": "th-15",
+          "values": {
+            "VECTOR": 1,
+            "GRAPH": 3
+          }
+        },
+        {
+          "id": "3h-01",
+          "values": {
+            "VECTOR": 1,
+            "BOTH": 3
+          }
+        },
+        {
+          "id": "oos-04",
+          "values": {
+            "BOTH": 3,
+            "REFUSE": 1
+          }
+        },
+        {
+          "id": "oos-10",
+          "values": {
+            "REFUSE": 3,
+            "BOTH": 1
+          }
+        }
+      ]
+    }
+  }
+}

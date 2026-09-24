@@ -1,0 +1,424 @@
+# Benchmark question set (design §10). Stratified by hop count so accuracy can
+# be reported per difficulty — the widening gap as hops increase is the result
+# the whole project exists to show.
+#
+# HONESTY NOTE, per §10's own warning: these were written from the source
+# material (requests/urllib3 docs and source code), NOT generated from the
+# graph. Generating from the graph guarantees every question is answerable by
+# traversal, which rigs the comparison. Several questions here are deliberately
+# ones the graph cannot answer well, and 10 are out of scope entirely.
+#
+# `expects` is what a correct answer must contain. `source` records where the
+# answer was verified, so any claim here can be checked against real text.
+
+# ---------------------------------------------------------------- single hop
+# One fact, stated in one place. The vector baseline should do well here —
+# parity at this level is expected, not a failure.
+
+- id: sh-01
+  category: single_hop
+  question: "Does requests verify SSL certificates by default?"
+  expects: "Yes — SSL verification is on by default"
+  must_contain_any: ["verify", "verifies", "verified", "verification"]
+  source: "docs/user/advanced.rst, SSL Cert Verification"
+
+- id: sh-02
+  category: single_hop
+  question: "What does the timeout parameter do in requests?"
+  expects: "Stops waiting for a response after a given number of seconds"
+  source: "docs/user/quickstart.rst, Timeouts"
+
+- id: sh-03
+  category: single_hop
+  question: "How do I send cookies with a request in requests?"
+  expects: "Pass a dict to the cookies parameter"
+  source: "docs/user/quickstart.rst, Cookies"
+
+- id: sh-04
+  category: single_hop
+  question: "Does requests follow redirects automatically?"
+  expects: "Yes, for all verbs except HEAD by default"
+  must_contain_any: ["redirect", "redirects", "redirection", "redirected"]
+  source: "docs/user/quickstart.rst, Redirection and History"
+
+- id: sh-05
+  category: single_hop
+  question: "How does keep-alive work in requests?"
+  expects: "Automatic within a session, provided by urllib3 connection pooling"
+  must_contain: ["urllib3"]
+  source: "docs/user/advanced.rst, Keep-Alive"
+
+- id: sh-06
+  category: single_hop
+  question: "What is a Session object used for?"
+  expects: "Persisting parameters and cookies across requests"
+  source: "docs/user/advanced.rst, Session Objects"
+
+- id: sh-07
+  category: single_hop
+  question: "How do I stream a large response instead of loading it all at once?"
+  expects: "Pass stream=True"
+  must_contain_any: ["stream", "streaming", "streamed"]
+  source: "docs/user/advanced.rst, Body Content Workflow / Streaming Requests"
+
+- id: sh-08
+  category: single_hop
+  question: "How do I use a proxy with requests?"
+  expects: "Pass a proxies dict"
+  must_contain_any: ["proxies", "proxy"]
+  source: "docs/user/advanced.rst, Proxies"
+
+- id: sh-09
+  category: single_hop
+  question: "What does allow_redirects control?"
+  expects: "Whether redirects are followed"
+  must_contain_any: ["redirect", "redirects", "redirection", "redirected"]
+  source: "requests.sessions.Session.request docstring"
+
+- id: sh-10
+  category: single_hop
+  question: "How do I supply a client-side certificate?"
+  expects: "Pass the cert parameter, as a path or a (cert, key) tuple"
+  must_contain_any: ["cert", "certificate", "certificates"]
+  source: "docs/user/advanced.rst, Client Side Certificates"
+
+- id: sh-11
+  category: single_hop
+  question: "What is a transport adapter in requests?"
+  expects: "The mechanism defining how requests are made for an HTTP service"
+  source: "docs/user/advanced.rst, Transport Adapters"
+
+- id: sh-12
+  category: single_hop
+  question: "How does urllib3 let me set timeouts?"
+  expects: "Timeout objects / timeout parameter controlling connect and read"
+  source: "urllib3 docs, User Guide > Using Timeouts"
+
+- id: sh-13
+  category: single_hop
+  question: "What does requests use for basic authentication?"
+  expects: "HTTPBasicAuth, or a (user, pass) tuple passed to auth"
+  must_contain_any: ["HTTPBasicAuth", "auth", "authentication"]
+  source: "docs/user/authentication.rst, Basic Authentication"
+
+- id: sh-14
+  category: single_hop
+  question: "What are event hooks in requests?"
+  expects: "A hooks mechanism for running callbacks on parts of the request process"
+  source: "docs/user/advanced.rst, Event Hooks"
+
+- id: sh-15
+  category: single_hop
+  question: "How does urllib3 retry failed requests?"
+  expects: "A Retry configuration controlling retry behaviour"
+  source: "urllib3 docs, User Guide > Retrying Requests"
+
+# ------------------------------------------------------------------ two hop
+# Requires connecting two facts that live in different places — almost all of
+# these span the requests/urllib3 boundary, which is the seam no single chunk
+# of documentation describes. Verified against the except/raise blocks in
+# requests/adapters.py HTTPAdapter.send.
+
+- id: th-01
+  category: two_hop
+  question: "Which requests exception is raised when urllib3 raises MaxRetryError?"
+  expects: "ConnectionError (or ConnectTimeout/RetryError/ProxyError/SSLError depending on the underlying reason)"
+  must_contain_any: ["ConnectionError", "ConnectTimeout", "RetryError", "ProxyError", "SSLError"]
+  source: "requests/adapters.py, HTTPAdapter.send except MaxRetryError block"
+
+- id: th-02
+  category: two_hop
+  question: "If urllib3 raises ProtocolError, what does requests raise instead?"
+  expects: "ConnectionError"
+  must_contain_any: ["ConnectionError"]
+  source: "requests/adapters.py, except (ProtocolError, OSError)"
+
+- id: th-03
+  category: two_hop
+  question: "What requests exception corresponds to urllib3's ReadTimeoutError?"
+  expects: "ReadTimeout"
+  must_contain_any: ["ReadTimeout"]
+  source: "requests/adapters.py, HTTPAdapter.send"
+
+- id: th-04
+  category: two_hop
+  question: "Which requests exception wraps urllib3's ClosedPoolError?"
+  expects: "ConnectionError"
+  must_contain_any: ["ConnectionError"]
+  source: "requests/adapters.py, except ClosedPoolError"
+
+- id: th-05
+  category: two_hop
+  question: "If a proxy fails at the urllib3 level, which requests exception surfaces?"
+  expects: "ProxyError"
+  must_contain_any: ["ProxyError"]
+  source: "requests/adapters.py, except _ProxyError"
+
+- id: th-06
+  category: two_hop
+  question: "Which requests exception is raised for an SSL failure originating in urllib3?"
+  expects: "SSLError"
+  must_contain_any: ["SSLError"]
+  source: "requests/adapters.py, except _SSLError branches"
+
+- id: th-07
+  category: two_hop
+  question: "When urllib3 reports an invalid header, what does requests raise?"
+  expects: "InvalidHeader"
+  must_contain_any: ["InvalidHeader"]
+  source: "requests/adapters.py, _InvalidHeader branch"
+
+- id: th-08
+  category: two_hop
+  question: "Which requests exception is raised when urllib3's retry limit is exhausted due to a response error?"
+  expects: "RetryError"
+  must_contain_any: ["RetryError"]
+  source: "requests/adapters.py, ResponseError branch"
+
+- id: th-09
+  category: two_hop
+  question: "What class does requests delegate connection pooling to?"
+  expects: "urllib3's PoolManager / connection pooling"
+  must_contain_any: ["PoolManager", "urllib3"]
+  source: "docs/user/advanced.rst, Session Objects + Keep-Alive"
+
+- id: th-10
+  category: two_hop
+  question: "Which class does requests use to actually send a request over the network, and what does it call into?"
+  expects: "HTTPAdapter.send, which calls urllib3's urlopen"
+  must_contain: ["HTTPAdapter", "urlopen"]
+  source: "requests/adapters.py, HTTPAdapter.send"
+
+- id: th-11
+  category: two_hop
+  question: "What parameter controls certificate verification, and which function ultimately applies it?"
+  expects: "verify, applied by HTTPAdapter.cert_verify"
+  must_contain: ["verify", "cert_verify"]
+  source: "requests/adapters.py, cert_verify"
+
+- id: th-12
+  category: two_hop
+  question: "Which exception does ConnectTimeout inherit from in requests?"
+  expects: "ConnectionError and Timeout"
+  must_contain: ["ConnectionError", "Timeout"]
+  source: "requests/exceptions.py"
+
+- id: th-13
+  category: two_hop
+  question: "What is the base class of all requests exceptions, and what does it inherit from?"
+  expects: "RequestException, which inherits from IOError"
+  must_contain: ["RequestException", "IOError"]
+  source: "requests/exceptions.py"
+
+- id: th-14
+  category: two_hop
+  question: "Which requests exceptions inherit from both RequestException and ValueError?"
+  expects: "MissingSchema, InvalidSchema, InvalidURL, InvalidHeader"
+  must_contain: ["MissingSchema", "InvalidSchema", "InvalidURL"]
+  source: "requests/exceptions.py"
+
+- id: th-15
+  category: two_hop
+  question: "If I set stream=True, which part of the library defers reading the body?"
+  expects: "The adapter/urllib3 response — content is not downloaded until accessed"
+  source: "docs/user/advanced.rst, Body Content Workflow"
+
+# ---------------------------------------------------------------- three hop
+# Requires chaining three facts. These are where the vector baseline should
+# fall off hardest, because no single passage contains the whole chain.
+
+- id: 3h-01
+  category: three_hop
+  question: "If I pass verify=False, what is disabled, which function applies it, and which library actually performs the TLS setup?"
+  expects: "Certificate verification; HTTPAdapter.cert_verify; urllib3 handles the TLS connection"
+  must_contain: ["cert_verify", "urllib3"]
+  source: "requests/adapters.py cert_verify + urllib3 connection handling"
+
+- id: 3h-02
+  category: three_hop
+  question: "Trace what happens from requests.get() down to the urllib3 call that sends the request."
+  expects: "requests.get -> Session.request -> Session.send -> HTTPAdapter.send -> urllib3 urlopen"
+  must_contain: ["Session.request", "HTTPAdapter.send", "urlopen"]
+  source: "requests/api.py, sessions.py, adapters.py"
+
+- id: 3h-03
+  category: three_hop
+  question: "When a connection times out at the socket level, what does urllib3 raise, what does requests convert it to, and what base class does that inherit from?"
+  expects: "ConnectTimeoutError -> ConnectTimeout -> inherits ConnectionError and Timeout"
+  must_contain: ["ConnectTimeoutError", "ConnectTimeout"]
+  source: "requests/adapters.py + exceptions.py"
+
+- id: 3h-04
+  category: three_hop
+  question: "Which requests exceptions ultimately derive from IOError through RequestException, and which of those also derive from ValueError?"
+  expects: "All requests exceptions derive from RequestException->IOError; MissingSchema, InvalidSchema, InvalidURL, InvalidHeader also derive from ValueError"
+  must_contain: ["RequestException", "ValueError"]
+  source: "requests/exceptions.py"
+
+- id: 3h-05
+  category: three_hop
+  question: "What does the Session object reuse between requests, which library provides it, and which class implements it?"
+  expects: "Connections (keep-alive); urllib3; PoolManager / connection pooling"
+  must_contain: ["urllib3"]
+  source: "docs/user/advanced.rst Keep-Alive + Session Objects"
+
+- id: 3h-06
+  category: three_hop
+  question: "If urllib3 raises MaxRetryError because of an SSL problem, what does requests raise, and what is that exception's parent class?"
+  expects: "SSLError, whose parent is ConnectionError"
+  must_contain: ["SSLError", "ConnectionError"]
+  source: "requests/adapters.py _SSLError branch + exceptions.py"
+
+- id: 3h-07
+  category: three_hop
+  question: "Which parameter controls redirect behaviour, which class handles resolving redirects, and what exception is raised if there are too many?"
+  expects: "allow_redirects; SessionRedirectMixin.resolve_redirects; TooManyRedirects"
+  must_contain: ["allow_redirects", "TooManyRedirects"]
+  source: "requests/sessions.py + exceptions.py"
+
+- id: 3h-08
+  category: three_hop
+  question: "What does requests use to build a connection pool key, what parameter feeds into it, and which library consumes the result?"
+  expects: "HTTPAdapter.build_connection_pool_key_attributes; verify/cert; urllib3's pool manager"
+  source: "requests/adapters.py"
+
+- id: 3h-09
+  category: three_hop
+  question: "Starting from a proxy failure in urllib3, what does requests raise, and what is that exception's base class?"
+  expects: "ProxyError, whose base is ConnectionError"
+  must_contain: ["ProxyError", "ConnectionError"]
+  source: "requests/adapters.py + exceptions.py"
+
+- id: 3h-10
+  category: three_hop
+  question: "Which requests exception is raised on an invalid URL, where is it raised from, and what does it inherit from?"
+  expects: "InvalidURL, raised in HTTPAdapter.send from LocationValueError, inherits RequestException and ValueError"
+  must_contain: ["InvalidURL", "ValueError"]
+  source: "requests/adapters.py + exceptions.py"
+
+- id: 3h-11
+  category: three_hop
+  question: "What handles retries in urllib3, which requests parameter exposes it, and what exception surfaces when retries run out?"
+  expects: "Retry; max_retries on HTTPAdapter; RetryError (or ConnectionError)"
+  must_contain: ["Retry", "max_retries"]
+  source: "requests/adapters.py + urllib3 util/retry.py"
+
+- id: 3h-12
+  category: three_hop
+  question: "Which requests class sends the request, which urllib3 class does it obtain a connection from, and what does that return?"
+  expects: "HTTPAdapter; urllib3 HTTPConnectionPool/PoolManager; an HTTPResponse that becomes a requests Response"
+  must_contain: ["HTTPAdapter", "Response"]
+  source: "requests/adapters.py"
+
+# -------------------------------------------------------------- aggregation
+# Counting or summarising over relationships — something plain retrieval
+# structurally cannot do, since the answer exists in no single passage.
+
+- id: ag-01
+  category: aggregation
+  question: "How many requests exceptions inherit from RequestException?"
+  expects: "A count (roughly 20 in requests/exceptions.py)"
+  source: "requests/exceptions.py"
+
+- id: ag-02
+  category: aggregation
+  question: "List all requests exceptions that wrap a urllib3 exception."
+  expects: "ConnectionError, ConnectTimeout, ReadTimeout, SSLError, ProxyError, RetryError, InvalidHeader"
+  must_contain: ["ConnectionError", "SSLError", "ProxyError"]
+  source: "requests/adapters.py HTTPAdapter.send"
+
+- id: ag-03
+  category: aggregation
+  question: "Which exceptions does HTTPAdapter.send raise?"
+  expects: "InvalidURL, ConnectionError, ProxyError, SSLError, ConnectTimeout, ReadTimeout, RetryError, InvalidHeader"
+  must_contain: ["InvalidURL", "ConnectionError", "SSLError"]
+  source: "requests/adapters.py"
+
+- id: ag-04
+  category: aggregation
+  question: "What parameters does Session.request accept?"
+  expects: "method, url, params, data, headers, cookies, files, auth, timeout, allow_redirects, proxies, hooks, stream, verify, cert, json"
+  must_contain: ["verify", "timeout", "headers", "cookies"]
+  source: "requests/sessions.py Session.request"
+
+- id: ag-05
+  category: aggregation
+  question: "Which requests exceptions are also ValueErrors?"
+  expects: "MissingSchema, InvalidSchema, InvalidURL, InvalidHeader"
+  must_contain: ["MissingSchema", "InvalidSchema", "InvalidURL"]
+  source: "requests/exceptions.py"
+
+- id: ag-06
+  category: aggregation
+  question: "How many modules make up the requests package?"
+  expects: "A count of modules in requests/ (around 15-18)"
+  source: "requests/src listing"
+
+- id: ag-07
+  category: aggregation
+  question: "Which classes in requests inherit from BaseAdapter?"
+  expects: "HTTPAdapter"
+  must_contain: ["HTTPAdapter"]
+  source: "requests/adapters.py"
+
+- id: ag-08
+  category: aggregation
+  question: "What are all the timeout-related exceptions across requests and urllib3?"
+  expects: "requests: Timeout, ConnectTimeout, ReadTimeout; urllib3: TimeoutError, ConnectTimeoutError, ReadTimeoutError"
+  must_contain: ["ConnectTimeout", "ReadTimeout"]
+  source: "requests/exceptions.py + urllib3/exceptions.py"
+
+# ------------------------------------------------------------- out of scope
+# The system should refuse these, not answer them. Several deliberately
+# mention "requests" or "urllib3" by name to catch keyword-matching rather
+# than real scope judgement (see D23 — this exact failure was found and fixed).
+
+- id: oos-01
+  category: out_of_scope
+  question: "How do I use requests with Django templates?"
+  expects: "REFUSE — Django is not in this corpus"
+
+- id: oos-02
+  category: out_of_scope
+  question: "How do I use requests with Flask sessions?"
+  expects: "REFUSE — Flask is not in this corpus"
+
+- id: oos-03
+  category: out_of_scope
+  question: "What is the capital of France?"
+  expects: "REFUSE — unrelated to the corpus"
+
+- id: oos-04
+  category: out_of_scope
+  question: "How do I deploy a FastAPI app to AWS Lambda?"
+  expects: "REFUSE — not about requests or urllib3"
+
+- id: oos-05
+  category: out_of_scope
+  question: "Is requests faster than httpx for async workloads?"
+  expects: "REFUSE — httpx is not in this corpus and no benchmarks exist here"
+
+- id: oos-06
+  category: out_of_scope
+  question: "How do I install Python on Windows?"
+  expects: "REFUSE — not about these libraries"
+
+- id: oos-07
+  category: out_of_scope
+  question: "Write me a web scraper using requests and BeautifulSoup."
+  expects: "REFUSE — BeautifulSoup is not in this corpus; this is a code-writing task, not a documented fact"
+
+- id: oos-08
+  category: out_of_scope
+  question: "Who maintains urllib3 and what is their email address?"
+  expects: "REFUSE — personal contact details are not the kind of fact this system answers"
+
+- id: oos-09
+  category: out_of_scope
+  question: "What will be added to requests in version 4.0?"
+  expects: "REFUSE — unreleased/future information is not in the corpus"
+
+- id: oos-10
+  category: out_of_scope
+  question: "How does the Go standard library handle HTTP connection pooling?"
+  expects: "REFUSE — a different language entirely"

@@ -1,0 +1,95 @@
+{
+  "stats": {
+    "graded_per_trial": 120,
+    "unstable_keys": 1,
+    "flip_rate_pct": 0.8
+  },
+  "unstable": [
+    {
+      "id": "sh-02",
+      "system": "baseline",
+      "verdicts": [
+        "correct",
+        "correct",
+        "correct",
+        "partial"
+      ],
+      "counts": {
+        "correct": 3,
+        "partial": 1
+      }
+    }
+  ],
+  "per_trial": {
+    "single_hop": {
+      "hybrid": [
+        86.7,
+        86.7,
+        86.7,
+        86.7
+      ],
+      "baseline": [
+        73.3,
+        73.3,
+        73.3,
+        66.7
+      ]
+    },
+    "two_hop": {
+      "hybrid": [
+        46.7,
+        46.7,
+        46.7,
+        46.7
+      ],
+      "baseline": [
+        46.7,
+        46.7,
+        46.7,
+        46.7
+      ]
+    },
+    "three_hop": {
+      "hybrid": [
+        41.7,
+        41.7,
+        41.7,
+        41.7
+      ],
+      "baseline": [
+        58.3,
+        58.3,
+        58.3,
+        58.3
+      ]
+    },
+    "aggregation": {
+      "hybrid": [
+        12.5,
+        12.5,
+        12.5,
+        12.5
+      ],
+      "baseline": [
+        12.5,
+        12.5,
+        12.5,
+        12.5
+      ]
+    },
+    "out_of_scope": {
+      "hybrid": [
+        80.0,
+        80.0,
+        80.0,
+        80.0
+      ],
+      "baseline": [
+        70.0,
+        70.0,
+        70.0,
+        70.0
+      ]
+    }
+  }
+}

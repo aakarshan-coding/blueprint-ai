@@ -1,0 +1,24 @@
+# Hand-labeled (question -> correct chunk_id) pairs for measuring recall@k
+# on the vector index, per design §7. Written from the real chunk text
+# (verified via schema.sql-loaded Postgres), not generated from the graph —
+# this is exactly the retrieval-quality gate the router isn't allowed to
+# skip. A question with two ids means the source section was split across
+# two chunks (design §5, oversize-section splitting); either counts as a hit.
+
+- question: "Does requests verify SSL certificates by default?"
+  chunk_ids: ["ffe91181b672978f"]
+
+- question: "How does requests keep connections alive between requests?"
+  chunk_ids: ["98feb4cfbc9a5003"]
+
+- question: "Does requests follow redirects automatically?"
+  chunk_ids: ["ef09dccdcc04397d"]
+
+- question: "How do I set a timeout on a request so it doesn't hang forever?"
+  chunk_ids: ["fb2bbf213ccbef76"]
+
+- question: "What does the connect timeout apply to?"
+  chunk_ids: ["e4665ab02e459e71", "6d8a066dd32324fb"]
+
+- question: "How does urllib3 let me control how long a request can run?"
+  chunk_ids: ["fdf693616cb20ea7"]
