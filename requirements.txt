@@ -7,4 +7,5 @@ fastapi
 uvicorn
 pydantic
 pyyaml
+jedi
 pytest

@@ -1910,6 +1910,111 @@ target for a graph that feeds a model; the research note in `docs/research/` has
 
 ---
 
+## D58 — CALLS edges come from jedi now; the resolver-based CALLS write is retired
+
+The research note (docs/research/) put it plainly: every tool with a usable call graph
+resolves receiver types, and this project resolved only `self`. Its recommendation was to
+*consume* a real analysis rather than build one. Three tools were tried:
+
+- **PyCG** (the paper's 99% precision / 70% recall) — archived, Python 3.6-era. Three
+  incompatibilities in a row on 3.14 (import hook, `ast.Num`, positional-only args).
+  Stopped after the third, per the three-strikes rule.
+- **scip-python** (Sourcegraph's Pyright fork) — installs, then dies at startup on Windows:
+  `new RegExp(path.sep)` with `\`.
+- **jedi** — maintained, pure Python, pip-installable, runs. Resolves `conn.urlopen` in
+  `HTTPAdapter.send` to `urllib3.connectionpool.HTTPConnectionPool.urlopen` on the first try.
+
+**Measured before adopting.** All 2,646 call sites, jedi vs the resolver, in-corpus targets:
+
+| | sites | share |
+|---|---|---|
+| both agree | 629 | 23.8% |
+| jedi only | 229 | 8.7% |
+| resolver only | 169 | 6.4% |
+| conflict | 12 | 0.5% |
+| neither (builtins, stdlib, unknowable) | 1,607 | 60.7% |
+
+The "resolver only" bucket is mostly false: `getattr` ×34 → `LookupDict.__getattr__`,
+`bool` ×23, `cast` ×18 — builtins fuzzy-matched to unrelated dunders by the normalized
+rung. Those edges were in the live graph. The conflicts favour jedi: `tell` and
+`idna_encode` are local closures jedi sees and the resolver mis-pointed at other classes;
+`parse_url` is definition-site (`urllib3.util.url`) vs re-export (`urllib3.util`), and the
+node universe holds definition sites. The "jedi only" bucket is attribute chains (97),
+inherited `self.*` methods (69), closures (42), `super()` (21) — all real.
+
+**A bug found on the way.** `Resolver.resolve(..., enclosing_class=)` — the D46
+self-reference rung — was defined and **passed by nobody**. The ingestion CALLS loop never
+gave it the class, so no `self.*` call had ever resolved in the live graph. D46's 30.7%
+was measured somewhere that did pass it. This is the architecture review's "the resolver
+is configured differently in five files" made concrete; the first head-to-head was run
+against that broken baseline and over-credited jedi by ~200 sites until it was caught.
+
+**Also on the way: `goto` vs `infer`.** The module first used `script.goto`, which answers
+"where is this name bound". For `target = f if flag else A; target()` that is the two
+`target = …` lines — one name, so the ambiguity vanished and a local variable was recorded
+as a call target. `infer` answers "what does it evaluate to": f and A, two callables,
+correctly ambiguous and correctly skipped. Caught by a test written for exactly that case.
+
+**Design:** `graphrag/ingest/jedi_calls.py` — one jedi project per repo (jedi names
+definitions relative to the project root; a urllib3 file under requests' root comes back
+as `urllib3_repo.src.urllib3.…`), `infer` at the last character of each call target,
+keep only targets that are a single function or class inside the corpus packages, one
+edge per (function, target). Edges carry the caller's real chunk id — citable, where the
+resolver-era edges carried the placeholder `"ast"` — plus `source="jedi"` and the
+surface as written. 12 targets jedi finds that `iter_symbols` never yields (defs under
+`if sys.platform…` / `if TYPE_CHECKING:`) are skipped and counted rather than written as
+unlabeled nodes.
+
+`extract_calls` still runs — replay's call_graph rung reads it — but produces no edges.
+RAISES, INHERITS_FROM and WRAPS_EXCEPTION stay on the resolver: their surfaces are class
+names, which name matching handles, and changing one path at a time keeps the benchmark
+attributable.
+
+**Result in the graph:** 691 resolver-era CALLS edges deleted (`chunk_id='ast'`), 679 jedi
+edges written; 215 are `self.*`, 15 cross requests → urllib3. `HTTPAdapter.send` has 16,
+all correct on inspection, including `conn.urlopen → HTTPConnectionPool.urlopen` and
+`TimeoutSauce → urllib3.util.timeout.Timeout`. 12 random edges spot-checked: 12 correct.
+`ast_edges_unresolved` 2,241 → 214, because unresolvable builtins no longer count as
+failures. Ingestion adds ~12s. 211 tests passing. `jedi` added to requirements.
+
+**The trade, stated:** "I built the resolver" is a smaller story now — it resolves class
+names and parameters, not calls. What it buys is the ability to ask "does a better call
+graph change accuracy?", which the resolver could never answer 5% at a time.
+
+**Run 8 result.** Pooled: hybrid 36, baseline 32, delta **+4** (run 7: 39 / 30, +9). Nine
+hybrid verdicts flipped between the runs — 3 up, 6 down — which is the ~12% flip rate D51
+measured for *identical* code. Per category, two_hop +26.6 and single_hop −6.7, both
+inside the ±13 per-category noise. **No conclusion about jedi CALLS can be drawn from this
+run**, and it should not be read as "the call graph didn't help" any more than run 7's +9
+meant the passages fix was worth 9 points.
+
+What the run does establish:
+
+- **th-03 → correct**, as D57 predicted. The one loss the passages fix couldn't reach is
+  closed by the missing `ReadTimeout` edge.
+- **The regressions are not a denser-graph effect.** The suspicion was that jedi's 679 edges
+  drown the model: three regressed questions had 38–45 facts, and `oos-08` stopped refusing.
+  Checked against the graph directly: the largest neighbourhoods are the *old* hubs —
+  `concept:parameter:url` (91 edges, 0 jedi), `requests.models.Request` (79, 1 jedi), bare
+  `requests` (65, 0) — and the median degree of a function with calls is 5. Only
+  `HTTPConnectionPool.urlopen` is jedi-heavy (27 of 44), and it is genuinely the corpus's
+  most-called function. A 45-fact context means the planner chose a hub entity (D54/D55),
+  which it did before jedi and does after.
+- **Two losses remain:** `sh-11` and `3h-05` (BOTH route, 38 facts — a hub plan).
+
+**Where this leaves the measurement question.** Four runs of the current architecture (5–8)
+give pooled deltas +5, +3, +9, +4. All positive, mean +5.3, spread ±3. That is the first
+run of numbers whose sign holds, but it is still one architecture change per run, so
+per-change attribution is impossible from these. The repeated-runs-with-spread plan
+(D51) is now the only thing standing between the project and a README table.
+
+**The next graph-quality item is not more edges — it is fewer facts per answer.** The
+research note's item 5 (rank neighbours, cap them — aider's PageRank, GraphRAG's
+"prioritise to fit the window") is what a 45-fact context needs, and it is measurable on
+exactly the questions that regressed here.
+
+---
+
 ## Open questions for the Phase 2 sweep
 
 All of these are recall@k questions. None should be settled by argument.

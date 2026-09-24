@@ -30,6 +30,7 @@ from graphrag.ingest.chunk import (
     iter_docstrings_for_llm,
     iter_symbols,
 )
+from graphrag.ingest.jedi_calls import build_project, resolve_calls
 from graphrag.ingest.load_graph import (
     build_defined_in_edges,
     infer_external_type,
@@ -110,8 +111,18 @@ def run_ast_pass() -> tuple[
     import_aliases: dict[str, dict[str, str]] = {}
     edges = {
         "inherits_from": [], "raises": [], "parameters": [], "calls": [],
-        "exception_wrapping": [],
+        "exception_wrapping": [], "jedi_calls": [],
     }
+
+    # One jedi project per repo, the other repo importable from it — jedi
+    # names definitions relative to the project root, and a urllib3 file
+    # analysed under requests' root comes back as "urllib3_repo.src.urllib3.…".
+    src_roots = {repo: cfg["root"] / cfg["src"] for repo, cfg in REPOS.items()}
+    projects = {
+        repo: build_project(root, others=[r for k, r in src_roots.items() if k != repo])
+        for repo, root in src_roots.items()
+    }
+    packages = tuple(REPOS)
 
     for repo, cfg in REPOS.items():
         src_root = cfg["root"] / cfg["src"]
@@ -145,7 +156,14 @@ def run_ast_pass() -> tuple[
             )
             param_edges = extract_parameters(text, dotted_module=dotted)
             edges["parameters"] += param_edges
+            # The surface-name inventory is still collected — replay's
+            # call_graph rung and the D46 resolution stats read it — but it
+            # no longer produces CALLS edges. Those come from jedi (D58).
             edges["calls"] += extract_calls(text, dotted_module=dotted)
+            edges["jedi_calls"] += resolve_calls(
+                text, repo=repo, path=str(p), dotted_module=dotted,
+                project=projects[repo], packages=packages,
+            )
             # Unwired until D57. Every WRAPS_EXCEPTION edge in the first
             # graph came from the LLM reading docstrings, which describe the
             # common path and miss the rest — see ExceptionWrapEdge.
@@ -328,7 +346,7 @@ def run_full_ingestion(
             origin="external", type_source="inferred",
         )
 
-    print("Writing AST relationship edges (INHERITS_FROM, RAISES, CALLS)...")
+    print("Writing AST relationship edges (INHERITS_FROM, RAISES)...")
     for edge in edges["inherits_from"]:
         module_context = module_of(edge.source_id, node_types)
         for surface in edge.target_surfaces:
@@ -357,19 +375,29 @@ def run_full_ingestion(
             )
             stats["ast_edges_written"] += 1
 
-    for edge in edges["calls"]:
-        module_context = module_of(edge.source_id, node_types)
-        for surface in edge.calls:
-            r = resolver.resolve(surface, module_context=module_context)
-            if r.canonical_id is None:
-                stats["ast_edges_unresolved"] += 1
-                continue
-            type_if_external(r.canonical_id, "CALLS")
-            merge_edge(
-                neo4j_session, source_id=edge.source_id, relationship="CALLS",
-                target_id=r.canonical_id, chunk_id="ast", confidence=1.0,
-            )
-            stats["ast_edges_written"] += 1
+    # CALLS come from jedi, not the resolver (D58). Measured on every call
+    # site first: where the two disagreed, jedi added 229 correct edges and
+    # the resolver's 169 that jedi lacked were mostly builtins fuzzy-matched
+    # to unrelated dunders (`getattr` → LookupDict.__getattr__). Every target
+    # here is already a canonical id inside the corpus, so nothing resolves
+    # and nothing is external; the chunk_id is the caller's real one, so the
+    # edge is citable where the resolver-era "ast" placeholder was not.
+    print("Writing jedi CALLS edges...")
+    for edge in edges["jedi_calls"]:
+        # jedi sees definitions iter_symbols does not — functions under
+        # `if sys.platform == "win32":` or `if TYPE_CHECKING:` (12 in this
+        # corpus). Writing an edge to an id with no node would recreate the
+        # unlabeled-node problem of D31; skip and count instead, and let
+        # iter_symbols' scope be widened as its own decision.
+        if edge.target_id not in node_universe:
+            stats["ast_edges_unresolved"] += 1
+            continue
+        merge_edge(
+            neo4j_session, source_id=edge.source_id, relationship="CALLS",
+            target_id=edge.target_id, chunk_id=edge.chunk_id, confidence=1.0,
+            source=edge.method, surface=edge.surface,
+        )
+        stats["ast_edges_written"] += 1
 
     # Direction follows the existing convention: the requests exception WRAPS
     # the urllib3 one it was raised in place of. Both endpoints resolve in the
