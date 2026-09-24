@@ -39,6 +39,55 @@ def test_bare_name_resolves_via_its_module_import_table():
     assert result.method == "import_alias"
 
 
+def test_a_qualified_surface_resolves_by_its_dotted_suffix():
+    """"HTTPAdapter.send" names one thing unambiguously, but every rung
+    looked at either the whole id or the bare leaf `send` — which matches
+    Session.send, BaseAdapter.send and HTTPAdapter.send, so it fell through
+    as ambiguous. The planner writes qualified names exactly when the bare
+    one would be ambiguous (planner audit, ag-03), so this is the case that
+    most needs to work."""
+    resolver = Resolver(
+        node_universe={
+            "requests.adapters.HTTPAdapter.send",
+            "requests.adapters.BaseAdapter.send",
+            "requests.sessions.Session.send",
+        },
+        import_aliases={},
+    )
+
+    result = resolver.resolve("HTTPAdapter.send")
+
+    assert result.canonical_id == "requests.adapters.HTTPAdapter.send"
+    assert result.method == "qualified"
+
+
+def test_a_qualified_surface_matching_several_ids_stays_unresolved_with_candidates():
+    resolver = Resolver(
+        node_universe={"requests.exceptions.ProxyError", "urllib3.exceptions.ProxyError"},
+        import_aliases={},
+    )
+
+    result = resolver.resolve("exceptions.ProxyError")
+
+    assert result.canonical_id is None
+    assert set(result.candidates) == {
+        "requests.exceptions.ProxyError", "urllib3.exceptions.ProxyError",
+    }
+
+
+def test_a_qualified_surface_never_matches_mid_segment():
+    # "Adapter.send" must not match "HTTPAdapter.send": the suffix has to
+    # start at a dot boundary or it is a different name that happens to end
+    # the same way.
+    resolver = Resolver(
+        node_universe={"requests.adapters.HTTPAdapter.send"}, import_aliases={},
+    )
+
+    result = resolver.resolve("Adapter.send")
+
+    assert result.canonical_id is None
+
+
 def test_import_alias_only_applies_within_its_own_module():
     resolver = Resolver(
         node_universe=set(),

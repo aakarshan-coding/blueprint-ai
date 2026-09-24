@@ -39,10 +39,17 @@ class _FakeResponses:
     def __init__(self): self.parse_calls = 0
     def parse(self, **kw):
         self.parse_calls += 1
-        if kw["text_format"] is RouterDecision:
+        text_format = kw["text_format"]
+        if text_format is RouterDecision:
             return _Parsed(RouterDecision(route="GRAPH", confidence=0.95))
-        from graphrag.retrieval.graph_query import GraphQueryPlan
-        return _Parsed(GraphQueryPlan(template_id="T1_NEIGHBORS", entity_surface="Session"))
+        # The planner's two calls (D59): the mention list, then a plan in a
+        # schema built per question. Both are constructed through the class
+        # the pipeline passed, so the fake never has to know its shape.
+        if text_format.__name__ == "Mentions":
+            return _Parsed(text_format(mentions=[{"surface": "Session", "package": "unknown"}]))
+        return _Parsed(text_format(
+            plan={"template_id": "T1_NEIGHBORS", "entity_id": "requests.sessions.Session"}
+        ))
     def create(self, **kw):
         self.last_input = kw["input"]
         return _Text("An answer [c1].")

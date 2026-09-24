@@ -210,3 +210,23 @@ def test_wrap_chain_traverses_both_directions():
 
     assert "]->(" not in query, "must not be direction-restricted"
     assert "WRAPS_EXCEPTION" in query
+
+
+def test_delegation_chain_walks_calls_as_well_as_delegates_to():
+    """"What does requests.get ultimately hand off to" is a chain of CALLS:
+    get -> request -> Session.request -> Session.send -> adapter.send ->
+    conn.urlopen. DELEGATES_TO is the LLM's prose-derived version of the
+    same idea and is sparse; walking it alone returned 0 facts for that
+    question (planner audit, 3h-02). Now that CALLS edges are inferred by
+    jedi (D58) the chain exists in the graph, and the template must walk it.
+    Each hop reports its own type so the verbalizer can say which it was."""
+    session = _FakeSession()
+    run_template(
+        session, "T5_DELEGATION_CHAIN",
+        {"entity_id": "requests.sessions.Session", "max_hops": 2},
+        known_entity_ids=KNOWN_IDS,
+    )
+    query, _ = session.calls[0]
+
+    assert "DELEGATES_TO|CALLS" in query
+    assert "AS rels" in query

@@ -41,7 +41,10 @@ def _hash(text: str) -> str:
 def probe_hybrid(question: str, *, conn, neo4j_session, client, resolver, model) -> dict:
     """Everything answer_hybrid() does up to (not including) synthesis."""
     from graphrag.retrieval.cypher_templates import run_template
-    from graphrag.retrieval.graph_query import build_template_values, plan_graph_query
+    from graphrag.retrieval.graph_query import (
+        build_template_values, describe_entities, extract_mentions,
+        plan_graph_query, resolve_mentions,
+    )
     from graphrag.retrieval.merge import assemble_context, verbalize
     from graphrag.retrieval.router import classify_question, effective_route
     from graphrag.retrieval.vector_search import search_chunks
@@ -54,17 +57,27 @@ def probe_hybrid(question: str, *, conn, neo4j_session, client, resolver, model)
     graph_facts, plan_repr = [], "-"
     if route in ("GRAPH", "BOTH"):
         try:
-            plan = plan_graph_query(question, client=client)
-            values, known_ids = build_template_values(plan, resolver=resolver)
-            plan_repr = f"{plan.template_id}({json.dumps(values, sort_keys=True)})"
-            rows = run_template(
-                neo4j_session, plan.template_id, values, known_entity_ids=known_ids
+            # Mirrors answer_hybrid's two-stage planner (D59). Same caveat as
+            # the passages line below: this sequence lives in two places.
+            mentions = extract_mentions(question, client=client)
+            candidates = resolve_mentions(
+                mentions, resolver=resolver,
+                describe=lambda ids: describe_entities(neo4j_session, ids),
             )
-            graph_facts = verbalize(
-                plan.template_id, rows,
-                entity_id=values.get("entity_id"),
-                relationship=values.get("relationship"),
-            )
+            plan = plan_graph_query(question, candidates=candidates, client=client)
+            if plan is None:
+                plan_repr = "NO_CANDIDATES"
+            else:
+                values, known_ids = build_template_values(plan)
+                plan_repr = f"{plan.template_id}({json.dumps(values, sort_keys=True)})"
+                rows = run_template(
+                    neo4j_session, plan.template_id, values, known_entity_ids=known_ids
+                )
+                graph_facts = verbalize(
+                    plan.template_id, rows,
+                    entity_id=values.get("entity_id"),
+                    relationship=values.get("relationship"),
+                )
         except Exception as e:
             plan_repr = f"ERROR:{type(e).__name__}"
 

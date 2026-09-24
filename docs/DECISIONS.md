@@ -2015,6 +2015,121 @@ exactly the questions that regressed here.
 
 ---
 
+## D59 — The planner: resolve first, then plan
+
+**Why.** An audit of the planner on all 29 graph-routed benchmark questions (before any
+change) found four failure patterns that together covered nearly every miss:
+
+1. *8 surfaces the resolver couldn't map.* Four were ambiguous across packages
+   (`ProxyError`, `SSLError`, `InvalidHeader`) when the question said which one it meant —
+   "which **requests** exception" — and the planner threw the qualifier away. Two were
+   builtins (`IOError`, `ValueError`). One was a qualified name the resolver couldn't handle
+   (`HTTPAdapter.send`). One was an expression (`verify=False`).
+2. *6 hub entities returning 30–96 facts.* `requests`, `urllib3`, `Session`, a 3-hop chain
+   from `MaxRetryError`. The planner couldn't see that `requests` is a Module with 65 edges.
+3. *Wrong template for the shape.* `ag-01` "how many exceptions inherit from
+   RequestException" → corpus-wide count; `th-14`, the same shape, → the right T8. `3h-02`
+   "what does `requests.get` hand off to" → T5 over DELEGATES_TO only → 0 facts.
+4. *Schema looseness.* `relationship` attached to templates that don't take it.
+
+The root cause was the order: template, entity surface and relationship chosen in one blind
+call, with resolution afterwards. Every pattern above is a consequence.
+
+**Four fixes, smallest first, each measured on the same 29 questions.**
+
+*Fix 3 — T5 walks CALLS as well as DELEGATES_TO.* DELEGATES_TO is the LLM's sparse prose
+view of hand-off; CALLS is now jedi's real chain (D58). The template returns each hop's
+type and the verbalizer uses it ("calls" vs "delegates to"). `3h-02`: 0 → 25 facts.
+
+*Fix 4 — the resolver handles qualified surfaces.* A `qualified` rung matches a dotted
+surface as a whole suffix on a segment boundary. "HTTPAdapter.send" finds one id where the
+bare leaf `send` tied with `Session.send` and `BaseAdapter.send`. The planner qualifies a
+name exactly when the bare one would be ambiguous, so this was the case that failed most.
+
+*Fix 2 — per-template plan schemas.* Each template gets its own pydantic model with only
+the parameters it takes, built from `TEMPLATES` so the single-source discipline of D54
+holds. T3 + `relationship` is now a validation error, not an ignored field.
+
+*Fix 1 — resolve first, then plan.* Two model calls with our code between:
+`extract_mentions` lists the entities the question names with the package its wording
+assigns them ("urllib3's ReadTimeoutError"); `resolve_mentions` turns those into canonical
+ids — using the qualifier to break a tie the resolver alone refuses to — and reads each
+id's kind and degree from the graph; `plan_graph_query` picks a template and an entity
+*from that list*, through a schema built per question in which `entity_id` is an enum of
+exactly those ids. No candidates → no graph query → the passages carry the answer. The
+model still never sees an id it wasn't handed and never writes Cypher; resolution stays a
+step we own, moved before the choice instead of after.
+
+Found on the way: pydantic serialises a discriminated union as `oneOf`, which OpenAI's
+strict schema mode rejects. A plain `Union` is `anyOf` and works; each member's `Literal`
+template_id still lets pydantic validate against exactly one template. Hop limits are an
+int enum, not a range, for the same reason.
+
+**Result, same 29 questions:**
+
+| | before | after |
+|---|---|---|
+| resolution errors | 8 | **0** (3 name no entity → no graph query) |
+| plans returning ≥ 30 facts | 6 | **1** (a genuine 2-hop call chain from `HTTPAdapter.send`) |
+| aggregation on the right template | 2 / 8 | **4 / 8** (`ag-01`, `ag-03` fixed) |
+| `3h-02` facts | 0 | 25 |
+
+The three Module picks that remain (`th-05`, `th-06`, `3h-09`) are questions that name no
+class at all — "which requests exception surfaces when a proxy fails" — where the only
+resolvable mention was the package name. The old planner answered those by *inventing*
+`ProxyError` from its own knowledge, which happened to be useful; the mention prompt now
+forbids that, and the baseline's passages answer them anyway. Precision, again.
+
+**Two things it exposed, left for later:**
+
+- The planner picks chain templates for Parameter nodes, which have no call or wrap
+  edges (`th-15`, `3h-01`, `3h-11` → 0 facts). One line of prompt guidance added;
+  structural exclusion if that proves insufficient.
+- `HAS_PARAMETER` is in the ontology and offered to the planner, but ingestion writes
+  `Parameter -DEFINED_IN-> Function` and never `HAS_PARAMETER` (`3h-07` → 0 facts). An
+  ontology/ingestion mismatch: either write it or stop offering it.
+
+The retrieval sequence now lives in three places (pipeline, stability probe, the audit
+script) and had to be edited in each. Candidate #1 of the architecture review is overdue.
+
+224 tests passing.
+
+**Run 9 result.** Pooled: hybrid 36, baseline 33, **+3** (run 8: 36 / 32, +4; run 7: 39 /
+30, +9). Thirteen hybrid verdicts flipped, 6 up and 7 down — the D51 noise floor again, so
+the pooled number says nothing about the planner. The individual flips do:
+
+*Wins traceable to the planner:* `th-07` incorrect → correct (`InvalidHeader`, previously
+an unresolvable ambiguous surface, now resolved through the qualifier). `3h-02`, `ag-03`,
+`ag-08` incorrect → partial, each on the new plan (`T5` over CALLS from `requests.get`;
+`T8(HTTPAdapter.send, RAISES)`).
+
+*Losses traceable to the planner, and the lesson in them:* `th-06`, `th-15`, `3h-01` went
+correct → wrong. In each, the old planner produced **no** graph facts (unresolvable
+surface, or a chain template on a Parameter) so the model answered from passages alone and
+got it right. The new planner produced 4–10 facts that are *true and irrelevant* — `T3`
+from the `requests` Module; `T1_NEIGHBORS` of `Session.request.stream`, which lists where
+the parameter is defined and which concepts mention it — and the model, told these are
+GRAPH FACTS, leaned on them and got it wrong. **Four true facts about the wrong thing beat
+five relevant passages.** This is D56's lesson one step further: it is not only *false*
+facts that override passages; *irrelevant* ones do too, because the prompt labels them as
+fact and the model has no way to weigh them.
+
+`th-08` is the precision cost made concrete: the old planner invented `ResponseError` from
+its own knowledge — the question never names it — and the resulting `T3` chain was right.
+The new mention prompt forbids that, so the question gets no graph query and its passages
+alone were not enough this run.
+
+**What this means for the next step.** The planner now chooses well among the entities it
+is given; the remaining damage comes from what the graph returns being trusted regardless
+of relevance. Two levers, both on the answer side, not the planner: rank and cap facts by
+relevance to the question (the research note's item 5), and stop presenting graph facts as
+unconditionally authoritative in the synthesis prompt — "structural relationships, use
+where relevant, prefer the passages when they conflict". Both are measurable on exactly
+`th-06`, `th-15`, `3h-01`. Neither should be done before the repeat-runs-with-spread
+measurement (D51) that everything since D56 has been waiting on.
+
+---
+
 ## Open questions for the Phase 2 sweep
 
 All of these are recall@k questions. None should be settled by argument.

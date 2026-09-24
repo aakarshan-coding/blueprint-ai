@@ -9,7 +9,13 @@ can be compared question-for-question in the benchmark.
 from graphrag.answer.citations import validate_citations
 from graphrag.answer.synthesize import synthesize_answer
 from graphrag.retrieval.cypher_templates import run_template
-from graphrag.retrieval.graph_query import build_template_values, plan_graph_query
+from graphrag.retrieval.graph_query import (
+    build_template_values,
+    describe_entities,
+    extract_mentions,
+    plan_graph_query,
+    resolve_mentions,
+)
 from graphrag.retrieval.merge import assemble_context, verbalize
 from graphrag.retrieval.router import classify_question, effective_route
 from graphrag.retrieval.vector_search import DEFAULT_K, search_chunks
@@ -43,26 +49,37 @@ def answer_hybrid(
             "vector_passages_used": 0,
             "refused": True,
             "graph_error": None,
+            "graph_plan": None,
         }
 
     graph_facts = []
     graph_error = None
+    graph_plan = None
     if route in ("GRAPH", "BOTH"):
         try:
-            plan = plan_graph_query(question, client=openai_client)
-            values, known_ids = build_template_values(plan, resolver=resolver)
-            rows = run_template(
-                neo4j_session, plan.template_id, values, known_entity_ids=known_ids
+            # Resolve first, then plan (D59): the model chooses its entity
+            # from ids our code resolved, never from a surface it wrote.
+            mentions = extract_mentions(question, client=openai_client)
+            candidates = resolve_mentions(
+                mentions, resolver=resolver,
+                describe=lambda ids: describe_entities(neo4j_session, ids),
             )
-            graph_facts = verbalize(
-                plan.template_id, rows,
-                entity_id=values.get("entity_id"),
-                relationship=values.get("relationship"),
-            )
+            plan = plan_graph_query(question, candidates=candidates, client=openai_client)
+            if plan is not None:
+                values, known_ids = build_template_values(plan)
+                graph_plan = f"{plan.template_id}({values})"
+                rows = run_template(
+                    neo4j_session, plan.template_id, values, known_entity_ids=known_ids
+                )
+                graph_facts = verbalize(
+                    plan.template_id, rows,
+                    entity_id=values.get("entity_id"),
+                    relationship=values.get("relationship"),
+                )
         except Exception as e:
-            # A graph path that can't resolve an entity or plan a template is
-            # a real outcome worth recording, not a crash — the benchmark
-            # needs to see it rather than lose the whole question.
+            # A graph path that can't plan a template or run it is a real
+            # outcome worth recording, not a crash — the benchmark needs to
+            # see it rather than lose the whole question.
             graph_error = f"{type(e).__name__}: {e}"
 
     # Passages are fetched on every non-refused route. Graph facts are
@@ -96,6 +113,7 @@ def answer_hybrid(
             "vector_passages_used": 0,
             "refused": False,
             "graph_error": graph_error,
+            "graph_plan": graph_plan,
         }
 
     answer = synthesize_answer(question, context=context, client=openai_client)
@@ -112,4 +130,5 @@ def answer_hybrid(
         "vector_passages_used": len(vector_passages),
         "refused": False,
         "graph_error": graph_error,
+        "graph_plan": graph_plan,
     }

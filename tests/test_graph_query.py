@@ -1,64 +1,111 @@
+"""The planner, after D59: resolve first, then plan.
+
+The old planner picked a template, named an entity by surface, and named a
+relationship in one blind call; resolution happened afterwards. The audit of
+all 29 graph-routed benchmark questions found every failure was a
+consequence of that order: 8 surfaces the resolver couldn't map (four of
+them ambiguous across requests/urllib3 when the question said which), 6 hub
+entities returning 30-96 facts, and templates chosen without knowing what
+kind of thing the entity was. Now our code resolves the question's mentions
+into real candidates -- with node kind and degree -- and the model chooses
+from that list, through a schema that only has the fields its template takes.
+"""
+
 import typing
 
+import pytest
+from pydantic import ValidationError
+
+from graphrag.ingest.resolve import Resolver
 from graphrag.retrieval.cypher_templates import TEMPLATES
 from graphrag.retrieval.graph_query import (
     PLANNABLE,
     SYSTEM_PROMPT,
-    GraphQueryPlan,
+    Candidate,
+    Mention,
+    build_plan_model,
     build_template_values,
+    extract_mentions,
     plan_graph_query,
+    resolve_mentions,
 )
-from graphrag.ingest.resolve import Resolver
 
 
-def test_every_allowed_template_is_described_to_the_model():
-    """The planner may only return a template it was told about.
+# --- single source for what the planner is offered ------------------------
 
-    These two lists were hand-written separately and silently drifted:
-    T8_RELATED_BY was returnable but absent from the prompt, so the planner
-    could not knowingly pick the one template built for the aggregation
-    questions. Both now derive from TEMPLATES, and this test is what keeps
-    them from separating again.
-    """
-    allowed = set(typing.get_args(GraphQueryPlan.model_fields["template_id"].annotation))
+def test_every_offered_template_is_described_to_the_model():
     described = {name for name in TEMPLATES if f"- {name}:" in SYSTEM_PROMPT}
-
-    assert allowed == described
+    assert set(PLANNABLE) == described
 
 
 def test_every_offered_template_has_parameters_a_plan_can_fill():
-    """Offering a template the plan can't fill just produces failing plans.
-
-    A GraphQueryPlan carries one entity_surface, one relationship and one
-    max_hops, so it can fill exactly those three parameters. T2_PATH_BETWEEN
-    needs source_id AND target_id, which is why it has no description and is
-    not offered — this test is what makes that reasoning enforced rather than
-    remembered.
-    """
     fillable = {"entity_id", "relationship", "max_hops"}
-
     unfillable = {
-        name: sorted({spec.name for spec in t.params} - fillable)
-        for name, t in PLANNABLE.items()
+        name for name, t in PLANNABLE.items()
         if {spec.name for spec in t.params} - fillable
     }
-
-    assert unfillable == {}
-
-
-def test_the_aggregation_template_is_offered_to_the_planner():
-    """T8_RELATED_BY answers 'how many X relate to Y', the aggregation
-    category's shape. It was allowed but undescribed, so the planner never
-    knowingly chose it and aggregation questions fell to a corpus-wide count."""
-    assert "T8_RELATED_BY" in PLANNABLE
-    assert "T8_RELATED_BY" in SYSTEM_PROMPT
+    assert unfillable == set()
 
 
 def test_path_between_is_not_offered_to_the_planner():
     assert "T2_PATH_BETWEEN" in TEMPLATES
     assert "T2_PATH_BETWEEN" not in PLANNABLE
-    assert "T2_PATH_BETWEEN" not in SYSTEM_PROMPT
 
+
+# --- per-template plan schemas (fix 2) --------------------------------------
+
+CANDIDATES = [
+    Candidate("requests.exceptions.ProxyError", kind="Exception", degree=6),
+    Candidate("urllib3.exceptions.ProxyError", kind="Exception", degree=4),
+]
+
+
+def _plan(**fields):
+    """Construct a plan through the same dynamic model the planner uses."""
+    model = build_plan_model(CANDIDATES)
+    return model(plan=fields).plan
+
+
+def test_a_plan_only_carries_the_parameters_its_template_takes():
+    """T3 takes an entity and a hop count. The old shared schema let the
+    model attach relationship=RAISES to it -- ignored at runtime, but the
+    same looseness produced T6 with a named entity and T8 with the wrong
+    relationship (D54). Per-template schemas make those unrepresentable."""
+    plan = _plan(template_id="T3_EXCEPTION_WRAP_CHAIN",
+                 entity_id="requests.exceptions.ProxyError", max_hops=2)
+    assert not hasattr(plan, "relationship")
+
+    with pytest.raises(ValidationError):
+        _plan(template_id="T3_EXCEPTION_WRAP_CHAIN",
+              entity_id="requests.exceptions.ProxyError", max_hops=2,
+              relationship="RAISES")
+
+
+def test_a_count_plan_cannot_name_an_entity():
+    with pytest.raises(ValidationError):
+        _plan(template_id="T6_COUNT_BY_REL", relationship="INHERITS_FROM",
+              entity_id="requests.exceptions.ProxyError")
+
+
+def test_a_plans_entity_must_be_one_of_the_resolved_candidates():
+    """The model never invents an id: the schema's entity_id is an enum of
+    exactly the candidates our code resolved from the question."""
+    with pytest.raises(ValidationError):
+        _plan(template_id="T1_NEIGHBORS", entity_id="requests.made.Up")
+
+
+def test_templates_needing_an_entity_are_not_offered_without_candidates():
+    model = build_plan_model([])
+    annotation = model.model_fields["plan"].annotation
+    # A union of several members, or a single class when only one is left.
+    offered = set(typing.get_args(annotation)) or {annotation}
+    names = {typing.get_args(m.model_fields["template_id"].annotation)[0] for m in offered}
+
+    assert "T1_NEIGHBORS" not in names
+    assert "T6_COUNT_BY_REL" in names
+
+
+# --- stage 1: mentions -> candidates (fix 1) --------------------------------
 
 class _FakeResponse:
     def __init__(self, output_parsed):
@@ -66,134 +113,174 @@ class _FakeResponse:
 
 
 class _FakeResponses:
-    def __init__(self, result):
-        self._result = result
-        self.last_call = None
+    """Constructs whatever model the caller passed, from canned dicts, so the
+    same fake serves the mention call and the (dynamically built) plan call."""
+
+    def __init__(self, payloads):
+        self._payloads = list(payloads)
+        self.calls = []
 
     def parse(self, **kwargs):
-        self.last_call = kwargs
-        return _FakeResponse(self._result)
+        self.calls.append(kwargs)
+        payload = self._payloads[(len(self.calls) - 1) % len(self._payloads)]
+        return _FakeResponse(kwargs["text_format"](**payload))
 
 
 class _FakeClient:
-    def __init__(self, result):
-        self.responses = _FakeResponses(result)
+    def __init__(self, payloads):
+        self.responses = _FakeResponses(payloads)
 
 
-def test_plan_graph_query_returns_the_models_plan():
-    canned = GraphQueryPlan(
-        template_id="T3_EXCEPTION_WRAP_CHAIN",
-        entity_surface="ConnectTimeout",
-        relationship=None,
-        max_hops=2,
+def _describe(ids):
+    table = {
+        "requests.exceptions.ProxyError": ("Exception", 6),
+        "urllib3.exceptions.ProxyError": ("Exception", 4),
+        "requests": ("Module", 65),
+        "requests.adapters.HTTPAdapter.send": ("Function", 16),
+    }
+    return {i: table.get(i, ("unknown", 0)) for i in ids}
+
+
+RESOLVER = Resolver(
+    node_universe={
+        "requests.exceptions.ProxyError", "urllib3.exceptions.ProxyError",
+        "requests", "requests.adapters.HTTPAdapter.send",
+        "requests.sessions.Session.send", "requests.adapters.BaseAdapter.send",
+    },
+    import_aliases={},
+)
+
+
+def test_extract_mentions_returns_surfaces_with_their_package_qualifier():
+    client = _FakeClient([{"mentions": [
+        {"surface": "ProxyError", "package": "requests"},
+    ]}])
+
+    mentions = extract_mentions("Which requests exception is ProxyError?", client=client, votes=1)
+
+    assert mentions == [Mention(surface="ProxyError", package="requests")]
+
+
+def test_resolve_mentions_uses_the_package_qualifier_to_break_a_tie():
+    """'ProxyError' exists in both packages and the resolver refuses to guess.
+    The question said 'which requests exception' -- the qualifier the old
+    planner threw away. Four of the eight resolution failures in the audit
+    were exactly this."""
+    candidates = resolve_mentions(
+        [Mention(surface="ProxyError", package="requests")],
+        resolver=RESOLVER, describe=_describe,
     )
-    client = _FakeClient(canned)
 
-    plan = plan_graph_query("What does ConnectTimeout ultimately wrap?", client=client)
+    assert [c.canonical_id for c in candidates] == ["requests.exceptions.ProxyError"]
+
+
+def test_resolve_mentions_keeps_every_candidate_when_there_is_no_qualifier():
+    # With nothing to break the tie, both are offered and the model picks --
+    # it sees the full ids, so the choice is informed rather than a guess.
+    candidates = resolve_mentions(
+        [Mention(surface="ProxyError", package="unknown")],
+        resolver=RESOLVER, describe=_describe,
+    )
+
+    assert {c.canonical_id for c in candidates} == {
+        "requests.exceptions.ProxyError", "urllib3.exceptions.ProxyError",
+    }
+
+
+def test_resolve_mentions_attaches_kind_and_degree():
+    candidates = resolve_mentions(
+        [Mention(surface="requests", package="unknown")],
+        resolver=RESOLVER, describe=_describe,
+    )
+
+    assert candidates == [Candidate("requests", kind="Module", degree=65)]
+
+
+def test_resolve_mentions_drops_what_nothing_resolves():
+    candidates = resolve_mentions(
+        [Mention(surface="IOError", package="unknown")],
+        resolver=RESOLVER, describe=_describe,
+    )
+
+    assert candidates == []
+
+
+def test_resolve_mentions_dedupes_a_candidate_reached_twice():
+    candidates = resolve_mentions(
+        [Mention(surface="ProxyError", package="requests"),
+         Mention(surface="requests.exceptions.ProxyError", package="unknown")],
+        resolver=RESOLVER, describe=_describe,
+    )
+
+    assert len(candidates) == 1
+
+
+# --- stage 2: plan from candidates ------------------------------------------
+
+def test_plan_graph_query_chooses_from_the_candidates_it_is_given():
+    client = _FakeClient([{"plan": {
+        "template_id": "T3_EXCEPTION_WRAP_CHAIN",
+        "entity_id": "requests.exceptions.ProxyError", "max_hops": 2,
+    }}])
+
+    plan = plan_graph_query("q", candidates=CANDIDATES, client=client, votes=1)
 
     assert plan.template_id == "T3_EXCEPTION_WRAP_CHAIN"
-    assert plan.entity_surface == "ConnectTimeout"
+    assert plan.entity_id == "requests.exceptions.ProxyError"
     assert plan.max_hops == 2
 
 
-def test_plan_graph_query_uses_structured_output():
-    canned = GraphQueryPlan(template_id="T1_NEIGHBORS", entity_surface="Session")
-    client = _FakeClient(canned)
+def test_plan_graph_query_shows_the_model_each_candidates_kind_and_degree():
+    client = _FakeClient([{"plan": {
+        "template_id": "T1_NEIGHBORS", "entity_id": "requests.exceptions.ProxyError",
+    }}])
 
-    plan_graph_query("What connects to Session?", client=client)
+    plan_graph_query("q", candidates=CANDIDATES, client=client, votes=1)
 
-    assert client.responses.last_call["text_format"] is GraphQueryPlan
-
-
-class _SequenceResponses:
-    def __init__(self, results):
-        self._results = list(results)
-        self.calls = 0
-        self.last_call = None
-
-    def parse(self, **kwargs):
-        self.last_call = kwargs
-        result = self._results[self.calls % len(self._results)]
-        self.calls += 1
-        return _FakeResponse(result)
+    sent = client.responses.calls[0]["input"]
+    assert "requests.exceptions.ProxyError" in sent
+    assert "Exception" in sent and "6" in sent
 
 
-class _SequenceClient:
-    def __init__(self, results):
-        self.responses = _SequenceResponses(results)
+def test_plan_graph_query_returns_none_when_nothing_resolved():
+    """No candidates means no graph query. The alternative -- offering only
+    the corpus-wide count -- is how 'how many exceptions inherit from
+    RequestException' became a total over every INHERITS_FROM edge."""
+    client = _FakeClient([{"plan": {"template_id": "T6_COUNT_BY_REL", "relationship": "RAISES"}}])
+
+    assert plan_graph_query("q", candidates=[], client=client, votes=1) is None
+    assert client.responses.calls == []
 
 
 def test_plan_graph_query_takes_the_majority_plan():
-    """The planner returned a different plan on 11.7% of benchmark questions
-    (D53) — a different template, entity or hop count each run."""
-    client = _SequenceClient([
-        GraphQueryPlan(template_id="T3_EXCEPTION_WRAP_CHAIN",
-                       entity_surface="ReadTimeoutError", max_hops=2),
-        GraphQueryPlan(template_id="T3_EXCEPTION_WRAP_CHAIN",
-                       entity_surface="ReadTimeoutError", max_hops=3),
-        GraphQueryPlan(template_id="T3_EXCEPTION_WRAP_CHAIN",
-                       entity_surface="ReadTimeoutError", max_hops=2),
+    client = _FakeClient([
+        {"plan": {"template_id": "T3_EXCEPTION_WRAP_CHAIN", "entity_id": "requests.exceptions.ProxyError", "max_hops": 2}},
+        {"plan": {"template_id": "T3_EXCEPTION_WRAP_CHAIN", "entity_id": "requests.exceptions.ProxyError", "max_hops": 3}},
+        {"plan": {"template_id": "T3_EXCEPTION_WRAP_CHAIN", "entity_id": "requests.exceptions.ProxyError", "max_hops": 2}},
     ])
 
-    plan = plan_graph_query("q", client=client, votes=3)
+    plan = plan_graph_query("q", candidates=CANDIDATES, client=client, votes=3)
 
     assert plan.max_hops == 2
-    assert client.responses.calls == 3
+    assert len(client.responses.calls) == 3
 
 
-def test_plan_graph_query_votes_across_differing_templates():
-    client = _SequenceClient([
-        GraphQueryPlan(template_id="T1_NEIGHBORS", entity_surface="requests"),
-        GraphQueryPlan(template_id="T5_DELEGATION_CHAIN",
-                       entity_surface="requests", max_hops=2),
-        GraphQueryPlan(template_id="T1_NEIGHBORS", entity_surface="requests"),
-    ])
+# --- values for run_template --------------------------------------------------
 
-    plan = plan_graph_query("q", client=client, votes=3)
+def test_build_template_values_passes_the_plans_fields_through():
+    plan = _plan(template_id="T8_RELATED_BY",
+                 entity_id="requests.exceptions.ProxyError", relationship="INHERITS_FROM")
 
-    assert plan.template_id == "T1_NEIGHBORS"
+    values, known_ids = build_template_values(plan)
 
-
-def test_plan_graph_query_can_be_called_without_voting():
-    client = _SequenceClient([
-        GraphQueryPlan(template_id="T1_NEIGHBORS", entity_surface="Session")
-    ])
-
-    plan_graph_query("q", client=client, votes=1)
-
-    assert client.responses.calls == 1
+    assert values == {"entity_id": "requests.exceptions.ProxyError", "relationship": "INHERITS_FROM"}
+    assert known_ids == {"requests.exceptions.ProxyError"}
 
 
-def test_build_template_values_resolves_the_entity_surface():
-    resolver = Resolver(
-        node_universe={"requests.exceptions.ConnectTimeout"}, import_aliases={},
-    )
-    plan = GraphQueryPlan(
-        template_id="T3_EXCEPTION_WRAP_CHAIN", entity_surface="ConnectTimeout", max_hops=2,
-    )
+def test_build_template_values_for_a_count_plan_has_no_entity():
+    plan = _plan(template_id="T6_COUNT_BY_REL", relationship="WRAPS_EXCEPTION")
 
-    values, known_ids = build_template_values(plan, resolver=resolver)
-
-    assert values["entity_id"] == "requests.exceptions.ConnectTimeout"
-    assert values["max_hops"] == 2
-    assert known_ids == {"requests.exceptions.ConnectTimeout"}
-
-
-def test_build_template_values_raises_when_entity_surface_cannot_be_resolved():
-    import pytest
-
-    resolver = Resolver(node_universe=set(), import_aliases={})
-    plan = GraphQueryPlan(template_id="T1_NEIGHBORS", entity_surface="TotallyMadeUpThing")
-
-    with pytest.raises(ValueError):
-        build_template_values(plan, resolver=resolver)
-
-
-def test_build_template_values_passes_through_relationship_with_no_entity():
-    resolver = Resolver(node_universe=set(), import_aliases={})
-    plan = GraphQueryPlan(template_id="T6_COUNT_BY_REL", relationship="WRAPS_EXCEPTION")
-
-    values, known_ids = build_template_values(plan, resolver=resolver)
+    values, known_ids = build_template_values(plan)
 
     assert values == {"relationship": "WRAPS_EXCEPTION"}
     assert known_ids == set()

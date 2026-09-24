@@ -98,20 +98,29 @@ TEMPLATES: dict[str, Template] = {
         ),
     ),
     "T5_DELEGATION_CHAIN": Template(
+        # Walks CALLS alongside DELEGATES_TO. DELEGATES_TO is the LLM's
+        # prose-derived view of hand-off and is sparse: from requests.get it
+        # returned nothing. CALLS is now inferred by jedi (D58) and carries the
+        # real chain get -> request -> Session.request -> Session.send ->
+        # adapter.send -> conn.urlopen. `rels` names each hop's type so the
+        # verbalizer can say "calls" or "delegates to" rather than guess.
         cypher=(
-            "MATCH p = (a {id: $entity_id})-[:DELEGATES_TO*1..__max_hops__]-(b) "
+            "MATCH p = (a {id: $entity_id})-[:DELEGATES_TO|CALLS*1..__max_hops__]-(b) "
             "RETURN [n IN nodes(p) | n.id] AS chain, "
             "[r IN relationships(p) | r.chunk_id] AS chunk_ids, "
-            "[r IN relationships(p) | startNode(r).id] AS starts"
+            "[r IN relationships(p) | startNode(r).id] AS starts, "
+            "[r IN relationships(p) | type(r)] AS rels"
         ),
         params=(
             ParamSpec("entity_id", "entity_id"),
             ParamSpec("max_hops", "hop_limit"),
         ),
         description=(
-            "What one component ultimately delegates work to, following "
-            "DELEGATES_TO transitively. Use for 'what does Session.send hand "
-            "off to'. Needs entity_surface and max_hops (1-4)."
+            "What one function or class ultimately calls or delegates work "
+            "to, following CALLS and DELEGATES_TO transitively. Use for "
+            "'what does requests.get hand off to' or 'what does Session.send "
+            "call underneath'. Needs entity_surface and max_hops (1-4; use 2 "
+            "or 3 for a hand-off chain, since each hop is one call)."
         ),
     ),
     "T6_COUNT_BY_REL": Template(

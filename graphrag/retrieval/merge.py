@@ -67,10 +67,16 @@ def _verbalize_chain(rows: list[dict], *, verb: str) -> list[GraphFact]:
         # it a walk that crosses an edge backwards states the reverse of what
         # the graph says.
         starts = row.get("starts") or list(chain)
+        # A chain template that walks more than one relationship type (T5
+        # walks DELEGATES_TO and CALLS) reports each hop's type in `rels`;
+        # a hop is verbalized with its own verb, falling back to the
+        # template's default only when the column is absent.
+        rels = row.get("rels") or [None] * len(chunk_ids)
         for i, (a, b, chunk_id) in enumerate(zip(chain, chain[1:], chunk_ids)):
             source, target = (a, b) if starts[i] == a else (b, a)
+            hop_verb = REL_PHRASES.get(rels[i], verb) if rels[i] else verb
             edges[(source, target, chunk_id)] = GraphFact(
-                f"{source} {verb} {target}.", chunk_id
+                f"{source} {hop_verb} {target}.", chunk_id
             )
     return list(edges.values())
 

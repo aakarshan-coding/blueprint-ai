@@ -178,6 +178,7 @@ def main() -> None:
                     "latency_ms": latency_ms,
                     "citations_valid": out.get("citations_valid"),
                     "route": out.get("route"),
+                    "graph_plan": out.get("graph_plan"),
                     "graph_facts_used": out.get("graph_facts_used", 0),
                     "error": error,
                 }

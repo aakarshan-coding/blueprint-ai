@@ -190,3 +190,29 @@ def test_chain_hop_already_pointing_forward_is_left_alone():
     facts = verbalize("T3_EXCEPTION_WRAP_CHAIN", rows)
 
     assert facts[0].statement == "A wraps B."
+
+
+def test_delegation_chain_verbalizes_each_hop_with_its_own_relationship():
+    # T5 walks DELEGATES_TO and CALLS together. A hop that is a CALLS edge
+    # must read "calls", not "delegates to" — the template says which each
+    # hop was, and the verbalizer has to use it rather than assume.
+    rows = [{
+        "chain": ["requests.api.get", "requests.api.request", "requests.sessions.Session.request"],
+        "chunk_ids": ["c1", "c2"],
+        "starts": ["requests.api.get", "requests.api.request"],
+        "rels": ["CALLS", "DELEGATES_TO"],
+    }]
+
+    facts = verbalize("T5_DELEGATION_CHAIN", rows)
+    statements = [f.statement for f in facts]
+
+    assert "requests.api.get calls requests.api.request." in statements
+    assert "requests.api.request delegates to requests.sessions.Session.request." in statements
+
+
+def test_delegation_chain_without_rels_column_still_uses_the_template_verb():
+    rows = [{"chain": ["A", "B"], "chunk_ids": ["c1"], "starts": ["A"]}]
+
+    facts = verbalize("T5_DELEGATION_CHAIN", rows)
+
+    assert facts[0].statement == "A delegates to B."

@@ -11,8 +11,8 @@ from dataclasses import dataclass
 from typing import Literal
 
 Method = Literal[
-    "exact", "self_reference", "import_alias", "reexport", "normalized",
-    "public_api", "call_graph", "unresolved",
+    "exact", "self_reference", "import_alias", "reexport", "qualified",
+    "normalized", "public_api", "call_graph", "unresolved",
 ]
 
 
@@ -70,12 +70,20 @@ class Resolver:
 
         self._by_exact_name: dict[str, list[str]] = {}
         self._by_normalized_name: dict[str, list[str]] = {}
+        # Every proper dotted suffix of an id ("HTTPAdapter.send",
+        # "adapters.HTTPAdapter.send") -> the ids it ends. A qualified surface
+        # is looked up here whole, so "HTTPAdapter.send" finds one id where
+        # the leaf "send" alone finds three.
+        self._by_suffix: dict[str, list[str]] = {}
         for canonical_id in node_universe:
-            simple_name = canonical_id.rsplit(".", 1)[-1]
+            parts = canonical_id.split(".")
+            simple_name = parts[-1]
             self._by_exact_name.setdefault(simple_name, []).append(canonical_id)
             self._by_normalized_name.setdefault(_normalize(simple_name), []).append(
                 canonical_id
             )
+            for k in range(2, len(parts)):
+                self._by_suffix.setdefault(".".join(parts[-k:]), []).append(canonical_id)
 
     def resolve(
         self,
@@ -107,6 +115,21 @@ class Resolver:
             aliases = self.import_aliases.get(package, {})
             if leaf in aliases:
                 return Resolution(surface, aliases[leaf], "reexport")
+
+            # A qualified surface ("HTTPAdapter.send") is matched as a whole
+            # dotted suffix, on a segment boundary. Before this rung every
+            # remaining rung looked at the bare leaf, so "HTTPAdapter.send"
+            # collapsed to `send` and tied with Session.send and
+            # BaseAdapter.send — the planner qualifies a name precisely when
+            # the bare one would be ambiguous, which made this the case that
+            # failed most often at query time.
+            suffix_matches = self._by_suffix.get(surface, [])
+            if len(suffix_matches) == 1:
+                return Resolution(surface, suffix_matches[0], "qualified")
+            if len(suffix_matches) > 1:
+                return Resolution(
+                    surface, None, "unresolved", candidates=tuple(sorted(suffix_matches))
+                )
 
         # Exact case first: PoolManager (a class) and poolmanager (the module
         # it lives in) are different things to Python, and folding case would
