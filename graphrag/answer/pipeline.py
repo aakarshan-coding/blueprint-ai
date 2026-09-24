@@ -43,7 +43,6 @@ def answer_hybrid(
             "vector_passages_used": 0,
             "refused": True,
             "graph_error": None,
-            "fell_back_to_vector": False,
         }
 
     graph_facts = []
@@ -66,19 +65,20 @@ def answer_hybrid(
             # needs to see it rather than lose the whole question.
             graph_error = f"{type(e).__name__}: {e}"
 
-    # A GRAPH-only route that comes back with nothing must not answer from an
-    # empty context — the baseline would have had passages for the same
-    # question, so answering with nothing loses outright and tells us nothing
-    # about whether the graph helps. This hit 15 of 60 benchmark questions.
-    fell_back_to_vector = bool(
-        route == "GRAPH" and not graph_facts
+    # Passages are fetched on every non-refused route. Graph facts are
+    # additive, never a substitute: hybrid is the baseline's passages plus
+    # whatever the graph adds, so the benchmark measures whether facts help
+    # on top of passages rather than whether they can replace them.
+    #
+    # Two earlier versions got this wrong in turn. Withholding passages when
+    # the graph returned nothing answered 15 of 60 questions from an empty
+    # context. Withholding them only when the graph returned *something* was
+    # subtler and worse: on 16 questions the model answered from a handful of
+    # triples the planner had chosen — usually for the wrong entity — while
+    # the baseline had five full passages, and lost 5-7 on those.
+    vector_passages = search_chunks(
+        question, conn=conn, model=embedding_model, k=k
     )
-
-    vector_passages = []
-    if route in ("VECTOR", "BOTH") or fell_back_to_vector:
-        vector_passages = search_chunks(
-            question, conn=conn, model=embedding_model, k=k
-        )
 
     context, retrieved_ids = assemble_context(
         graph_facts=graph_facts, vector_passages=vector_passages
@@ -96,7 +96,6 @@ def answer_hybrid(
             "vector_passages_used": 0,
             "refused": False,
             "graph_error": graph_error,
-            "fell_back_to_vector": fell_back_to_vector,
         }
 
     answer = synthesize_answer(question, context=context, client=openai_client)
@@ -113,5 +112,4 @@ def answer_hybrid(
         "vector_passages_used": len(vector_passages),
         "refused": False,
         "graph_error": graph_error,
-        "fell_back_to_vector": fell_back_to_vector,
     }

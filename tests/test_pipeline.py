@@ -61,7 +61,17 @@ class _FakeResolver:
 ROWS = [("c1", "requests", "p.py", "sec", "doc", "A useful passage.", 0.1)]
 
 
-def test_empty_graph_result_falls_back_to_vector_instead_of_answering_with_nothing():
+class _FakeSessionWithFacts:
+    """Graph returns one T1_NEIGHBORS row — the common case, not the empty one."""
+    def run(self, query, **params):
+        class R:
+            def data(self):
+                return [{"relationship": "CALLS", "neighbor": "requests.adapters.HTTPAdapter.send",
+                         "chunk_id": "g1", "outgoing": True}]
+        return R()
+
+
+def test_empty_graph_result_still_gets_vector_passages():
     # Routing GRAPH and getting nothing back must not mean answering with an
     # empty context — the baseline would have had passages, so this loses
     # outright. 15 of 60 benchmark questions hit exactly this.
@@ -72,5 +82,27 @@ def test_empty_graph_result_falls_back_to_vector_instead_of_answering_with_nothi
     )
 
     assert result["vector_passages_used"] == 1
+    assert result["graph_facts_used"] == 0
     assert "No supporting information" not in result["answer"]
-    assert result["fell_back_to_vector"] is True
+
+
+def test_graph_route_with_facts_still_gets_vector_passages():
+    """Graph facts are additive, never a substitute for passages.
+
+    A GRAPH route that found facts used to withhold passages entirely. On 16
+    of 60 benchmark questions the model then answered from a handful of
+    triples the planner had chosen — usually for the wrong entity — while
+    the baseline had five full passages. Hybrid scored 5 there; baseline 7.
+    Hybrid must be baseline plus facts, so the benchmark measures whether
+    facts help on top of passages rather than whether they can replace them.
+    """
+    result = answer_hybrid(
+        "q", conn=_FakeConn(ROWS), neo4j_session=_FakeSessionWithFacts(),
+        openai_client=_FakeOpenAI(), resolver=_FakeResolver(),
+        embedding_model=_FakeEmbed(),
+    )
+
+    assert result["route"] == "GRAPH"
+    assert result["graph_facts_used"] == 1
+    assert result["vector_passages_used"] == 1
+    assert set(result["retrieved_ids"]) == {"g1", "c1"}

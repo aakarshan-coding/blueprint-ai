@@ -68,9 +68,11 @@ def probe_hybrid(question: str, *, conn, neo4j_session, client, resolver, model)
         except Exception as e:
             plan_repr = f"ERROR:{type(e).__name__}"
 
-    passages = []
-    if route in ("VECTOR", "BOTH") or (route == "GRAPH" and not graph_facts):
-        passages = search_chunks(question, conn=conn, model=model)
+    # Mirrors answer_hybrid: passages on every non-refused route. This line
+    # has already drifted from the pipeline once (it carried the old
+    # fallback rule after the pipeline dropped it), which is the cost of the
+    # sequence living in two places rather than one.
+    passages = search_chunks(question, conn=conn, model=model)
 
     context, _ids = assemble_context(graph_facts=graph_facts, vector_passages=passages)
     return {"route": route, "plan": plan_repr, "context_hash": _hash(context)}
