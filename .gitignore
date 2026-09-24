@@ -1,0 +1,21 @@
+# corpora - cloned, not authored
+requests_repo/
+urllib3_repo/
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# secrets + local state
+.env
+.cache/
+
+# data artifacts
+*.db
+out/
+
+# console transcripts from benchmark/ingestion runs. The results they describe
+# are committed as JSON; these are just what scrolled past.
+*.log

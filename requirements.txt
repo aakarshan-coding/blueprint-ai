@@ -1,0 +1,10 @@
+openai
+neo4j
+psycopg[binary]
+pgvector
+sentence-transformers
+fastapi
+uvicorn
+pydantic
+pyyaml
+pytest
