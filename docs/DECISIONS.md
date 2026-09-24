@@ -1768,6 +1768,148 @@ background log stayed empty and progress was invisible until it exited.)
 
 ---
 
+## D56 — Why hybrid lost to baseline: the GRAPH route withheld passages
+
+**Question asked:** what makes hybrid underperform the baseline, and fix it.
+
+**Evidence, before any change.** In run 6, six questions were baseline-right / hybrid-wrong.
+Five of the six were route `GRAPH` with graph facts present (11–38 facts). On that route the
+pipeline handed the answer model *only* the verbalized triples and **no passages**, while the
+baseline had five. Across all 16 questions that hit this path: hybrid 5 correct, baseline 7.
+
+Reconstructing those questions showed the facts were mostly irrelevant — the planner had
+chosen the wrong entity or template — so the model said "not enough information" with
+36 facts in front of it. Controlled test on 3h-10, one variable changed: same facts alone →
+*partial*; same facts plus passages → *correct*. Four of the five losses become correct with
+passages present.
+
+This is the untested hypothesis from D49, now tested.
+
+**Fix:** `answer_hybrid` fetches passages on every non-refused route. Graph facts are
+additive, never a substitute. `fell_back_to_vector` is gone — there is nothing to fall back
+from. The stability probe carried the old rule inline and had already drifted; corrected.
+195 tests passing.
+
+**What this makes the benchmark mean.** Hybrid is now exactly *baseline + facts*, so the
+comparison measures whether facts help on top of passages. That is the fair question, and
+the honest expectation is that this stops hybrid *losing* rather than making it *win* — on
+the five losses, passages alone were already enough.
+
+**The one loss this does not fix (th-03) is a data problem, logged here for the next
+thread.** The question asks what `ReadTimeoutError` becomes in requests. Two things are true:
+`ReadTimeout` in `HTTPAdapter.send`, `ConnectionError` in `Response.iter_content`. The graph
+holds only the second. Presented as a GRAPH FACT it overrides the correct passage — facts +
+passages still answered `ConnectionError`. The missing edge is produced by
+
+```python
+except (_SSLError, _HTTPError) as e:
+    ...
+    elif isinstance(e, ReadTimeoutError):
+        raise ReadTimeout(e, request=request)
+```
+
+and neither extractor sees through the `isinstance` narrowing: the LLM pass recorded
+`ReadTimeout wraps HTTPError` (the tuple element), and `extract_exception_wrapping` would
+record the same — it pairs the *caught* surface with the raise, not the narrowed one. All 77
+WRAPS_EXCEPTION edges in the graph are LLM-extracted; the AST extractor is never called.
+Fix is deterministic (treat `isinstance(e, X)` inside a handler as catching X), then wire the
+extractor in and rebuild WRAPS edges. Separate thread; needs re-ingestion.
+
+**Generalisable:** a *wrong* fact is worse than no fact, because the prompt labels it as
+fact. The graph's value depends on precision more than recall; an incomplete graph that
+confidently answers the wrong code path loses to a passage that happens to contain the right
+one.
+
+**Run 7 result.** On the 16 questions that had answered from facts alone:
+
+| | hybrid | baseline |
+|---|---|---|
+| run 6 (facts only) | 5 | 7 |
+| run 7 (facts + passages) | **9** | 7 |
+
+The four that flipped are exactly the four the controlled test predicted (th-05, th-15,
+3h-04, 3h-10). The one loss left in the whole benchmark is th-03 — the missing
+`ReadTimeout` edge, also predicted. Prediction and outcome matched one for one, which is
+the standard a fix should meet before it is believed.
+
+Pooled over 60: hybrid 34 → 39, baseline 32 → 30, delta +2 → **+9**. Per category,
+three_hop +25 and two_hop +13 — but D51's per-category noise is ±13, so only the pooled
+number and the targeted 16 carry weight from a single run. Ten questions are now
+hybrid-right / baseline-wrong, six of them multi-hop (th-01, th-02, th-04, 3h-08, 3h-09,
+3h-11): the first evidence that facts *add* to passages rather than merely not hurting.
+One run; needs the repeat-runs-with-spread treatment before it goes in a README.
+
+The route is still called `GRAPH` in the results but no longer means graph-only. It now
+means "graph consulted"; every route except REFUSE retrieves passages.
+
+---
+
+## D57 — The AST wrapping extractor: fixed, wired in, and the graph rebuilt from it
+
+D56 left one benchmark loss (th-03) to a missing edge: the graph had `ConnectionError wraps
+ReadTimeoutError` (true, `iter_content`) and not `ReadTimeout wraps ReadTimeoutError` (true,
+`HTTPAdapter.send`). The deterministic extractor that would have found it was never called,
+and would have got it wrong anyway.
+
+**What was wrong with `extract_exception_wrapping`**, measured over the whole corpus:
+
+1. *It paired every caught type with every raise in the handler.* One handler in `send` —
+   `except (_SSLError, _HTTPError)` with three `isinstance`-guarded raises — became six
+   edges, four of them false (`ReadTimeout wraps _SSLError`). 11 handlers cross-multiplied.
+2. *It never read the `isinstance` guard.* `except (A, B) as e: if isinstance(e, C): raise D`
+   recorded D wraps A and D wraps B, never D wraps C. And `isinstance(e.reason, X)` — how
+   `send` narrows a `MaxRetryError` to the urllib3 error it carries — was invisible too.
+3. *Variables leaked in as exception names.* `raise new_e` (six times in urllib3), `raise e`,
+   `raise reraise` produced surfaces called `new_e`, `e`, `reraise`. Same bug in RAISES.
+
+**The fix, in `ast_extract.py`:** a walk down the handler body that carries the narrowed
+type into the branch an `isinstance` guard protects, and the handler's own caught set
+everywhere else. Negated or compound tests (`not isinstance`, `isinstance(...) and retry`)
+do not narrow — they say nothing certain about the raise's path. A raised variable is
+followed to a direct `name = Class(...)` assignment in scope, or dropped. Lowercase bare
+identifiers are never exception surfaces.
+
+Corpus-wide: 88 edges → 81, junk surfaces 7 → 0 in WRAPS and 7 → 0 in RAISES. `send()` now
+yields 13 edges, every one correct, including `ReadTimeout wraps ReadTimeoutError` and
+`ConnectTimeout wraps ConnectTimeoutError` (through `.reason`).
+
+**Wiring:** `run_ast_pass` collects `exception_wrapping`; `run_full_ingestion` resolves both
+endpoints in the handler's module (so `_SSLError` resolves through its import alias) and
+writes `raised WRAPS_EXCEPTION caught` with `source="ast"` and `in_function`. `merge_edge`
+grew `**properties` for that. `infer_external_type` maps WRAPS_EXCEPTION endpoints to
+Exception. A new `--ast-only` flag re-applies the AST pass to the live graph with no LLM
+calls and without opening the LLM edge log for writing — which `--limit 0` would have
+truncated, destroying the replay source.
+
+**Result in the graph:** WRAPS_EXCEPTION went 77 (all LLM) → 85: 35 `ast`, 50 `llm`. 27 of
+the 35 are edges the LLM had also found — MERGE matched them on the shared chunk id (a
+docstring's chunk id *is* its function's) and relabelled them `ast`. So `source="ast"` now
+means "parser-proven, whether or not the LLM agreed" and `source="llm"` means "LLM only".
+8 edges are net new.
+
+**th-03, end to end:** T3 from `ReadTimeoutError` now returns both true wraps. Facts-only →
+`ReadTimeout` (was `ConnectionError`); facts + passages → correct; baseline → correct. The
+last benchmark loss is gone. 205 tests passing.
+
+**Two things left on the table, deliberately:**
+
+- *43 of 81 AST wrap facts don't resolve* — `OSError` ×11, `ValueError` ×9, `ssl.SSLError`
+  ×8, `OpenSSL.SSL.*`, `idna`, `socks`. Builtins and third-party names have no node and no
+  resolver rung. RAISES has the same gap. A "builtin exception" rung would recover most of it;
+  separate decision, since it means minting external nodes without an import to anchor them.
+- *The 50 LLM-only edges include known noise* — `ReadTimeout wraps urllib3.util.timeout` (a
+  module), `ReadTimeout wraps Timeout` (inheritance, not wrapping). They are now
+  distinguishable by `source`; dropping LLM WRAPS edges whose endpoints aren't Exception-typed
+  is the obvious next filter, and it should be measured rather than assumed to help.
+
+**Generalisable:** the extractor's first version optimised recall ("pair everything") and
+produced confident falsehoods. Reading one more level of control flow — the guard between
+catch and raise — cost ~60 lines and turned it into something precise enough to write into a
+graph that an answer model will trust. PyCG's stance (99% precision, 70% recall) is the right
+target for a graph that feeds a model; the research note in `docs/research/` has the cites.
+
+---
+
 ## Open questions for the Phase 2 sweep
 
 All of these are recall@k questions. None should be settled by argument.

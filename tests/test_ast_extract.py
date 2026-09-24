@@ -255,16 +255,137 @@ def test_wraps_exception_pairs_each_caught_type_with_what_is_raised():
 
 
 def test_wraps_exception_finds_raises_nested_inside_the_handler():
-    # The MaxRetryError handler raises ConnectTimeout from inside an if —
-    # a handler's raises are not always its direct children.
+    # The MaxRetryError handler raises from inside an if and after it —
+    # a handler's raises are not always its direct children. The raise that
+    # sits under no isinstance guard keeps the handler's own caught type.
     edges = extract_exception_wrapping(
         WRAP_SOURCE, repo="requests", path="src/requests/adapters.py",
         dotted_module="requests.adapters",
     )
     pairs = {(e.caught_surface, e.raised_surface) for e in edges}
 
-    assert ("MaxRetryError", "ConnectTimeout") in pairs
     assert ("MaxRetryError", "ConnectionError") in pairs
+
+
+NARROWED_SOURCE = '''def send(self, request):
+    try:
+        conn.urlopen()
+    except (_SSLError, _HTTPError) as e:
+        if isinstance(e, _SSLError):
+            raise SSLError(e, request=request)
+        elif isinstance(e, ReadTimeoutError):
+            raise ReadTimeout(e, request=request)
+        elif isinstance(e, _InvalidHeader):
+            raise InvalidHeader(e, request=request)
+        else:
+            raise
+'''
+
+
+def test_isinstance_narrowing_attributes_each_raise_to_the_narrowed_type():
+    """The handler's tuple says what *could* arrive; the isinstance guard
+    says what *did*. Pairing every caught type with every raise produced
+    "ReadTimeout wraps _SSLError" and three other false facts from this one
+    handler — and a false graph fact overrides a correct passage (D56).
+    """
+    edges = extract_exception_wrapping(
+        NARROWED_SOURCE, repo="requests", path="src/requests/adapters.py",
+        dotted_module="requests.adapters",
+    )
+    pairs = {(e.caught_surface, e.raised_surface) for e in edges}
+
+    assert pairs == {
+        ("_SSLError", "SSLError"),
+        ("ReadTimeoutError", "ReadTimeout"),
+        ("_InvalidHeader", "InvalidHeader"),
+    }
+
+
+def test_isinstance_narrowing_on_an_attribute_of_the_caught_exception():
+    """`isinstance(e.reason, X)` narrows on the urllib3 error *inside* a
+    MaxRetryError. The informative fact is that ConnectTimeout wraps the
+    reason, not the envelope."""
+    edges = extract_exception_wrapping(
+        WRAP_SOURCE, repo="requests", path="src/requests/adapters.py",
+        dotted_module="requests.adapters",
+    )
+    pairs = {(e.caught_surface, e.raised_surface) for e in edges}
+
+    assert ("ConnectTimeoutError", "ConnectTimeout") in pairs
+    assert ("MaxRetryError", "ConnectTimeout") not in pairs
+
+
+def test_isinstance_narrowing_with_a_tuple_narrows_to_each_member():
+    source = '''def f():
+    try:
+        g()
+    except Exception as e:
+        if isinstance(e, (KeyError, IndexError)):
+            raise LookupFailed(e)
+'''
+    edges = extract_exception_wrapping(source, repo="r", path="p.py", dotted_module="m")
+    pairs = {(e.caught_surface, e.raised_surface) for e in edges}
+
+    assert pairs == {("KeyError", "LookupFailed"), ("IndexError", "LookupFailed")}
+
+
+def test_a_negated_or_compound_isinstance_test_does_not_narrow():
+    # `not isinstance(e, X)` and `isinstance(e, X) and cond` say nothing
+    # certain about what e is on the raise's path — fall back to the handler.
+    source = '''def f():
+    try:
+        g()
+    except OSError as e:
+        if not isinstance(e, PermissionError):
+            raise Wrapped(e)
+        if isinstance(e, FileNotFoundError) and retry:
+            raise Retried(e)
+'''
+    edges = extract_exception_wrapping(source, repo="r", path="p.py", dotted_module="m")
+    pairs = {(e.caught_surface, e.raised_surface) for e in edges}
+
+    assert pairs == {("OSError", "Wrapped"), ("OSError", "Retried")}
+
+
+def test_a_raised_variable_resolves_to_the_class_it_was_assigned():
+    """urllib3 writes `new_e = ProtocolError(...); raise new_e from e` six
+    times. The variable's name is not an exception; the class it holds is."""
+    source = '''def f():
+    try:
+        g()
+    except OSError as e:
+        new_e = ProtocolError("Connection aborted.", e)
+        raise new_e from e
+'''
+    edges = extract_exception_wrapping(source, repo="r", path="p.py", dotted_module="m")
+    pairs = {(e.caught_surface, e.raised_surface) for e in edges}
+
+    assert pairs == {("OSError", "ProtocolError")}
+
+
+def test_re_raising_the_caught_exception_by_name_is_not_a_wrap():
+    source = "def f():\n    try:\n        g()\n    except ValueError as e:\n        log(e)\n        raise e\n"
+    edges = extract_exception_wrapping(source, repo="r", path="p.py", dotted_module="m")
+
+    assert edges == []
+
+
+def test_raises_drops_variables_that_are_not_exception_classes():
+    """`raise reraise` / `raise err` name a variable, not an exception. They
+    reached the graph as RAISES targets called `e`, `err`, `reraise`."""
+    source = '''def f():
+    try:
+        g()
+    except ValueError as err:
+        raise err
+    raise reraise
+def h():
+    raise InvalidURL("bad")
+'''
+    edges = extract_raises(source, repo="r", path="p.py", dotted_module="m")
+    by_fn = {e.source_id: e.exceptions_raised for e in edges}
+
+    assert by_fn == {"m.h": ["InvalidURL"]}
 
 
 def test_wraps_exception_records_the_function_and_chunk_it_came_from():

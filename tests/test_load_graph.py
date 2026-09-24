@@ -59,6 +59,40 @@ def test_merge_edge_uses_merge_and_carries_chunk_id():
     assert params["confidence"] == 0.9
 
 
+def test_merge_edge_carries_extra_properties_such_as_provenance():
+    """WRAPS_EXCEPTION edges now come from two extractors — the AST pass and
+    the LLM pass — that can disagree. An edge has to say which one wrote it,
+    or a parser-proven fact and a model's guess look identical in the graph."""
+    session = _FakeSession()
+    merge_edge(
+        session,
+        source_id="requests.exceptions.ReadTimeout",
+        relationship="WRAPS_EXCEPTION",
+        target_id="urllib3.exceptions.ReadTimeoutError",
+        chunk_id="abc123",
+        confidence=1.0,
+        source="ast",
+    )
+
+    query, params = session.calls[0]
+    assert params["properties"] == {"source": "ast"}
+    assert "r += $properties" in query
+
+
+def test_merge_edge_without_extra_properties_still_works():
+    session = _FakeSession()
+    merge_edge(session, source_id="a", relationship="CALLS", target_id="b", chunk_id="x")
+
+    query, params = session.calls[0]
+    assert params["properties"] == {}
+
+
+def test_a_wraps_exception_endpoint_outside_the_corpus_is_typed_exception():
+    from graphrag.ingest.load_graph import infer_external_type
+
+    assert infer_external_type("WRAPS_EXCEPTION") == "Exception"
+
+
 def test_merge_edge_rejects_a_relationship_outside_the_ontology():
     session = _FakeSession()
     with pytest.raises(ValueError):

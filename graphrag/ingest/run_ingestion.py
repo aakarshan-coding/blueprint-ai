@@ -15,6 +15,7 @@ from pathlib import Path
 
 from graphrag.ingest.ast_extract import (
     extract_calls,
+    extract_exception_wrapping,
     extract_imports,
     extract_inherits_from,
     extract_parameters,
@@ -107,7 +108,10 @@ def run_ast_pass() -> tuple[
     node_universe: set[str] = set()
     node_types: dict[str, str] = {}
     import_aliases: dict[str, dict[str, str]] = {}
-    edges = {"inherits_from": [], "raises": [], "parameters": [], "calls": []}
+    edges = {
+        "inherits_from": [], "raises": [], "parameters": [], "calls": [],
+        "exception_wrapping": [],
+    }
 
     for repo, cfg in REPOS.items():
         src_root = cfg["root"] / cfg["src"]
@@ -142,6 +146,12 @@ def run_ast_pass() -> tuple[
             param_edges = extract_parameters(text, dotted_module=dotted)
             edges["parameters"] += param_edges
             edges["calls"] += extract_calls(text, dotted_module=dotted)
+            # Unwired until D57. Every WRAPS_EXCEPTION edge in the first
+            # graph came from the LLM reading docstrings, which describe the
+            # common path and miss the rest — see ExceptionWrapEdge.
+            edges["exception_wrapping"] += extract_exception_wrapping(
+                text, repo=repo, path=str(p), dotted_module=dotted
+            )
 
             # A Parameter's identity is fully determined once we know its
             # function — registering it here means an LLM-extracted fact
@@ -361,6 +371,29 @@ def run_full_ingestion(
             )
             stats["ast_edges_written"] += 1
 
+    # Direction follows the existing convention: the requests exception WRAPS
+    # the urllib3 one it was raised in place of. Both endpoints resolve in the
+    # module the handler lives in, since `_SSLError` is an import alias there.
+    # `source="ast"` marks these apart from the LLM pass's WRAPS edges, which
+    # stay: the two describe different code paths and can both be true.
+    print("Writing AST WRAPS_EXCEPTION edges...")
+    for edge in edges["exception_wrapping"]:
+        module_context = module_of(edge.source_id, node_types)
+        raised = resolver.resolve(edge.raised_surface, module_context=module_context)
+        caught = resolver.resolve(edge.caught_surface, module_context=module_context)
+        if raised.canonical_id is None or caught.canonical_id is None:
+            stats["ast_edges_unresolved"] += 1
+            continue
+        type_if_external(raised.canonical_id, "WRAPS_EXCEPTION")
+        type_if_external(caught.canonical_id, "WRAPS_EXCEPTION")
+        merge_edge(
+            neo4j_session, source_id=raised.canonical_id,
+            relationship="WRAPS_EXCEPTION", target_id=caught.canonical_id,
+            chunk_id=edge.chunk_id, confidence=1.0, source="ast",
+            in_function=edge.source_id,
+        )
+        stats["ast_edges_written"] += 1
+
     print("Running the LLM pass...")
     llm_inputs = collect_llm_inputs(chunks)
     if limit is not None:
@@ -453,6 +486,13 @@ def main() -> None:
         help="Only run the LLM pass on the first N prose inputs — for a cheap "
         "validation run before committing to the full corpus.",
     )
+    parser.add_argument(
+        "--ast-only", action="store_true",
+        help="Write only the deterministic AST pass; skip the LLM pass and "
+        "leave llm_edges_log.jsonl untouched. Idempotent — every write is a "
+        "MERGE — so it re-applies an extractor change to the live graph "
+        "without paying for re-extraction.",
+    )
     args = parser.parse_args()
 
     print("Chunking corpus...")
@@ -488,11 +528,16 @@ def main() -> None:
     openai_client = OpenAI()
     driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "graphragpassword"))
 
+    # --ast-only is limit=0 with no log path: an empty LLM input list makes
+    # no model calls, and passing no path keeps the existing LLM edge log
+    # from being opened for writing and truncated. That log is what
+    # replay_llm_edges.py replays; losing it means paying for extraction again.
     with driver.session() as neo4j_session:
         stats = run_full_ingestion(
             chunks, node_universe, import_aliases, edges, node_types,
-            openai_client=openai_client, neo4j_session=neo4j_session, limit=args.limit,
-            llm_edge_log_path="llm_edges_log.jsonl",
+            openai_client=openai_client, neo4j_session=neo4j_session,
+            limit=0 if args.ast_only else args.limit,
+            llm_edge_log_path=None if args.ast_only else "llm_edges_log.jsonl",
         )
     driver.close()
 

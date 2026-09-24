@@ -152,18 +152,55 @@ class RaisesEdge:
     chunk_id: str
 
 
-def _raised_name(raise_node: ast.Raise) -> str | None:
-    """Return the exception name a `raise` statement names, if any.
+def _is_variable_name(surface: str) -> bool:
+    """A lowercase bare identifier names a variable, not an exception class.
+
+    Exception classes are CapWords by convention and in both corpora without
+    exception; `e`, `err`, `new_e`, `reraise` are the bound names and locals
+    that `raise` statements re-throw. Recording those as exceptions put nodes
+    literally called `e` into the graph.
+    """
+    return surface.isidentifier() and surface[0].islower()
+
+
+def _assigned_class(name: str, scope: ast.AST) -> str | None:
+    """The class a local variable was constructed from, if visible in scope.
+
+    urllib3 writes `new_e = ProtocolError("aborted", e); raise new_e from e`
+    six times. The variable is not the fact; the class it holds is. Only a
+    direct `name = Class(...)` assignment counts — anything less certain is
+    dropped rather than guessed.
+    """
+    for node in ast.walk(scope):
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == name
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, (ast.Name, ast.Attribute))
+        ):
+            return ast.unparse(node.value.func)
+    return None
+
+
+def _raised_name(raise_node: ast.Raise, *, scope: ast.AST | None = None) -> str | None:
+    """Return the exception class a `raise` statement names, if any.
 
     Covers `raise Foo(...)` (a Call) and bare `raise Foo` (a Name). A bare
-    `raise` re-raising the current exception has no name and is skipped.
+    `raise` re-raising the current exception has no name and is skipped. A
+    raised *variable* is followed to the class it was assigned in `scope`, or
+    skipped when that can't be established.
     """
     exc = raise_node.exc
     if exc is None:
         return None
     if isinstance(exc, ast.Call):
         exc = exc.func
-    return ast.unparse(exc)
+    surface = ast.unparse(exc)
+    if _is_variable_name(surface):
+        return _assigned_class(surface, scope) if scope is not None else None
+    return surface
 
 
 def extract_raises(
@@ -183,7 +220,7 @@ def extract_raises(
             continue
 
         raised = [
-            _raised_name(child)
+            _raised_name(child, scope=node)
             for child in ast.walk(node)
             if isinstance(child, ast.Raise)
         ]
@@ -343,11 +380,13 @@ class ExceptionWrapEdge:
     fact, extracted deterministically from an except handler.
 
     This is the relationship the requests+urllib3 corpus was chosen to
-    showcase, and neither the structural pass nor the prose pass captured it:
-    `RAISES` records only what a function throws, and the LLM pass never reads
-    code bodies. An except/raise pair is plainly visible in the syntax tree
-    but expresses a *relationship*, not a structure — the category that fell
-    between the two passes.
+    showcase. The LLM pass does find it in docstrings — every WRAPS edge in
+    the first full graph came from there — but prose describes the common
+    path and misses the rest: the graph had `ConnectionError wraps
+    ReadTimeoutError` (true, in `iter_content`) and not `ReadTimeout wraps
+    ReadTimeoutError` (true, in `send`), and the benchmark asked about `send`.
+    An except/raise pair is plainly visible in the syntax tree; this pass
+    reads it with the control flow between catch and raise intact.
     """
 
     source_id: str
@@ -356,13 +395,88 @@ class ExceptionWrapEdge:
     chunk_id: str
 
 
+def _isinstance_narrowing(test: ast.expr, bound: str | None) -> list[str] | None:
+    """The types an `if isinstance(e, ...)` guard narrows the caught exception
+    to, or None when the test says nothing certain about it.
+
+    `isinstance(e.reason, X)` counts too: a MaxRetryError's `.reason` is the
+    urllib3 error it carries, and `raise ConnectTimeout(e)` under that guard
+    wraps the reason, which is the fact worth having. A negated or compound
+    test (`not isinstance`, `isinstance(...) and retry`) does not pin the type
+    on the raise's path, so it does not narrow.
+    """
+    if bound is None or not isinstance(test, ast.Call):
+        return None
+    if not (isinstance(test.func, ast.Name) and test.func.id == "isinstance"):
+        return None
+    if len(test.args) != 2:
+        return None
+
+    subject = test.args[0]
+    while isinstance(subject, ast.Attribute):
+        subject = subject.value
+    if not (isinstance(subject, ast.Name) and subject.id == bound):
+        return None
+
+    types = test.args[1]
+    if isinstance(types, ast.Tuple):
+        return [ast.unparse(t) for t in types.elts]
+    return [ast.unparse(types)]
+
+
+def _wrap_pairs(
+    stmts: list[ast.stmt], caught: list[str], *, bound: str | None, scope: ast.AST
+):
+    """Yield (caught_surface, raised_surface) for every raise under `stmts`,
+    carrying the isinstance-narrowed type down the branch it guards.
+
+    The handler's tuple says what *could* arrive; an isinstance guard says
+    what *did*. Pairing every caught type with every raise regardless turned
+    one handler in `HTTPAdapter.send` into six edges, four of them false —
+    "ReadTimeout wraps _SSLError" among them — and a false graph fact overrides
+    a correct passage (D56).
+
+    Nested try statements are descended for their body/else/finally but not
+    their handlers, which the caller visits as handlers of their own.
+    """
+    for stmt in stmts:
+        if isinstance(stmt, ast.Raise):
+            raised = _raised_name(stmt, scope=scope)
+            if raised is not None:
+                for caught_name in caught:
+                    if raised != caught_name:
+                        yield caught_name, raised
+
+        elif isinstance(stmt, ast.If):
+            narrowed = _isinstance_narrowing(stmt.test, bound)
+            yield from _wrap_pairs(stmt.body, narrowed or caught, bound=bound, scope=scope)
+            yield from _wrap_pairs(stmt.orelse, caught, bound=bound, scope=scope)
+
+        elif isinstance(stmt, ast.Try):
+            for block in (stmt.body, stmt.orelse, stmt.finalbody):
+                yield from _wrap_pairs(block, caught, bound=bound, scope=scope)
+
+        elif isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+
+        else:
+            for field in ("body", "orelse", "cases"):
+                block = getattr(stmt, field, None)
+                if isinstance(block, list):
+                    if field == "cases":
+                        for case in block:
+                            yield from _wrap_pairs(case.body, caught, bound=bound, scope=scope)
+                    else:
+                        yield from _wrap_pairs(block, caught, bound=bound, scope=scope)
+
+
 def extract_exception_wrapping(
     text: str, *, repo: str, path: str, dotted_module: str
 ) -> list[ExceptionWrapEdge]:
-    """Pair every caught exception type with every exception raised in its
-    handler. A handler catching a tuple produces one edge per caught type; a
-    handler raising from inside nested control flow still counts, since the
-    raise is a consequence of that catch either way."""
+    """Pair each exception a handler catches with the exception raised in its
+    place, following isinstance guards so the pairing reflects the branch the
+    raise actually sits on. A handler catching a tuple with no guard yields
+    one edge per caught type; a raise inside nested control flow still counts."""
     tree = ast.parse(text)
     edges: list[ExceptionWrapEdge] = []
 
@@ -376,27 +490,21 @@ def extract_exception_wrapping(
             if not caught:
                 continue
 
-            raised = [
-                _raised_name(child)
-                for child in ast.walk(handler)
-                if isinstance(child, ast.Raise)
-            ]
-            # A bare `raise` re-raises the same exception rather than wrapping
-            # it in a different one — no wrapping fact to record.
-            raised = [r for r in raised if r is not None]
-
-            for caught_name in caught:
-                for raised_name in raised:
-                    if raised_name == caught_name:
-                        continue
-                    edges.append(
-                        ExceptionWrapEdge(
-                            source_id=f"{dotted_module}.{name}",
-                            caught_surface=caught_name,
-                            raised_surface=raised_name,
-                            chunk_id=chunk_id,
-                        )
+            seen: set[tuple[str, str]] = set()
+            for caught_name, raised_name in _wrap_pairs(
+                handler.body, caught, bound=handler.name, scope=handler
+            ):
+                if (caught_name, raised_name) in seen:
+                    continue
+                seen.add((caught_name, raised_name))
+                edges.append(
+                    ExceptionWrapEdge(
+                        source_id=f"{dotted_module}.{name}",
+                        caught_surface=caught_name,
+                        raised_surface=raised_name,
+                        chunk_id=chunk_id,
                     )
+                )
 
     return edges
 

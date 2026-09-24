@@ -15,6 +15,7 @@ from graphrag.ontology import ENTITY_TYPES, RELATIONSHIP_TYPES
 _ROLE_IMPLIES_TYPE = {
     "INHERITS_FROM": "Class",      # you can only inherit from a class
     "RAISES": "Exception",         # you can only raise an exception
+    "WRAPS_EXCEPTION": "Exception",  # both ends of a wrap are exceptions
     "CALLS": "Function",           # see the caveat below
 }
 
@@ -80,12 +81,18 @@ def merge_edge(
     target_id: str,
     chunk_id: str,
     confidence: float | None = None,
+    **properties,
 ) -> None:
     """Create or update an edge, anchored to its two endpoint ids.
 
     Endpoints are matched by id only (no label) — the edge can be written
     before both endpoint nodes have necessarily been merged with their full
     type, and MERGE on a bare id still finds or creates the right anchor.
+
+    Extra keyword properties land on the edge. The one that matters is
+    `source` — "ast" or "llm" — because WRAPS_EXCEPTION edges now come from
+    both extractors and can disagree; without it a parser-proven fact and a
+    model's guess are indistinguishable once written.
     """
     if relationship not in RELATIONSHIP_TYPES:
         raise ValueError(f"{relationship!r} is not in the ontology's relationship types")
@@ -94,7 +101,7 @@ def merge_edge(
         "MERGE (a {id: $source_id}) "
         "MERGE (b {id: $target_id}) "
         f"MERGE (a)-[r:{relationship} {{chunk_id: $chunk_id}}]->(b) "
-        "SET r.confidence = $confidence"
+        "SET r.confidence = $confidence, r += $properties"
     )
     session.run(
         query,
@@ -102,6 +109,7 @@ def merge_edge(
         target_id=target_id,
         chunk_id=chunk_id,
         confidence=confidence,
+        properties=properties,
     )
 
 
