@@ -46,10 +46,14 @@ TEMPLATES: dict[str, Template] = {
         # find edges pointing at X too. But it MUST report which way each edge
         # runs: rendering an incoming edge as though X were the subject
         # produces a false statement ("BaseAdapter inherits from HTTPAdapter").
+        # Labels ride along so the verbalizer can phrase by kind: a Parameter's
+        # DEFINED_IN edge reads "is a parameter of", a method's "is a method
+        # of" (D63). The id alone can't tell them apart.
         cypher=(
             "MATCH (a {id: $entity_id})-[r]-(b) "
             "RETURN type(r) AS relationship, b.id AS neighbor, "
-            "r.chunk_id AS chunk_id, startNode(r).id = $entity_id AS outgoing"
+            "r.chunk_id AS chunk_id, startNode(r).id = $entity_id AS outgoing, "
+            "labels(a) AS entity_labels, labels(b) AS neighbor_labels"
         ),
         params=(ParamSpec("entity_id", "entity_id"),),
         description=(
@@ -143,7 +147,8 @@ TEMPLATES: dict[str, Template] = {
         cypher=(
             "MATCH (a {id: $entity_id})-[r:__relationship__]-(b) "
             "RETURN b.id AS neighbor, r.chunk_id AS chunk_id, "
-            "startNode(r).id = $entity_id AS outgoing"
+            "startNode(r).id = $entity_id AS outgoing, "
+            "labels(a) AS entity_labels, labels(b) AS neighbor_labels"
         ),
         params=(
             ParamSpec("entity_id", "entity_id"),

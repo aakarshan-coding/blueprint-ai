@@ -13,3 +13,14 @@ def test_llm_extract_relationship_literal_matches_the_ontology():
 
 def test_ontology_has_fourteen_relationship_types():
     assert len(RELATIONSHIP_TYPES) == 14
+
+
+def test_every_relationship_type_has_a_meaning():
+    """The meanings are what the answer model is shown next to graph lines
+    (D63). "verify is defined in Session.request" was read as "Session.request
+    applies verify" because nothing said DEFINED_IN means location, not
+    behaviour. A type without a meaning would reach the model undefined."""
+    from graphrag.ontology import RELATIONSHIP_MEANINGS
+
+    assert set(RELATIONSHIP_MEANINGS) == RELATIONSHIP_TYPES
+    assert all(meaning.strip() for meaning in RELATIONSHIP_MEANINGS.values())

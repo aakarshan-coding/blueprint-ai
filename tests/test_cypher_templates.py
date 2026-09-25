@@ -230,3 +230,19 @@ def test_delegation_chain_walks_calls_as_well_as_delegates_to():
 
     assert "DELEGATES_TO|CALLS" in query
     assert "AS rels" in query
+
+
+def test_neighbour_templates_return_node_labels_for_phrasing():
+    """The verbalizer needs to know a subject is a Parameter to say "is a
+    parameter of" rather than "is defined in" (D63); it cannot tell from
+    the id alone, because a parameter id and a method id have the same shape."""
+    for template_id, values in (
+        ("T1_NEIGHBORS", {"entity_id": "requests.sessions.Session"}),
+        ("T8_RELATED_BY", {"entity_id": "requests.sessions.Session", "relationship": "DEFINED_IN"}),
+    ):
+        session = _FakeSession()
+        run_template(session, template_id, values, known_entity_ids=KNOWN_IDS)
+        query, _ = session.calls[0]
+
+        assert "labels(a) AS entity_labels" in query, template_id
+        assert "labels(b) AS neighbor_labels" in query, template_id
