@@ -7,13 +7,25 @@ resolves to nothing still gets a Resolution recording that fact, so the
 resolution rate is always a real, reportable number.
 """
 
+import builtins
 from dataclasses import dataclass
 from typing import Literal
 
 Method = Literal[
     "exact", "self_reference", "import_alias", "reexport", "qualified",
-    "normalized", "public_api", "call_graph", "unresolved",
+    "normalized", "public_api", "call_graph", "builtin", "unresolved",
 ]
+
+# Python's own exception classes, by name. `except OSError: raise
+# ConnectionError(e)` is a wrap the AST extractor finds and the graph could
+# not hold: OSError has no node and no import to anchor it, so 43 of 81 wrap
+# facts dropped (D57). The set is fixed and known, so a bare mention that no
+# corpus rung claims resolves to `builtins.<name>`; the edge it sits on types
+# the node as Exception on write, the same way socket.timeout is handled.
+BUILTIN_EXCEPTIONS = frozenset(
+    name for name, obj in vars(builtins).items()
+    if isinstance(obj, type) and issubclass(obj, BaseException)
+)
 
 
 @dataclass(frozen=True)
@@ -151,6 +163,11 @@ class Resolver:
             if winner is not None:
                 return Resolution(surface, winner, "call_graph")
             return Resolution(surface, None, "unresolved", candidates=tuple(remaining))
+
+        # Last, after every corpus rung: a name the corpus defines itself
+        # (requests' own ConnectionError) must win over Python's.
+        if surface in BUILTIN_EXCEPTIONS:
+            return Resolution(surface, f"builtins.{surface}", "builtin")
 
         return Resolution(surface, None, "unresolved")
 

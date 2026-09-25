@@ -19,7 +19,7 @@ def test_unknown_surface_with_no_alias_and_no_match_is_unresolved():
         import_aliases={},
     )
 
-    result = resolver.resolve("IOError")
+    result = resolver.resolve("TotallyMadeUpThing")
 
     assert result.canonical_id is None
     assert result.method == "unresolved"
@@ -86,6 +86,38 @@ def test_a_qualified_surface_never_matches_mid_segment():
     result = resolver.resolve("Adapter.send")
 
     assert result.canonical_id is None
+
+
+def test_a_python_builtin_exception_resolves_to_a_builtins_id():
+    """`except OSError: raise ConnectionError(e)` is a wrap the AST extractor
+    finds and the graph could not hold: OSError has no node and no import,
+    so 43 of 81 wrap facts dropped (D57). Builtins are a fixed, known set;
+    they resolve to `builtins.<name>` and are typed by the edge they sit on."""
+    resolver = Resolver(node_universe=set(), import_aliases={})
+
+    result = resolver.resolve("OSError")
+
+    assert result.canonical_id == "builtins.OSError"
+    assert result.method == "builtin"
+
+
+def test_a_corpus_name_that_shadows_a_builtin_wins_over_the_builtin():
+    # requests defines its own ConnectionError; a bare mention inside the
+    # corpus means that one, not Python's. Corpus rungs run first.
+    resolver = Resolver(
+        node_universe={"requests.exceptions.ConnectionError"}, import_aliases={},
+    )
+
+    result = resolver.resolve("ConnectionError")
+
+    assert result.canonical_id == "requests.exceptions.ConnectionError"
+
+
+def test_a_name_that_is_not_a_builtin_exception_is_still_unresolved():
+    resolver = Resolver(node_universe=set(), import_aliases={})
+
+    assert resolver.resolve("print").canonical_id is None
+    assert resolver.resolve("TotallyMadeUp").canonical_id is None
 
 
 def test_import_alias_only_applies_within_its_own_module():

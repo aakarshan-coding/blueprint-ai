@@ -198,7 +198,7 @@ def test_resolve_mentions_attaches_kind_and_degree():
 
 def test_resolve_mentions_drops_what_nothing_resolves():
     candidates = resolve_mentions(
-        [Mention(surface="IOError", package="unknown")],
+        [Mention(surface="TotallyMadeUpThing", package="unknown")],
         resolver=RESOLVER, describe=_describe,
     )
 
