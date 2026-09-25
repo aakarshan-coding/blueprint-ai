@@ -30,7 +30,9 @@ from graphrag.ingest.chunk import (
     iter_docstrings_for_llm,
     iter_symbols,
 )
+from graphrag.ingest.embed import embed_texts, load_model
 from graphrag.ingest.jedi_calls import build_project, resolve_calls
+from graphrag.ingest.load_vectors import upsert_chunks
 from graphrag.ingest.load_graph import (
     build_defined_in_edges,
     infer_external_type,
@@ -261,6 +263,31 @@ def estimate_llm_cost(llm_inputs: list[tuple[str, str]]) -> dict:
     }
 
 
+def plausible_exception_endpoint(canonical_id: str, node_types: dict[str, str]) -> bool:
+    """Whether an id can sit at either end of a RAISES or WRAPS_EXCEPTION edge.
+
+    The LLM pass produced "ReadTimeout wraps urllib3.util.timeout" (a module)
+    and "ReadTimeout wraps Timeout" via a docstring that meant inheritance.
+    Anything the AST pass typed as a Module, Function or Parameter is not an
+    exception, and an edge claiming otherwise is dropped rather than written.
+    An id the AST pass never saw -- builtins.OSError, socket.timeout, a
+    Concept -- is allowed through and typed as Exception by the edge's role.
+    """
+    return node_types.get(canonical_id) in (None, "Class", "Exception")
+
+
+def write_vectors(*, conn, chunks: list[Chunk], model) -> int:
+    """Embed every chunk and upsert it into pgvector.
+
+    upsert_chunks was tested and never called: no script in the repo
+    populated the vector store, so a fresh clone could not reproduce the
+    benchmark (architecture review, #6). This is the one place it happens.
+    """
+    embeddings = embed_texts([c.embed_text for c in chunks], model=model)
+    upsert_chunks(conn, chunks, embeddings=embeddings)
+    return len(chunks)
+
+
 def _write_ast_nodes(session, node_universe: set[str], node_types: dict[str, str]) -> None:
     for canonical_id in node_universe:
         merge_node(session, node_types.get(canonical_id, "Function"), canonical_id)
@@ -277,6 +304,14 @@ def _write_parameters(session, parameter_edges: list) -> int:
             merge_edge(
                 session, source_id=pid, relationship="DEFINED_IN",
                 target_id=edge.source_id, chunk_id="ast", confidence=1.0,
+            )
+            # HAS_PARAMETER was in the ontology and offered to the planner
+            # with no edge of that type in the graph -- a T8 plan on it
+            # returned nothing (D59, 3h-07). The function-to-parameter
+            # direction is what "what parameters does X accept" asks.
+            merge_edge(
+                session, source_id=edge.source_id, relationship="HAS_PARAMETER",
+                target_id=pid, chunk_id="ast", confidence=1.0,
             )
             count += 1
     return count
@@ -487,6 +522,21 @@ def run_full_ingestion(
             tgt_id = r.canonical_id
         record["resolved_target_id"] = tgt_id
 
+        # An exception edge whose endpoint the AST pass typed as a Module,
+        # Function or Parameter is a model misreading, not a fact. Skipped
+        # and logged with its own reason so the count is visible.
+        if edge.relationship in ("RAISES", "WRAPS_EXCEPTION") and not (
+            plausible_exception_endpoint(src_id, node_types)
+            and plausible_exception_endpoint(tgt_id, node_types)
+        ):
+            stats["llm_edges_implausible_exception_endpoint"] = (
+                stats.get("llm_edges_implausible_exception_endpoint", 0) + 1
+            )
+            record["skip_reason"] = "implausible_exception_endpoint"
+            if log_file:
+                log_file.write(json.dumps(record) + "\n")
+            continue
+
         if log_file:
             log_file.write(json.dumps(record) + "\n")
 
@@ -568,6 +618,18 @@ def main() -> None:
             llm_edge_log_path=None if args.ast_only else "llm_edges_log.jsonl",
         )
     driver.close()
+
+    # The vector store is rebuilt by the same script that builds the graph,
+    # so one command reproduces both from a clean clone. Every write is an
+    # upsert keyed by chunk_id, so re-running converges like the graph does.
+    import psycopg
+    from pgvector.psycopg import register_vector
+
+    print("Embedding chunks and writing the vector store...")
+    pg_conn = psycopg.connect("postgresql://graphrag:graphragpassword@localhost:5432/graphrag")
+    register_vector(pg_conn)
+    stats["chunks_embedded"] = write_vectors(conn=pg_conn, chunks=chunks, model=load_model())
+    pg_conn.close()
 
     print()
     print("=== ingestion stats ===")
