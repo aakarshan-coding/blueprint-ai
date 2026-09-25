@@ -2231,6 +2231,35 @@ anything else in the table is read.
 
 ---
 
+## D62 — Experiment 1b: the leak is closed, and the reframe did nothing
+
+Five runs on `06f5439` (dedupe + relationships paragraph + original refusal wording).
+
+**Sanity check first, as required:** baseline out_of_scope 62.0 [60.0 .. 70.0] — identical
+to D60. Hybrid 86.0, identical. The refusal wording was the whole leak.
+
+**The graph-side target did not move.** `3h-01`: still 0/5. Three-hop partials: 22 → 19.
+Hybrid pooled 62.0 [58.3 .. 65.0] against D60's 61.3 [58.3 .. 63.3]. Nothing separable
+from noise.
+
+**What that says:** deduplicating identical sentences and telling the model, in general,
+that graph lines are "relationships, not facts" does not change how it reads a specific
+misleading one. "verify is defined in Session.request" still becomes "Session.request
+applies verify". A generic disclaimer is not a definition. The next attempt says what
+`DEFINED_IN` *means* — location, not behaviour — next to the line itself, and phrases a
+parameter's edge as "is a parameter of" so the sentence cannot be misread in the first
+place. Both are graph-side; the shared prompt is not touched again.
+
+**A smaller thing the run shows:** even with the refusal wording restored, the baseline's
+pooled range moved from [51.7 .. 55.0] to [55.0 .. 56.7]. The relationships paragraph sits
+in the baseline's prompt too, and its presence alone nudges answers. The shared prompt is
+sensitive to wording that has nothing to do with the baseline's own context; every word
+in it is a variable for both systems.
+
+Kept: the dedupe (cannot hurt) and the paragraph (harmless, and the legend builds on it).
+
+---
+
 ## Open questions for the Phase 2 sweep
 
 All of these are recall@k questions. None should be settled by argument.
