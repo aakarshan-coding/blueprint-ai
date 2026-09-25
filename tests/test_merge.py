@@ -316,6 +316,101 @@ def test_context_carries_a_legend_for_the_relationship_types_it_uses():
     assert context.index("Relationship meanings:") < context.index("=== GRAPH RELATIONSHIPS ===")
 
 
+# --- fix 4: counting happens in code, not in the model -------------------------
+
+def test_related_by_adds_a_count_line_so_the_model_need_not_count():
+    """"How many exceptions inherit from RequestException?" scored 1/8 for
+    both systems, every run (D60): the model was handed 15 lines and asked to
+    count them. The count is computed here and stated as a number."""
+    rows = [
+        {"relationship": "INHERITS_FROM", "neighbor": f"requests.exceptions.E{i}",
+         "chunk_id": f"c{i}", "outgoing": False}
+        for i in range(3)
+    ]
+
+    facts = verbalize("T8_RELATED_BY", rows, entity_id="requests.exceptions.RequestException",
+                      relationship="INHERITS_FROM")
+    statements = [f.statement for f in facts]
+
+    assert "3 things are related to requests.exceptions.RequestException by INHERITS_FROM." in statements
+    assert facts[-1].chunk_id is None      # a count is derived, not cited
+    assert len(facts) == 4
+
+
+def test_related_by_with_no_rows_states_a_count_of_zero():
+    facts = verbalize("T8_RELATED_BY", [], entity_id="x", relationship="RAISES")
+
+    assert [f.statement for f in facts] == ["0 things are related to x by RAISES."]
+
+
+# --- fix 2: keep the facts that are about the question ----------------------------
+
+class _FakeEmbedder:
+    """Embeds a text as a one-hot over a few keywords, so similarity is
+    something a test can reason about: a fact shares the question's vector
+    iff it shares a keyword."""
+    KEYS = ("certificate", "verify", "release", "request")
+
+    def encode(self, texts, **kwargs):
+        return [[1.0 if k in t.lower() else 0.0 for k in self.KEYS] for t in texts]
+
+
+def test_rank_facts_keeps_the_top_k_most_related_to_the_question():
+    from graphrag.retrieval.merge import rank_facts
+
+    facts = [
+        GraphFact("verify changed in requests:0.8.8.", "c1", relationship="CHANGED_IN"),
+        GraphFact("verify controls certificate verification.", "c2", relationship="CONTROLS"),
+        GraphFact("verify is a parameter of Session.request.", "c3", relationship="DEFINED_IN"),
+        GraphFact("Request controls verify.", "c4", relationship="CONTROLS"),
+    ]
+
+    kept = rank_facts("What does verify=False do to certificate checks?", facts,
+                      model=_FakeEmbedder(), k=2)
+
+    # c2 shares both keywords with the question; the other three share one
+    # each and tie, so the second slot goes to the first of them in order.
+    assert [f.chunk_id for f in kept] == ["c2", "c1"]
+
+
+def test_rank_facts_drops_facts_with_nothing_in_common_with_the_question():
+    from graphrag.retrieval.merge import rank_facts
+
+    facts = [
+        GraphFact("verify controls certificate verification.", "c2", relationship="CONTROLS"),
+        GraphFact("HTTPAdapter calls PoolManager.", "c9", relationship="CALLS"),
+    ]
+
+    kept = rank_facts("What does verify do to certificate checks?", facts,
+                      model=_FakeEmbedder(), k=8, min_score=0.1)
+
+    assert [f.chunk_id for f in kept] == ["c2"]
+
+
+def test_rank_facts_with_no_facts_is_empty_and_calls_nothing():
+    from graphrag.retrieval.merge import rank_facts
+
+    assert rank_facts("q", [], model=None, k=8) == []
+
+
+def test_rank_facts_keeps_a_derived_count_line_regardless_of_score():
+    # The T8 count line has no chunk and summarises the others; it is what
+    # a "how many" question needs and must not be ranked away.
+    from graphrag.retrieval.merge import rank_facts
+
+    facts = [
+        GraphFact("A inherits from RequestException.", "c1", relationship="INHERITS_FROM"),
+        GraphFact("B inherits from RequestException.", "c2", relationship="INHERITS_FROM"),
+        GraphFact("2 things are related to RequestException by INHERITS_FROM.", None,
+                  relationship="INHERITS_FROM"),
+    ]
+
+    kept = rank_facts("How many exceptions inherit from RequestException?", facts,
+                      model=_FakeEmbedder(), k=1)
+
+    assert [f.chunk_id for f in kept] == ["c1", None]
+
+
 def test_no_graph_lines_means_no_legend():
     context, _ = assemble_context(
         graph_facts=[], vector_passages=[{"chunk_id": "p1", "text": "some passage"}]

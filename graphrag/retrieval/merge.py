@@ -112,6 +112,46 @@ def _verbalize_chain(rows: list[dict], *, relationship: str) -> list[GraphFact]:
     return list(edges.values())
 
 
+def _cosine(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    na = sum(x * x for x in a) ** 0.5
+    nb = sum(y * y for y in b) ** 0.5
+    return dot / (na * nb) if na and nb else 0.0
+
+
+def rank_facts(
+    question: str, facts: list[GraphFact], *, model, k: int = 8, min_score: float = 0.0
+) -> list[GraphFact]:
+    """Keep the k graph facts most related to the question, best first.
+
+    A query on a well-connected node returns 40-80 sentences and the model
+    drowns (D60: 3h-01 lost five runs of five on ten facts, most of them about
+    the wrong thing). Every fact is scored against the question with the same
+    embedding model the vector search uses, and only the top k survive --
+    aider ranks its repo map the same way, GraphRAG "prioritises to fit the
+    window". Ties keep their original order so a run is reproducible.
+    """
+    if not facts:
+        return []
+    from graphrag.ingest.embed import embed_texts
+
+    # A derived fact (no chunk to cite -- the T8 count line) summarises the
+    # others and is kept as is; ranking applies to the cited lines.
+    derived = [f for f in facts if f.chunk_id is None]
+    cited = [f for f in facts if f.chunk_id is not None]
+    if not cited:
+        return derived
+
+    vectors = embed_texts([question] + [f.statement for f in cited], model=model)
+    question_vector, fact_vectors = vectors[0], vectors[1:]
+    scored = [
+        (_cosine(question_vector, v), i, f)
+        for i, (v, f) in enumerate(zip(fact_vectors, cited))
+    ]
+    scored.sort(key=lambda t: (-t[0], t[1]))
+    return [f for score, _i, f in scored if score >= min_score][:k] + derived
+
+
 def _verbalize_count(rows: list[dict], *, relationship: str) -> list[GraphFact]:
     count = rows[0]["count"] if rows else 0
     return [GraphFact(
@@ -137,11 +177,23 @@ def verbalize(
     relationship: str | None = None,
 ) -> list[GraphFact]:
     """Convert one run_template() result into readable, cited statements."""
-    if template_id in ("T1_NEIGHBORS", "T8_RELATED_BY"):
+    if template_id == "T1_NEIGHBORS":
+        return _verbalize_neighbors(rows, entity_id=entity_id)
+    if template_id == "T8_RELATED_BY":
         # T8 rows carry no `relationship` column — the type is fixed by the
         # query — so supply it from the parameter the caller used.
         rows = [{**row, "relationship": row.get("relationship", relationship)} for row in rows]
-        return _verbalize_neighbors(rows, entity_id=entity_id)
+        facts = _verbalize_neighbors(rows, entity_id=entity_id)
+        # The count is computed here and stated as a number. "How many
+        # exceptions inherit from RequestException?" scored 1/8 for both
+        # systems in every run (D60) because the model was handed fifteen
+        # lines and asked to count them. A derived number has no chunk to
+        # cite; the lines it counts do.
+        facts.append(GraphFact(
+            f"{len(rows)} things are related to {entity_id} by {relationship}.",
+            None, relationship=relationship,
+        ))
+        return facts
     if template_id == "T3_EXCEPTION_WRAP_CHAIN":
         return _verbalize_chain(rows, relationship="WRAPS_EXCEPTION")
     if template_id == "T5_DELEGATION_CHAIN":

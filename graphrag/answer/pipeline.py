@@ -16,7 +16,7 @@ from graphrag.retrieval.graph_query import (
     plan_graph_query,
     resolve_mentions,
 )
-from graphrag.retrieval.merge import assemble_context, verbalize
+from graphrag.retrieval.merge import assemble_context, rank_facts, verbalize
 from graphrag.retrieval.router import classify_question, effective_route
 from graphrag.retrieval.vector_search import DEFAULT_K, search_chunks
 
@@ -81,6 +81,10 @@ def answer_hybrid(
             # outcome worth recording, not a crash — the benchmark needs to
             # see it rather than lose the whole question.
             graph_error = f"{type(e).__name__}: {e}"
+
+    # Keep the graph facts most related to the question (fix 2, D64). The
+    # model drowned in 40-80 lines on well-connected nodes; eight is the cap.
+    graph_facts = rank_facts(question, graph_facts, model=embedding_model)
 
     # Passages are fetched on every non-refused route. Graph facts are
     # additive, never a substitute: hybrid is the baseline's passages plus

@@ -45,7 +45,7 @@ def probe_hybrid(question: str, *, conn, neo4j_session, client, resolver, model)
         build_template_values, describe_entities, extract_mentions,
         plan_graph_query, resolve_mentions,
     )
-    from graphrag.retrieval.merge import assemble_context, verbalize
+    from graphrag.retrieval.merge import assemble_context, rank_facts, verbalize
     from graphrag.retrieval.router import classify_question, effective_route
     from graphrag.retrieval.vector_search import search_chunks
 
@@ -81,10 +81,11 @@ def probe_hybrid(question: str, *, conn, neo4j_session, client, resolver, model)
         except Exception as e:
             plan_repr = f"ERROR:{type(e).__name__}"
 
-    # Mirrors answer_hybrid: passages on every non-refused route. This line
-    # has already drifted from the pipeline once (it carried the old
-    # fallback rule after the pipeline dropped it), which is the cost of the
-    # sequence living in two places rather than one.
+    # Mirrors answer_hybrid: facts ranked and capped, then passages on every
+    # non-refused route. This block has already drifted from the pipeline
+    # once (it carried the old fallback rule after the pipeline dropped it),
+    # which is the cost of the sequence living in two places rather than one.
+    graph_facts = rank_facts(question, graph_facts, model=model)
     passages = search_chunks(question, conn=conn, model=model)
 
     context, _ids = assemble_context(graph_facts=graph_facts, vector_passages=passages)
