@@ -1,0 +1,1821 @@
+{
+  "summary": {
+    "single_hop": {
+      "n": 15,
+      "hybrid": {
+        "correct": 13,
+        "partial": 1,
+        "accuracy": 86.7,
+        "median_latency_ms": 3954
+      },
+      "baseline": {
+        "correct": 12,
+        "partial": 2,
+        "accuracy": 80.0,
+        "median_latency_ms": 1434
+      }
+    },
+    "two_hop": {
+      "n": 15,
+      "hybrid": {
+        "correct": 11,
+        "partial": 1,
+        "accuracy": 73.3,
+        "median_latency_ms": 9027
+      },
+      "baseline": {
+        "correct": 10,
+        "partial": 1,
+        "accuracy": 66.7,
+        "median_latency_ms": 1046
+      }
+    },
+    "three_hop": {
+      "n": 12,
+      "hybrid": {
+        "correct": 6,
+        "partial": 3,
+        "accuracy": 50.0,
+        "median_latency_ms": 9922
+      },
+      "baseline": {
+        "correct": 7,
+        "partial": 3,
+        "accuracy": 58.3,
+        "median_latency_ms": 1449
+      }
+    },
+    "aggregation": {
+      "n": 8,
+      "hybrid": {
+        "correct": 1,
+        "partial": 3,
+        "accuracy": 12.5,
+        "median_latency_ms": 9733
+      },
+      "baseline": {
+        "correct": 1,
+        "partial": 2,
+        "accuracy": 12.5,
+        "median_latency_ms": 1221
+      }
+    },
+    "out_of_scope": {
+      "n": 10,
+      "hybrid": {
+        "correct": 9,
+        "partial": 0,
+        "accuracy": 90.0,
+        "median_latency_ms": 2542
+      },
+      "baseline": {
+        "correct": 4,
+        "partial": 0,
+        "accuracy": 40.0,
+        "median_latency_ms": 1926
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "sh-01",
+      "category": "single_hop",
+      "question": "Does requests verify SSL certificates by default?",
+      "hybrid": {
+        "verdict": "incorrect",
+        "reason": "States none of: verify, verifies, verified, verification.",
+        "grader": "mechanical",
+        "answer": "Yes, requests verify SSL certificates by default. SSL verification is enabled by default, and requests will throw an `SSLError` if it's unable to verify the certificate [ffe91181b672978f]. The default setting for SSL verification is `True` [8a88c4782e790e9f].",
+        "latency_ms": 5065,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "States none of: verify, verifies, verified, verification.",
+        "grader": "mechanical",
+        "answer": "Yes, requests verify SSL certificates by default. SSL verification is enabled by default, and requests will throw an `SSLError` if it's unable to verify the certificate [ffe91181b672978f]. The default setting for SSL verification is `True` [8a88c4782e790e9f].",
+        "latency_ms": 1418,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "sh-02",
+      "category": "single_hop",
+      "question": "What does the timeout parameter do in requests?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "The answer accurately describes the function of the timeout parameter, including its effect on waiting for a server response and the option to set it as a single value or a tuple for separate timeouts. It also correctly notes the default behavior when no timeout is specified.",
+        "grader": "judge",
+        "answer": "The `timeout` parameter in requests specifies how long the client will wait for a server response before aborting the request. It can be set as a single value, which applies to both the connection and read timeouts, or as a tuple to set them separately. If no timeout is specified, requests do not time out by default, which can cause the program to hang indefinitely. [e4665ab02e459e71] [fb2bbf213ccbef76]",
+        "latency_ms": 3856,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "The answer accurately describes the function of the timeout parameter, stating that it determines how long the client will wait for a server response before aborting the request. It also provides additional relevant details about setting the timeout as a single value or a tuple, and mentions the default behavior when no timeout is specified.",
+        "grader": "judge",
+        "answer": "The `timeout` parameter in requests specifies how long the client will wait for a server response before aborting the request. It can be set as a single value, which applies to both the connection and read timeouts, or as a tuple to set them separately. If no timeout is specified, requests do not time out by default, which can cause the program to hang indefinitely. [e4665ab02e459e71] [fb2bbf213ccbef76]",
+        "latency_ms": 1387,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "sh-03",
+      "category": "single_hop",
+      "question": "How do I send cookies with a request in requests?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "The answer accurately describes how to send cookies with a request using the `requests` library by mentioning the `cookies` parameter and providing examples with both a dictionary and a `RequestsCookieJar` object.",
+        "grader": "judge",
+        "answer": "To send cookies with a request using the `requests` library, you can use the `cookies` parameter. You can pass a dictionary of cookies or a `RequestsCookieJar` object. Here's an example using a dictionary:\n\n```python\nurl = 'https://httpbin.org/cookies'\ncookies = {'cookies_are': 'working'}\nr = requests.get(url, cookies=cookies)\nprint(r.text)\n```\n\nThis will send the specified cookies with the request. You can also use a `RequestsCookieJar` for more complex scenarios involving multiple domains or paths:\n\n```python\njar = requests.cookies.RequestsCookieJar()\njar.set('tasty_cookie', 'yum', domain='httpbin.org', path='/cookies')\nr = requests.get(url, cookies=jar)\nprint(r.text)\n```\n\nThis allows you to manage cookies more flexibly. [d98f828e0dbb9eec]",
+        "latency_ms": 4947,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "The answer correctly states that you can use the `cookies` parameter to send cookies with a request in the `requests` library and provides an accurate example of how to do this.",
+        "grader": "judge",
+        "answer": "To send cookies with a request using the `requests` library, you can use the `cookies` parameter. You can pass a dictionary of cookies or a `RequestsCookieJar` object. Here's an example using a dictionary:\n\n```python\nurl = 'https://httpbin.org/cookies'\ncookies = {'cookies_are': 'working'}\n\nr = requests.get(url, cookies=cookies)\nprint(r.text)\n```\n\nThis will send the specified cookies with the request [d98f828e0dbb9eec].",
+        "latency_ms": 1336,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "sh-04",
+      "category": "single_hop",
+      "question": "Does requests follow redirects automatically?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States redirects.",
+        "grader": "mechanical",
+        "answer": "Yes, by default, Requests will automatically follow redirects for all HTTP methods except HEAD. You can disable this behavior using the `allow_redirects` parameter. [ef09dccdcc04397d]",
+        "latency_ms": 3587,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States redirects.",
+        "grader": "mechanical",
+        "answer": "Yes, by default, Requests will automatically follow redirects for all HTTP methods except HEAD. You can disable this behavior using the `allow_redirects` parameter [ef09dccdcc04397d].",
+        "latency_ms": 1433,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "sh-05",
+      "category": "single_hop",
+      "question": "How does keep-alive work in requests?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "Keep-alive in requests works automatically within a session, thanks to urllib3. When you make requests within a session, the appropriate connection is reused automatically. Connections are released back to the pool for reuse once all body data has been read. To ensure this, you should either set `stream` to `False` or read the `content` property of the `Response` object [98feb4cfbc9a5003]. Additionally, the Session object uses urllib3's connection pooling, which allows the underlying TCP connection to be reused for multiple requests to the same host, improving performance [e1f3ec2877dc6c73].",
+        "latency_ms": 3613,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "Keep-alive in requests works automatically within a session, thanks to urllib3. When you make requests within a session, the appropriate connection is reused automatically. Connections are released back to the pool for reuse once all body data has been read. To ensure this, you should either set `stream` to `False` or read the `content` property of the `Response` object [98feb4cfbc9a5003]. \n\nThe Session object in requests uses urllib3's connection pooling, which allows the underlying TCP connection to be reused for multiple requests to the same host, resulting in a performance increase [e1f3ec2877dc6c73].",
+        "latency_ms": 1716,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "sh-06",
+      "category": "single_hop",
+      "question": "What is a Session object used for?",
+      "hybrid": {
+        "verdict": "partial",
+        "reason": "The answer correctly identifies that a Session object is used to persist parameters across requests, including cookies. However, it adds extra details about connection pooling and context management, which are not part of the reference answer. The core function of persisting parameters and cookies is mentioned, but the additional information may distract from the primary focus.",
+        "grader": "judge",
+        "answer": "A Session object is used to persist certain parameters across requests, such as cookies, and to provide default data to request methods. It also utilizes connection pooling, which can improve performance by reusing TCP connections for multiple requests to the same host. Additionally, a Session object has all the methods of the main Requests API and can be used as a context manager to ensure proper resource management. [e1f3ec2877dc6c73]",
+        "latency_ms": 3804,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "partial",
+        "reason": "The answer correctly identifies that a Session object is used to persist parameters across requests, including cookies. However, it adds extra details about connection pooling and context management that are not part of the core definition provided in the reference answer. While these details are relevant, they are not necessary to answer the question as posed.",
+        "grader": "judge",
+        "answer": "A Session object is used to persist certain parameters across requests, such as cookies, and to provide default data to request methods. It also utilizes connection pooling, which can improve performance by reusing TCP connections for multiple requests to the same host. Additionally, a Session object has all the methods of the main Requests API and can be used as a context manager. [e1f3ec2877dc6c73]",
+        "latency_ms": 1244,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "sh-07",
+      "category": "single_hop",
+      "question": "How do I stream a large response instead of loading it all at once?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States stream.",
+        "grader": "mechanical",
+        "answer": "To stream a large response instead of loading it all at once, you can use the `iter_content` method with `stream=True` in your request. This method iterates over the response data in chunks, avoiding loading the entire content into memory at once. You can specify the `chunk_size` to control how much data is read into memory at a time. If `decode_unicode` is set to `True`, the content will be decoded using the response's encoding information. [9c27379132f22b8d]",
+        "latency_ms": 3881,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States stream.",
+        "grader": "mechanical",
+        "answer": "To stream a large response instead of loading it all at once, you can use the `iter_content` method with `stream=True` in your request. This method iterates over the response data in chunks, avoiding loading the entire content into memory at once. You can specify the `chunk_size` to control how much data is read into memory at a time. If `decode_unicode` is set to `True`, the content will be decoded using the response's encoding information. Otherwise, bytes will be returned. [9c27379132f22b8d]",
+        "latency_ms": 1434,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "sh-08",
+      "category": "single_hop",
+      "question": "How do I use a proxy with requests?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States proxies.",
+        "grader": "mechanical",
+        "answer": "To use a proxy with the `requests` library, you can configure individual requests by passing a `proxies` dictionary to the request method. Here's an example:\n\n```python\nimport requests\n\nproxies = {\n  'http': 'http://10.10.1.10:3128',\n  'https': 'http://10.10.1.10:1080',\n}\n\nrequests.get('http://example.org', proxies=proxies)\n```\n\nAlternatively, you can configure a proxy for an entire session:\n\n```python\nimport requests\n\nproxies = {\n  'http': 'http://10.10.1.10:3128',\n  'https': 'http://10.10.1.10:1080',\n}\nsession = requests.Session()\nsession.proxies.update(proxies)\n\nsession.get('http://example.org')\n```\n\nNote that setting `session.proxies` may be overridden by environmental proxies. To ensure the use of proxies, explicitly specify the `proxies` argument on all individual requests [83826cc633d3bb31].",
+        "latency_ms": 4510,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States proxies.",
+        "grader": "mechanical",
+        "answer": "To use a proxy with the `requests` library, you can configure individual requests by passing a `proxies` dictionary to the request method. Here's an example:\n\n```python\nimport requests\n\nproxies = {\n  'http': 'http://10.10.1.10:3128',\n  'https': 'http://10.10.1.10:1080',\n}\n\nrequests.get('http://example.org', proxies=proxies)\n```\n\nAlternatively, you can configure a proxy for an entire session:\n\n```python\nimport requests\n\nproxies = {\n  'http': 'http://10.10.1.10:3128',\n  'https': 'http://10.10.1.10:1080',\n}\nsession = requests.Session()\nsession.proxies.update(proxies)\n\nsession.get('http://example.org')\n```\n\nNote that setting `session.proxies` may be overridden by environmental proxies. To ensure the use of proxies, explicitly specify the `proxies` argument on all individual requests [83826cc633d3bb31].",
+        "latency_ms": 1883,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "sh-09",
+      "category": "single_hop",
+      "question": "What does allow_redirects control?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States redirects.",
+        "grader": "mechanical",
+        "answer": "The `allow_redirects` parameter controls whether non-GET/HEAD redirects are followed. [c0e1aed946ab7b74]",
+        "latency_ms": 3174,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States redirects.",
+        "grader": "mechanical",
+        "answer": "The `allow_redirects` parameter controls whether non-GET/HEAD redirects are followed. [c0e1aed946ab7b74]",
+        "latency_ms": 2681,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "sh-10",
+      "category": "single_hop",
+      "question": "How do I supply a client-side certificate?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States cert.",
+        "grader": "mechanical",
+        "answer": "To supply a client-side certificate, you can specify a local certificate as a single file containing both the private key and the certificate, or as a tuple of the paths to both files. For example:\n\n```python\nrequests.get('https://example.com', cert=('/path/client.cert', '/path/client.key'))\n```\n\nAlternatively, you can set it persistently in a session:\n\n```python\ns = requests.Session()\ns.cert = '/path/client.cert'\n```\n\nNote that the private key must be unencrypted, as encrypted keys are not supported by Requests. [08033f2e4f58207f]\n\nFor using a client certificate with `urllib3`, you can provide the full path to the certificate when creating a `PoolManager`:\n\n```python\nhttp = urllib3.PoolManager(\n    cert_file=\"/path/to/your/client_cert.pem\",\n    cert_reqs=\"CERT_REQUIRED\",\n    ca_certs=\"/path/to/your/certificate_bundle\"\n)\n```\n\nIf the private key is encrypted, use the `key_password` parameter to specify the password:\n\n```python\nhttp = urllib3.PoolManager(\n    cert_file=\"/path/to/your/client_cert.pem\",\n    cert_reqs=\"CERT_REQUIRED\",\n    key_file=\"/path/to/your/client.key\",\n    key_password=\"keyfile_password\"\n)\n```\n\nIf the key isn't encrypted, the `key_password` parameter isn't required. [1635bdac0b2100fa]",
+        "latency_ms": 5282,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States cert.",
+        "grader": "mechanical",
+        "answer": "To supply a client-side certificate, you can specify a local certificate as a single file containing both the private key and the certificate, or as a tuple of the paths to both files. For example:\n\n```python\nrequests.get('https://example.com', cert=('/path/client.cert', '/path/client.key'))\n```\n\nAlternatively, you can set it persistently in a session:\n\n```python\ns = requests.Session()\ns.cert = '/path/client.cert'\n```\n\nEnsure that the private key is unencrypted, as encrypted keys are not supported by Requests. [08033f2e4f58207f]\n\nFor `urllib3`, you can provide the full path to the client certificate when creating a `PoolManager`:\n\n```python\nhttp = urllib3.PoolManager(\n    cert_file=\"/path/to/your/client_cert.pem\",\n    cert_reqs=\"CERT_REQUIRED\",\n    ca_certs=\"/path/to/your/certificate_bundle\"\n)\n```\n\nIf the private key is encrypted, use the `key_password` parameter to specify the password:\n\n```python\nhttp = urllib3.PoolManager(\n    cert_file=\"/path/to/your/client_cert.pem\",\n    cert_reqs=\"CERT_REQUIRED\",\n    key_file=\"/path/to/your/client.key\",\n    key_password=\"keyfile_password\"\n)\n```\n\nIf the key isn't encrypted, the `key_password` parameter isn't required. [1635bdac0b2100fa]",
+        "latency_ms": 2644,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "sh-11",
+      "category": "single_hop",
+      "question": "What is a transport adapter in requests?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "The answer accurately describes a transport adapter in Requests as a mechanism for defining interaction methods for an HTTP service. It also includes relevant details about the default `HTTPAdapter`, the ability to create custom adapters, and how they are selected based on URL prefix matching, which aligns with the reference answer.",
+        "grader": "judge",
+        "answer": "A transport adapter in Requests is an object that defines interaction methods for an HTTP service, allowing for per-service configuration. Requests includes a default transport adapter, the `HTTPAdapter`, which handles HTTP and HTTPS interactions using the `urllib3` library. Users can create custom transport adapters and mount them to a `Session` object to apply specific functionality to certain web services. The adapter is chosen based on the longest prefix match for the URL. [1af7af42573712ac]",
+        "latency_ms": 4172,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "partial",
+        "reason": "The answer correctly identifies that a transport adapter defines interaction methods for an HTTP service and mentions the default `HTTPAdapter`. However, it includes additional details about custom adapters and URL matching that, while informative, are not part of the core definition provided in the reference answer.",
+        "grader": "judge",
+        "answer": "A transport adapter in Requests is an object that defines interaction methods for an HTTP service, allowing for per-service configuration. Requests includes a default transport adapter, the `HTTPAdapter`, which handles HTTP and HTTPS interactions using the `urllib3` library. Users can create custom transport adapters and mount them to a `Session` object to apply specific functionality to certain web services. The adapter is chosen based on the longest prefix match for the URL. [1af7af42573712ac]",
+        "latency_ms": 1392,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "sh-12",
+      "category": "single_hop",
+      "question": "How does urllib3 let me set timeouts?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "The answer accurately describes how to set timeouts in `urllib3`, including the use of a simple timeout, granular timeouts with the `Timeout` class, pool-level timeouts, and how to disable timeouts. It covers all key aspects mentioned in the reference answer.",
+        "grader": "judge",
+        "answer": "You can set timeouts in `urllib3` in a few ways:\n\n1. **Simple Timeout**: You can specify a timeout as a `float` directly in the `request` method of `PoolManager`. This sets a total timeout for the request.\n\n   ```python\n   import urllib3\n\n   resp = urllib3.request(\n       \"GET\",\n       \"https://httpbin.org/delay/3\",\n       timeout=4.0\n   )\n   ```\n\n   [fdf693616cb20ea7]\n\n2. **Granular Timeout**: For more control, use the `urllib3.util.Timeout` class to specify separate connect and read timeouts.\n\n   ```python\n   import urllib3\n\n   resp = urllib3.request(\n       \"GET\",\n       \"https://httpbin.org/delay/3\",\n       timeout=urllib3.Timeout(connect=1.0, read=2.0)\n   )\n   ```\n\n   [fdf693616cb20ea7]\n\n3. **Pool-Level Timeout**: You can set a default timeout for all requests made through a `PoolManager` by passing a `Timeout` instance when creating the `PoolManager`.\n\n   ```python\n   import urllib3\n\n   http = urllib3.PoolManager(timeout=urllib3.Timeout(connect=1.0, read=2.0))\n   ```\n\n   [fdf693616cb20ea7]\n\n4. **Disabling Timeouts**: Set all parameters of `Timeout` to `None` to disable timeouts.\n\n   ```python\n   no_timeout = urllib3.util.Timeout(connect=None, read=None)\n   response = http.request(\"GET\", \"https://example.com/\", timeout=no_timeout)\n   ```\n\n   [515f1d6b4ad0c491]",
+        "latency_ms": 6038,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "The answer accurately describes how to set timeouts in `urllib3` using both simple and granular timeout methods, as well as how to set pool-level timeouts and disable timeouts. It covers the key facts mentioned in the reference answer.",
+        "grader": "judge",
+        "answer": "You can set timeouts in `urllib3` in a few ways:\n\n1. **Simple Timeout**: You can specify a timeout as a `float` directly in the `request` method of `PoolManager`. This sets a total timeout for the request.\n\n   ```python\n   import urllib3\n\n   resp = urllib3.request(\n       \"GET\",\n       \"https://httpbin.org/delay/3\",\n       timeout=4.0\n   )\n   ```\n\n   [fdf693616cb20ea7]\n\n2. **Granular Timeout**: For more control, use the `urllib3.util.Timeout` class to specify separate connect and read timeouts.\n\n   ```python\n   import urllib3\n\n   resp = urllib3.request(\n       \"GET\",\n       \"https://httpbin.org/delay/3\",\n       timeout=urllib3.Timeout(connect=1.0, read=2.0)\n   )\n   ```\n\n   [fdf693616cb20ea7]\n\n3. **Pool-Level Timeout**: You can set a default timeout for all requests made through a `PoolManager` by passing a `Timeout` instance when creating the `PoolManager`.\n\n   ```python\n   import urllib3\n\n   http = urllib3.PoolManager(timeout=urllib3.Timeout(connect=1.0, read=2.0))\n   ```\n\n   [fdf693616cb20ea7]\n\n4. **Disabling Timeouts**: Set all parameters of `Timeout` to `None` to disable timeouts.\n\n   ```python\n   no_timeout = urllib3.util.Timeout(connect=None, read=None)\n   response = http.request(\"GET\", \"https://example.com/\", timeout=no_timeout)\n   ```\n\n   [515f1d6b4ad0c491]",
+        "latency_ms": 3469,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "sh-13",
+      "category": "single_hop",
+      "question": "What does requests use for basic authentication?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States HTTPBasicAuth.",
+        "grader": "mechanical",
+        "answer": "Requests uses the `HTTPBasicAuth` class for basic authentication. You can create an instance of `HTTPBasicAuth` with a username and password, or simply pass a tuple of the username and password directly to the `auth` parameter in a request, which is equivalent to using `HTTPBasicAuth` [6474b25c152a3a8a].",
+        "latency_ms": 3946,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States HTTPBasicAuth.",
+        "grader": "mechanical",
+        "answer": "Requests uses the `HTTPBasicAuth` class for basic authentication. You can create an instance of `HTTPBasicAuth` with a username and password, or use a shorthand by providing the credentials as a tuple directly in the `auth` parameter of a request [6474b25c152a3a8a].",
+        "latency_ms": 1430,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "sh-14",
+      "category": "single_hop",
+      "question": "What are event hooks in requests?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "The answer accurately describes event hooks in Requests, mentioning the hooks mechanism, the ability to manipulate the request process, and the specifics of how to assign and use hooks, including the `response` hook and the behavior of callback functions.",
+        "grader": "judge",
+        "answer": "Event hooks in Requests are part of a hook system that allows you to manipulate portions of the request process or signal event handling. You can assign a hook function on a per-request basis by passing a dictionary with the hook name and callback function to the `hooks` request parameter. The available hook is `response`, which is triggered by the response generated from a request. The callback function receives a chunk of data as its first argument and must handle its own exceptions. If the callback function returns a value, it replaces the data passed in; otherwise, nothing else is affected. Multiple hooks can be added to a single request or a `Session` instance, and they will be called in the order they are added [574e09bdf6be0cf5].",
+        "latency_ms": 4844,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "The answer accurately describes event hooks in Requests, including their purpose, how to assign them, the available hook, and the behavior of the callback function.",
+        "grader": "judge",
+        "answer": "Event hooks in Requests are part of a hook system that allows you to manipulate portions of the request process or signal event handling. You can assign a hook function on a per-request basis by passing a dictionary with the hook name and callback function to the `hooks` request parameter. The available hook is `response`, which is triggered by the response generated from a request. The callback function receives a chunk of data as its first argument and must handle its own exceptions. If the callback function returns a value, it replaces the data passed in; otherwise, nothing else is affected. Multiple hooks can be added to a single request or a `Session` instance, and they will be called in the order they are added [574e09bdf6be0cf5].",
+        "latency_ms": 3888,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "sh-15",
+      "category": "single_hop",
+      "question": "How does urllib3 retry failed requests?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "The answer accurately describes how urllib3 retries failed requests, mentioning the `retries` parameter, default retry behavior, and the use of a `Retry` instance for more control, which aligns with the reference answer's focus on retry configuration.",
+        "grader": "judge",
+        "answer": "urllib3 can automatically retry idempotent requests using the `retries` parameter in the `PoolManager.request` method. By default, it retries requests 3 times and follows up to 3 redirects. You can specify an integer to change the number of retries or use a `Retry` instance for more granular control, such as limiting the number of redirects or disabling exceptions for too many redirects [079ba4acb8ce3380]. Additionally, urllib3 respects `Retry-After` headers on certain responses when using the default retry logic [7321cf48696d4ca5].",
+        "latency_ms": 3954,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "The answer accurately describes how urllib3 retries failed requests, mentioning the `retries` parameter, default retry behavior, and the use of a `Retry` instance for more control, which aligns with the reference answer's focus on retry configuration.",
+        "grader": "judge",
+        "answer": "urllib3 can automatically retry idempotent requests using the `retries` parameter in the `PoolManager.request` method. By default, it retries requests 3 times and follows up to 3 redirects. You can specify an integer to change the number of retries or use a `Retry` instance for more granular control, such as limiting the number of redirects or disabling exceptions for too many redirects [079ba4acb8ce3380]. Additionally, urllib3 respects `Retry-After` headers on certain responses when using the default retry logic [7321cf48696d4ca5].",
+        "latency_ms": 1490,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "th-01",
+      "category": "two_hop",
+      "question": "Which requests exception is raised when urllib3 raises MaxRetryError?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States ConnectionError.",
+        "grader": "mechanical",
+        "answer": "The requests exception raised when `urllib3` raises `MaxRetryError` is `requests.exceptions.ConnectionError` [8a8be103723576ba].",
+        "latency_ms": 9351,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T3_EXCEPTION_WRAP_CHAIN({'entity_id': 'urllib3.exceptions.MaxRetryError', 'max_hops': 2})",
+        "graph_facts_used": 22,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States RetryError.",
+        "grader": "mechanical",
+        "answer": "When `urllib3` raises `MaxRetryError`, the corresponding `requests` exception that is raised is `requests.exceptions.RetryError` [a36824363193e78b].",
+        "latency_ms": 1175,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "th-02",
+      "category": "two_hop",
+      "question": "If urllib3 raises ProtocolError, what does requests raise instead?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States ConnectionError.",
+        "grader": "mechanical",
+        "answer": "If `urllib3` raises `ProtocolError`, `requests` raises `ConnectionError` instead [8a8be103723576ba].",
+        "latency_ms": 8883,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T3_EXCEPTION_WRAP_CHAIN({'entity_id': 'urllib3.exceptions.ProtocolError', 'max_hops': 2})",
+        "graph_facts_used": 11,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "States none of: ConnectionError.",
+        "grader": "mechanical",
+        "answer": "The context does not provide information on what the `requests` library raises instead of `urllib3`'s `ProtocolError`.",
+        "latency_ms": 1278,
+        "citations_valid": false,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "th-03",
+      "category": "two_hop",
+      "question": "What requests exception corresponds to urllib3's ReadTimeoutError?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States ReadTimeout.",
+        "grader": "mechanical",
+        "answer": "The requests exception that corresponds to urllib3's `ReadTimeoutError` is `requests.exceptions.ReadTimeout` [ea27551dd82594b2].",
+        "latency_ms": 9290,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T3_EXCEPTION_WRAP_CHAIN({'entity_id': 'urllib3.exceptions.ReadTimeoutError', 'max_hops': 2})",
+        "graph_facts_used": 16,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States ReadTimeout.",
+        "grader": "mechanical",
+        "answer": "The requests exception that corresponds to urllib3's `ReadTimeoutError` is `requests.exceptions.ReadTimeout` [4d693f5938d0c8c2].",
+        "latency_ms": 990,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "th-04",
+      "category": "two_hop",
+      "question": "Which requests exception wraps urllib3's ClosedPoolError?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States ConnectionError.",
+        "grader": "mechanical",
+        "answer": "The requests exception that wraps `urllib3.exceptions.ClosedPoolError` is `requests.exceptions.ConnectionError` [8a8be103723576ba].",
+        "latency_ms": 10130,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T3_EXCEPTION_WRAP_CHAIN({'entity_id': 'urllib3.exceptions.ClosedPoolError', 'max_hops': 2})",
+        "graph_facts_used": 7,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States ConnectionError.",
+        "grader": "mechanical",
+        "answer": "The requests exception that wraps urllib3's `ClosedPoolError` is `requests.exceptions.ConnectionError` [89b155ac5914aece].",
+        "latency_ms": 943,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "th-05",
+      "category": "two_hop",
+      "question": "If a proxy fails at the urllib3 level, which requests exception surfaces?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States ProxyError.",
+        "grader": "mechanical",
+        "answer": "If a proxy fails at the urllib3 level, the exception that surfaces in requests is `requests.exceptions.ProxyError` [c012d26b1df098aa].",
+        "latency_ms": 9188,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T3_EXCEPTION_WRAP_CHAIN({'entity_id': 'urllib3', 'max_hops': 2})",
+        "graph_facts_used": 2,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States ProxyError.",
+        "grader": "mechanical",
+        "answer": "If a proxy fails at the urllib3 level, the exception that surfaces is `urllib3.exceptions.ProxyError` [c012d26b1df098aa].",
+        "latency_ms": 1306,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "th-06",
+      "category": "two_hop",
+      "question": "Which requests exception is raised for an SSL failure originating in urllib3?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States SSLError.",
+        "grader": "mechanical",
+        "answer": "The requests exception raised for an SSL failure originating in urllib3 is `urllib3.exceptions.SSLError` [a36824363193e78b].",
+        "latency_ms": 9090,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T3_EXCEPTION_WRAP_CHAIN({'entity_id': 'requests', 'max_hops': 2})",
+        "graph_facts_used": 4,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States SSLError.",
+        "grader": "mechanical",
+        "answer": "The requests exception raised for an SSL failure originating in urllib3 is `urllib3.exceptions.SSLError` [a36824363193e78b].",
+        "latency_ms": 1192,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "th-07",
+      "category": "two_hop",
+      "question": "When urllib3 reports an invalid header, what does requests raise?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States InvalidHeader.",
+        "grader": "mechanical",
+        "answer": "When urllib3 reports an invalid header, requests raises `requests.exceptions.InvalidHeader` [5f3407510145c57a].",
+        "latency_ms": 10532,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T3_EXCEPTION_WRAP_CHAIN({'entity_id': 'urllib3.exceptions.InvalidHeader', 'max_hops': 2})",
+        "graph_facts_used": 4,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "States none of: InvalidHeader.",
+        "grader": "mechanical",
+        "answer": "The context does not provide information on what exception `requests` raises when `urllib3` reports an invalid header.",
+        "latency_ms": 972,
+        "citations_valid": false,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "th-08",
+      "category": "two_hop",
+      "question": "Which requests exception is raised when urllib3's retry limit is exhausted due to a response error?",
+      "hybrid": {
+        "verdict": "incorrect",
+        "reason": "States none of: RetryError.",
+        "grader": "mechanical",
+        "answer": "The requests exception raised when urllib3's retry limit is exhausted due to a response error is `MaxRetryError` [7c584dfbfad40b5c][a36824363193e78b].",
+        "latency_ms": 6446,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "States none of: RetryError.",
+        "grader": "mechanical",
+        "answer": "The requests exception raised when urllib3's retry limit is exhausted due to a response error is `urllib3.exceptions.MaxRetryError` [a36824363193e78b].",
+        "latency_ms": 1032,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "th-09",
+      "category": "two_hop",
+      "question": "What class does requests delegate connection pooling to?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States urllib3.",
+        "grader": "mechanical",
+        "answer": "The `requests` library delegates connection pooling to the `HTTPAdapter` class, which is part of the `requests.adapters` module. This class provides an interface for managing connection pools using `urllib3` [2d5e103eb8911f03].",
+        "latency_ms": 8882,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T5_DELEGATION_CHAIN({'entity_id': 'requests.sessions.Session', 'max_hops': 2})",
+        "graph_facts_used": 13,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States PoolManager.",
+        "grader": "mechanical",
+        "answer": "The `requests` library delegates connection pooling to the `PoolManager` class. [fafb6b18880a975a]",
+        "latency_ms": 987,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "th-10",
+      "category": "two_hop",
+      "question": "Which class does requests use to actually send a request over the network, and what does it call into?",
+      "hybrid": {
+        "verdict": "incorrect",
+        "reason": "Missing: HTTPAdapter, urlopen.",
+        "grader": "mechanical",
+        "answer": "The `requests` library uses the `requests.adapters` module to actually send a request over the network. The `Session` class in `requests.sessions` delegates to `requests.adapters` for this purpose [d0739bbf7ee75c83].",
+        "latency_ms": 11977,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T5_DELEGATION_CHAIN({'entity_id': 'requests.sessions.Session', 'max_hops': 2})",
+        "graph_facts_used": 13,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "Missing: HTTPAdapter, urlopen.",
+        "grader": "mechanical",
+        "answer": "Requests uses the `Session` class to actually send a request over the network. It calls into the `send` method of the `Session` class to perform the network operation. [8dea8182a91fc727]",
+        "latency_ms": 1139,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "th-11",
+      "category": "two_hop",
+      "question": "What parameter controls certificate verification, and which function ultimately applies it?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "The parameter that controls certificate verification is `verify` in the `cert_verify` function. It can be a boolean or a string specifying a path to a CA bundle [2928b2db0784801d]. The function that ultimately applies it is `cert_verify` itself, as it sets the connection's certificate requirements based on the `verify` parameter [2928b2db0784801d].",
+        "latency_ms": 4905,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "The parameter that controls certificate verification is `verify`, which can be either a boolean or a string specifying a path to a CA bundle [2928b2db0784801d]. The function that ultimately applies this parameter is `cert_verify` [2928b2db0784801d].",
+        "latency_ms": 1046,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "th-12",
+      "category": "two_hop",
+      "question": "Which exception does ConnectTimeout inherit from in requests?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "The `ConnectTimeout` exception inherits from `ConnectionError` and `Timeout`. [f0975f68ce1a1502]",
+        "latency_ms": 3228,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "The `ConnectTimeout` class inherits from `ConnectionError` and `Timeout`. [f0975f68ce1a1502]",
+        "latency_ms": 969,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "th-13",
+      "category": "two_hop",
+      "question": "What is the base class of all requests exceptions, and what does it inherit from?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "The base class of all requests exceptions is `RequestException`, and it inherits from `IOError` [2fc7204b02768b12].",
+        "latency_ms": 3388,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "The base class of all requests exceptions is `RequestException`, and it inherits from `IOError` [2fc7204b02768b12].",
+        "latency_ms": 959,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "th-14",
+      "category": "two_hop",
+      "question": "Which requests exceptions inherit from both RequestException and ValueError?",
+      "hybrid": {
+        "verdict": "incorrect",
+        "reason": "Missing: MissingSchema, InvalidSchema, InvalidURL.",
+        "grader": "mechanical",
+        "answer": "The context does not provide information about any requests exceptions that inherit from both `RequestException` and `ValueError`. [92f89427bde52f9e]",
+        "latency_ms": 9027,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T8_RELATED_BY({'entity_id': 'requests.exceptions.RequestException', 'relationship': 'INHERITS_FROM'})",
+        "graph_facts_used": 15,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "partial",
+        "reason": "Missing: MissingSchema, InvalidSchema.",
+        "grader": "mechanical",
+        "answer": "The exceptions that inherit from both `RequestException` and `ValueError` are `InvalidURL` and `InvalidHeader` [3bd422d62ff8ddb3][5e88741f1e0decee].",
+        "latency_ms": 1101,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "th-15",
+      "category": "two_hop",
+      "question": "If I set stream=True, which part of the library defers reading the body?",
+      "hybrid": {
+        "verdict": "partial",
+        "reason": "The answer correctly identifies that setting `stream=True` defers reading the body, but it inaccurately attributes this behavior to the `requests.get` method instead of the adapter/urllib3 response. The key fact about the adapter/urllib3 response deferring the content download is missing.",
+        "grader": "judge",
+        "answer": "When you set `stream=True`, the part of the library that defers reading the body is the `requests.get` method. This means that only the response headers are downloaded initially, and the connection remains open, allowing conditional content retrieval. [754cd6d7d37d639b]",
+        "latency_ms": 8932,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T1_NEIGHBORS({'entity_id': 'requests.sessions.Session.request.stream'})",
+        "graph_facts_used": 8,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "The answer accurately states that setting `stream=True` defers reading the body until the `Response.content` attribute or specific methods are accessed, aligning with the reference that mentions the adapter/urllib3 response deferring content download.",
+        "grader": "judge",
+        "answer": "When you set `stream=True`, the library defers reading the body until you access the `Response.content` attribute or use methods like `Response.iter_content()` or `Response.iter_lines()`. This means only the response headers are initially downloaded, and the connection remains open for conditional content retrieval. [754cd6d7d37d639b]",
+        "latency_ms": 1772,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "3h-01",
+      "category": "three_hop",
+      "question": "If I pass verify=False, what is disabled, which function applies it, and which library actually performs the TLS setup?",
+      "hybrid": {
+        "verdict": "partial",
+        "reason": "Missing: cert_verify.",
+        "grader": "mechanical",
+        "answer": "Passing `verify=False` disables server TLS certificate verification [8a8be103723576ba]. The function that applies this parameter is `requests.sessions.Session.request` [ast]. The library that actually performs the TLS setup is `urllib3` [df36ca948a4c671f].",
+        "latency_ms": 9577,
+        "citations_valid": true,
+        "route": "BOTH",
+        "graph_plan": "T1_NEIGHBORS({'entity_id': 'requests.sessions.Session.request.verify'})",
+        "graph_facts_used": 10,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "Passing `verify=False` disables the verification of the server's TLS certificate [2928b2db0784801d]. The function `cert_verify` applies this parameter [2928b2db0784801d]. The library that actually performs the TLS setup is `urllib3` [df36ca948a4c671f].",
+        "latency_ms": 1323,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "3h-02",
+      "category": "three_hop",
+      "question": "Trace what happens from requests.get() down to the urllib3 call that sends the request.",
+      "hybrid": {
+        "verdict": "partial",
+        "reason": "Missing: HTTPAdapter.send, urlopen.",
+        "grader": "mechanical",
+        "answer": "The process from `requests.get()` to the `urllib3` call that sends the request involves several steps:\n\n1. `requests.get()` calls `requests.api.request` [e36fb9117734c328].\n2. `requests.api.request` calls `requests.sessions.Session` [8dea8182a91fc727].\n3. `requests.sessions.Session.get` calls `requests.sessions.Session.request` [52ec6f17e542c121].\n4. `requests.sessions.Session` delegates to `urllib3` for connection pooling [e1f3ec2877dc6c73].\n\nFinally, the request is sent using `urllib3.request()` [1726ac9f5f1b62d9].",
+        "latency_ms": 9082,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T5_DELEGATION_CHAIN({'entity_id': 'requests.api.get', 'max_hops': 3})",
+        "graph_facts_used": 25,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "Missing: Session.request, HTTPAdapter.send, urlopen.",
+        "grader": "mechanical",
+        "answer": "1. The `requests.get()` function is called, which sends a GET request. It takes a URL, optional parameters, and additional keyword arguments. It internally calls the `request()` function with the method set to \"get\" [e36fb9117734c328].\n\n2. The `request()` function is then called with the method \"GET\", the URL, parameters, and any additional keyword arguments [52ec6f17e542c121].\n\n3. The `request()` function in the `requests` library eventually leads to a call to `urllib3.request()`, which is a top-level function for sending requests using a global pool manager instance [1726ac9f5f1b62d9].\n\nThis trace shows the flow from `requests.get()` to the `urllib3` call that sends the request.",
+        "latency_ms": 1878,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "3h-03",
+      "category": "three_hop",
+      "question": "When a connection times out at the socket level, what does urllib3 raise, what does requests convert it to, and what base class does that inherit from?",
+      "hybrid": {
+        "verdict": "partial",
+        "reason": "Missing: ConnectTimeout.",
+        "grader": "mechanical",
+        "answer": "When a connection times out at the socket level, `urllib3` raises a `socket.timeout` which is wrapped by `urllib3.exceptions.ConnectTimeoutError` [a2b141d4f8dce775]. The `requests` library converts this to `requests.exceptions.ConnectionError` [cadc8910b0a08d20]. The base class that `requests.exceptions.ConnectionError` inherits from is not explicitly mentioned in the provided context.",
+        "latency_ms": 9922,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T3_EXCEPTION_WRAP_CHAIN({'entity_id': 'urllib3.exceptions.ReadTimeoutError', 'max_hops': 2})",
+        "graph_facts_used": 16,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "Missing: ConnectTimeoutError, ConnectTimeout.",
+        "grader": "mechanical",
+        "answer": "When a connection times out at the socket level, `urllib3` raises a `urllib3.exceptions.MaxRetryError` [a36824363193e78b]. The `requests` library converts this to a `requests.exceptions.ConnectionError` [a36824363193e78b]. The base class that `requests.exceptions.ConnectionError` inherits from is `requests.exceptions.RequestException` [a36824363193e78b].",
+        "latency_ms": 1257,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "3h-04",
+      "category": "three_hop",
+      "question": "Which requests exceptions ultimately derive from IOError through RequestException, and which of those also derive from ValueError?",
+      "hybrid": {
+        "verdict": "incorrect",
+        "reason": "Missing: RequestException, ValueError.",
+        "grader": "mechanical",
+        "answer": "The requests exceptions that ultimately derive from `IOError` through `RequestException` are:\n\n- `InvalidJSONError` [92f89427bde52f9e]\n- `HTTPError` [62ee478f8a60a360]\n- `ConnectionError` [c5f04b306ccc2564]\n- `Timeout` [e59aa9011c9825f0]\n- `URLRequired` [40a119f703ef15d7]\n- `TooManyRedirects` [ae59922799c4baad]\n- `MissingSchema` [a61a0c1c3a8b2b63]\n- `InvalidSchema` [c758c6c7910b616c]\n- `InvalidURL` [3bd422d62ff8ddb3]\n- `InvalidHeader` [5e88741f1e0decee]\n- `ChunkedEncodingError` [7f851d7c3b9b2a90]\n- `ContentDecodingError` [013deff3a09de631]\n- `StreamConsumedError` [52fec6fd4e3399dd]\n- `RetryError` [49a940c4532439f3]\n- `UnrewindableBodyError` [e3c1bde04c323b48]\n\nNone of these exceptions are mentioned as also deriving from `ValueError` in the provided context. The context notes that an invalid URL escape sequence now raises a subclass of `RequestException` rather than a `ValueError`, but it does not specify any exceptions that derive from both `IOError` and `ValueError` [2fc7204b02768b12].",
+        "latency_ms": 11954,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T8_RELATED_BY({'entity_id': 'requests.exceptions.RequestException', 'relationship': 'INHERITS_FROM'})",
+        "graph_facts_used": 15,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "The requests exceptions that ultimately derive from `IOError` through `RequestException` are:\n\n- `HTTPError` [62ee478f8a60a360]\n- `InvalidURL` [3bd422d62ff8ddb3]\n\nAmong these, `InvalidURL` also derives from `ValueError` [3bd422d62ff8ddb3].",
+        "latency_ms": 1276,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "3h-05",
+      "category": "three_hop",
+      "question": "What does the Session object reuse between requests, which library provides it, and which class implements it?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "The `Session` object reuses the underlying TCP connection between requests, which can result in a significant performance increase. This is achieved through `urllib3`'s connection pooling [e1f3ec2877dc6c73]. The `Session` object is provided by the `requests` library [1c0f2f821a4f09b4]. The class that implements the `Session` object is `Session`, which inherits from `SessionRedirectMixin` [1c0f2f821a4f09b4].",
+        "latency_ms": 4159,
+        "citations_valid": true,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "The `Session` object reuses the underlying TCP connection between requests, which can result in a significant performance increase. This is achieved through `urllib3`'s connection pooling [e1f3ec2877dc6c73]. The `Session` object is provided by the `requests` library [1c0f2f821a4f09b4]. The class that implements the `Session` object is `Session`, which inherits from `SessionRedirectMixin` [1c0f2f821a4f09b4].",
+        "latency_ms": 1368,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "3h-06",
+      "category": "three_hop",
+      "question": "If urllib3 raises MaxRetryError because of an SSL problem, what does requests raise, and what is that exception's parent class?",
+      "hybrid": {
+        "verdict": "incorrect",
+        "reason": "Missing: SSLError, ConnectionError.",
+        "grader": "mechanical",
+        "answer": "If `urllib3` raises `MaxRetryError` because of an SSL problem, `requests` raises `requests.exceptions.ConnectionError` [8a8be103723576ba]. The parent class of `requests.exceptions.ConnectionError` is not specified in the provided context.",
+        "latency_ms": 9256,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T3_EXCEPTION_WRAP_CHAIN({'entity_id': 'urllib3.exceptions.MaxRetryError', 'max_hops': 2})",
+        "graph_facts_used": 22,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "partial",
+        "reason": "Missing: ConnectionError.",
+        "grader": "mechanical",
+        "answer": "If `urllib3` raises `MaxRetryError` because of an SSL problem, `requests` raises `SSLError`. The parent class of `SSLError` is `RequestException`. However, the context provided does not explicitly mention this information.",
+        "latency_ms": 1449,
+        "citations_valid": false,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "3h-07",
+      "category": "three_hop",
+      "question": "Which parameter controls redirect behaviour, which class handles resolving redirects, and what exception is raised if there are too many?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "The parameter that controls redirect behavior is `allow_redirects` [c0e1aed946ab7b74]. The class that handles resolving redirects is `SessionRedirectMixin` [1c0f2f821a4f09b4]. The exception raised if there are too many redirects is `TooManyRedirects` [ae59922799c4baad].",
+        "latency_ms": 10205,
+        "citations_valid": true,
+        "route": "BOTH",
+        "graph_plan": "T1_NEIGHBORS({'entity_id': 'requests.sessions.Session'})",
+        "graph_facts_used": 38,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "The parameter that controls redirect behavior is `allow_redirects` [c0e1aed946ab7b74]. The class that handles resolving redirects is `SessionRedirectMixin` [3f50a16de6308d95]. The exception raised if there are too many redirects is `TooManyRedirects` [ae59922799c4baad].",
+        "latency_ms": 1333,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "3h-08",
+      "category": "three_hop",
+      "question": "What does requests use to build a connection pool key, what parameter feeds into it, and which library consumes the result?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "The answer accurately states that requests uses the `build_connection_pool_key_attributes` method to build a connection pool key, mentions the parameters `PreparedRequest`, `verify`, and `cert`, and correctly identifies that `urllib3` consumes the result.",
+        "grader": "judge",
+        "answer": "Requests uses the `build_connection_pool_key_attributes` method to build a connection pool key. This method takes a `PreparedRequest` as a parameter, along with `verify` and optionally `cert`, to determine the `PoolKey` values used by urllib3 to return a connection [db05a770f12f2598]. The library that consumes the result is `urllib3` [db05a770f12f2598].",
+        "latency_ms": 6527,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "The answer accurately states that requests uses the `build_connection_pool_key_attributes` method to build a connection pool key, mentions the parameters `verify` and `cert`, and correctly identifies that `urllib3` consumes the result.",
+        "grader": "judge",
+        "answer": "Requests uses the `build_connection_pool_key_attributes` method to build a connection pool key. This method takes a `PreparedRequest` as a parameter, along with `verify` and optionally `cert`, to determine the `PoolKey` values used by urllib3 to return a connection [db05a770f12f2598]. The library that consumes the result is `urllib3` [db05a770f12f2598].",
+        "latency_ms": 1763,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "3h-09",
+      "category": "three_hop",
+      "question": "Starting from a proxy failure in urllib3, what does requests raise, and what is that exception's base class?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "When a proxy failure occurs in `urllib3`, it raises `urllib3.exceptions.ProxyError` [c012d26b1df098aa]. In the `requests` library, this is wrapped and raised as `requests.exceptions.ProxyError`, which is a subclass of `requests.exceptions.ConnectionError` [80e6caac866b709d]. The base class for `requests.exceptions.ConnectionError` is `requests.exceptions.RequestException` [5f3407510145c57a].",
+        "latency_ms": 11207,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T3_EXCEPTION_WRAP_CHAIN({'entity_id': 'requests', 'max_hops': 2})",
+        "graph_facts_used": 4,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "partial",
+        "reason": "Missing: ConnectionError.",
+        "grader": "mechanical",
+        "answer": "When a proxy failure occurs in `urllib3`, it raises `urllib3.exceptions.ProxyError` [c012d26b1df098aa]. In the `requests` library, this is raised as `requests.exceptions.ProxyError`, which is a subclass of `requests.exceptions.RequestException` [80e6caac866b709d]. The base class for `requests.exceptions.RequestException` is `IOError` [2fc7204b02768b12].",
+        "latency_ms": 1326,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "3h-10",
+      "category": "three_hop",
+      "question": "Which requests exception is raised on an invalid URL, where is it raised from, and what does it inherit from?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "The `requests.exceptions.InvalidURL` exception is raised on an invalid URL. It is raised from the following locations:\n\n1. `requests.adapters.HTTPAdapter.get_connection_with_tls_context` [df36ca948a4c671f].\n2. `requests.adapters.HTTPAdapter.send` [8a8be103723576ba].\n3. `requests.models.PreparedRequest.prepare_url` [a73be955afb934d5].\n4. `requests.utils.unquote_unreserved` [54ec05c835821e7b].\n\nThe `InvalidURL` exception inherits from `RequestException` and `ValueError` [3bd422d62ff8ddb3].",
+        "latency_ms": 9920,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T8_RELATED_BY({'entity_id': 'requests.exceptions.InvalidURL', 'relationship': 'RAISES'})",
+        "graph_facts_used": 4,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "The exception raised on an invalid URL is `InvalidURL`. It is raised from the `requests.get('http://%zz/')` call. `InvalidURL` inherits from `RequestException` and `ValueError` [3bd422d62ff8ddb3][2fc7204b02768b12].",
+        "latency_ms": 1674,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "3h-11",
+      "category": "three_hop",
+      "question": "What handles retries in urllib3, which requests parameter exposes it, and what exception surfaces when retries run out?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "Retries in `urllib3` are handled by the `Retry` class, which allows for configuration of retry behavior [5507b2ac3188e11d]. In the `requests` library, the `max_retries` parameter of the `HTTPAdapter` exposes this functionality, allowing you to implement automatic retries using `urllib3.util.Retry` [fbcbfdb2bb7293ad]. When retries are exhausted, a `MaxRetryError` exception is raised [a36824363193e78b].",
+        "latency_ms": 10501,
+        "citations_valid": true,
+        "route": "BOTH",
+        "graph_plan": "T8_RELATED_BY({'entity_id': 'urllib3.connectionpool.HTTPConnectionPool._make_request.retries', 'relationship': 'HAS_PARAMETER'})",
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "Retries in `urllib3` are handled by the `Retry` class. This class allows for detailed configuration of retry behavior, including the number of retries, backoff factor, and which HTTP methods and status codes should trigger a retry [5507b2ac3188e11d].\n\nIn the `requests` library, the `max_retries` parameter of the `HTTPAdapter` exposes the retry functionality provided by `urllib3` [fbcbfdb2bb7293ad].\n\nWhen retries are exhausted, a `MaxRetryError` exception is raised [a36824363193e78b].",
+        "latency_ms": 1733,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "3h-12",
+      "category": "three_hop",
+      "question": "Which requests class sends the request, which urllib3 class does it obtain a connection from, and what does that return?",
+      "hybrid": {
+        "verdict": "incorrect",
+        "reason": "Missing: HTTPAdapter, Response.",
+        "grader": "mechanical",
+        "answer": "The `requests.sessions.Session` class sends the request [8dea8182a91fc727]. It obtains a connection from the `urllib3.PoolManager` class [ff7e11eb82a11411]. The `PoolManager.request()` method returns an `HTTPResponse` object [ff7e11eb82a11411].",
+        "latency_ms": 11726,
+        "citations_valid": true,
+        "route": "BOTH",
+        "graph_plan": "T5_DELEGATION_CHAIN({'entity_id': 'requests.sessions.Session', 'max_hops': 2})",
+        "graph_facts_used": 13,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "partial",
+        "reason": "Missing: Response.",
+        "grader": "mechanical",
+        "answer": "The `requests` class that sends the request is `HTTPAdapter` [2d5e103eb8911f03]. It obtains a connection from the `urllib3` class `PoolManager` [ff7e11eb82a11411]. The `PoolManager.request()` method returns an `HTTPResponse` object [ff7e11eb82a11411].",
+        "latency_ms": 1986,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "ag-01",
+      "category": "aggregation",
+      "question": "How many requests exceptions inherit from RequestException?",
+      "hybrid": {
+        "verdict": "incorrect",
+        "reason": "The answer states that there are 15 exceptions inheriting from `RequestException`, while the reference indicates there are roughly 20. This discrepancy means the answer is factually incorrect.",
+        "grader": "judge",
+        "answer": "There are 15 exceptions that inherit from `RequestException`:\n\n1. `InvalidJSONError` [92f89427bde52f9e]\n2. `HTTPError` [62ee478f8a60a360]\n3. `ConnectionError` [c5f04b306ccc2564]\n4. `Timeout` [e59aa9011c9825f0]\n5. `URLRequired` [40a119f703ef15d7]\n6. `TooManyRedirects` [ae59922799c4baad]\n7. `MissingSchema` [a61a0c1c3a8b2b63]\n8. `InvalidSchema` [c758c6c7910b616c]\n9. `InvalidURL` [3bd422d62ff8ddb3]\n10. `InvalidHeader` [5e88741f1e0decee]\n11. `ChunkedEncodingError` [7f851d7c3b9b2a90]\n12. `ContentDecodingError` [013deff3a09de631]\n13. `StreamConsumedError` [52fec6fd4e3399dd]\n14. `RetryError` [49a940c4532439f3]\n15. `UnrewindableBodyError` [e3c1bde04c323b48]",
+        "latency_ms": 11291,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T8_RELATED_BY({'entity_id': 'requests.exceptions.RequestException', 'relationship': 'INHERITS_FROM'})",
+        "graph_facts_used": 15,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "partial",
+        "reason": "The answer correctly identifies three specific exceptions that inherit from `RequestException`, but it fails to acknowledge that there are roughly 20 exceptions in total, as stated in the reference answer.",
+        "grader": "judge",
+        "answer": "Three exceptions inherit from `RequestException`: `HTTPError`, `TooManyRedirects`, and `RetryError` [62ee478f8a60a360][ae59922799c4baad][49a940c4532439f3].",
+        "latency_ms": 1126,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "ag-02",
+      "category": "aggregation",
+      "question": "List all requests exceptions that wrap a urllib3 exception.",
+      "hybrid": {
+        "verdict": "partial",
+        "reason": "Missing: SSLError, ProxyError.",
+        "grader": "mechanical",
+        "answer": "The requests exceptions that wrap a urllib3 exception are:\n\n1. `requests.exceptions.ConnectionError` wraps `urllib3.exceptions.ReadTimeoutError` [9c27379132f22b8d].\n2. `requests.exceptions.ConnectionError` wraps `urllib3.exceptions.ProtocolError` [8a8be103723576ba].",
+        "latency_ms": 10571,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T3_EXCEPTION_WRAP_CHAIN({'entity_id': 'requests.exceptions.RequestException', 'max_hops': 2})",
+        "graph_facts_used": 19,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "Missing: ConnectionError, SSLError, ProxyError.",
+        "grader": "mechanical",
+        "answer": "The context does not provide a specific list of requests exceptions that wrap a urllib3 exception. It mentions that urllib3 exceptions are wrapped in higher-level exceptions, but does not detail which requests exceptions specifically wrap urllib3 exceptions. [a36824363193e78b]",
+        "latency_ms": 1221,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "ag-03",
+      "category": "aggregation",
+      "question": "Which exceptions does HTTPAdapter.send raise?",
+      "hybrid": {
+        "verdict": "partial",
+        "reason": "Missing: ConnectionError, SSLError.",
+        "grader": "mechanical",
+        "answer": "The `HTTPAdapter.send` method raises the `requests.exceptions.InvalidURL` exception. [8a8be103723576ba]",
+        "latency_ms": 9653,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T8_RELATED_BY({'entity_id': 'requests.adapters.HTTPAdapter.send', 'relationship': 'RAISES'})",
+        "graph_facts_used": 8,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "Missing: InvalidURL, ConnectionError, SSLError.",
+        "grader": "mechanical",
+        "answer": "The context does not provide specific information about which exceptions the `HTTPAdapter.send` method raises.",
+        "latency_ms": 946,
+        "citations_valid": false,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "ag-04",
+      "category": "aggregation",
+      "question": "What parameters does Session.request accept?",
+      "hybrid": {
+        "verdict": "incorrect",
+        "reason": "Missing: verify, timeout, headers, cookies.",
+        "grader": "mechanical",
+        "answer": "The context does not provide specific details about the parameters accepted by `Session.request`. Therefore, I cannot answer the question based on the given information.",
+        "latency_ms": 3406,
+        "citations_valid": false,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "Missing: verify, timeout, headers, cookies.",
+        "grader": "mechanical",
+        "answer": "The context does not provide specific details about the parameters accepted by `Session.request`. Therefore, I cannot answer the question based on the given information.",
+        "latency_ms": 2389,
+        "citations_valid": false,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "ag-05",
+      "category": "aggregation",
+      "question": "Which requests exceptions are also ValueErrors?",
+      "hybrid": {
+        "verdict": "partial",
+        "reason": "Missing: MissingSchema, InvalidSchema.",
+        "grader": "mechanical",
+        "answer": "The `InvalidURL` exception is a requests exception that is also a `ValueError` [3bd422d62ff8ddb3].",
+        "latency_ms": 7428,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "partial",
+        "reason": "Missing: MissingSchema, InvalidSchema.",
+        "grader": "mechanical",
+        "answer": "The `InvalidURL` exception is a `RequestException` that is also a `ValueError` [3bd422d62ff8ddb3].",
+        "latency_ms": 1043,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "ag-06",
+      "category": "aggregation",
+      "question": "How many modules make up the requests package?",
+      "hybrid": {
+        "verdict": "incorrect",
+        "reason": "The answer states that the context does not provide information, while the reference indicates that there are around 15-18 modules in the requests package.",
+        "grader": "judge",
+        "answer": "The context does not provide information on how many modules make up the requests package.",
+        "latency_ms": 4003,
+        "citations_valid": false,
+        "route": "VECTOR",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "The answer states that the context does not provide information, while the reference clearly indicates that there are around 15-18 modules in the requests package.",
+        "grader": "judge",
+        "answer": "The context does not provide information on how many modules make up the requests package.",
+        "latency_ms": 1228,
+        "citations_valid": false,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "ag-07",
+      "category": "aggregation",
+      "question": "Which classes in requests inherit from BaseAdapter?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "The class `requests.adapters.HTTPAdapter` inherits from `requests.adapters.BaseAdapter` [2d5e103eb8911f03].",
+        "latency_ms": 10080,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T8_RELATED_BY({'entity_id': 'requests.adapters.HTTPAdapter', 'relationship': 'INHERITS_FROM'})",
+        "graph_facts_used": 1,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "States every required term.",
+        "grader": "mechanical",
+        "answer": "The class `HTTPAdapter` in `requests.adapters` inherits from `BaseAdapter` [2d72d551957918d3].",
+        "latency_ms": 965,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "ag-08",
+      "category": "aggregation",
+      "question": "What are all the timeout-related exceptions across requests and urllib3?",
+      "hybrid": {
+        "verdict": "incorrect",
+        "reason": "Missing: ConnectTimeout, ReadTimeout.",
+        "grader": "mechanical",
+        "answer": "The timeout-related exceptions across requests and urllib3 include:\n\n1. `urllib3.exceptions.MaxRetryError` which can be caused by `ReadTimeoutError` [a36824363193e78b].\n2. `urllib3.exceptions.ReadTimeoutError` for read timeouts over SSL connections [a36824363193e78b].",
+        "latency_ms": 9733,
+        "citations_valid": true,
+        "route": "GRAPH",
+        "graph_plan": "T6_COUNT_BY_REL({'relationship': 'RAISES'})",
+        "graph_facts_used": 1,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "Missing: ConnectTimeout, ReadTimeout.",
+        "grader": "mechanical",
+        "answer": "The timeout-related exceptions across requests and urllib3 are:\n\n1. `urllib3.exceptions.MaxRetryError` - This exception is raised for errors during a retry-enabled request, including timeout-related exceptions. The underlying error can be accessed from the `.reason` property [a36824363193e78b].\n\n2. `urllib3.exceptions.ReadTimeoutError` - This exception is specifically for read timeouts over SSL connections [a36824363193e78b].",
+        "latency_ms": 1333,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "oos-01",
+      "category": "out_of_scope",
+      "question": "How do I use requests with Django templates?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "Declined to answer, as required.",
+        "grader": "mechanical",
+        "answer": "This question is outside the scope of the requests/urllib3 corpus.",
+        "latency_ms": 2406,
+        "citations_valid": true,
+        "route": "REFUSE",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "Answered a question that is outside the corpus instead of refusing.",
+        "grader": "mechanical",
+        "answer": "To use requests with Django templates, you typically need to make HTTP requests in your Django views and then pass the response data to the template context. Here's a basic example:\n\n1. **Make a Request in the View:**\n\n   Use the `requests` library to make an HTTP request in your Django view. For example, to make a GET request:\n\n   ```python\n   import requests\n\n   def my_view(request):\n       response = requests.get('https://httpbin.org/get')\n       data = response.json()  # Assuming the response is JSON\n       return render(request, 'my_template.html', {'data': data})\n   ```\n\n   This code snippet uses the `requests.get` method to fetch data from a URL and then passes the JSON response to the template context.\n\n2. **Access Data in the Template:**\n\n   In your Django template, you can access the data passed from the view:\n\n   ```html\n   <h1>Data from API</h1>\n   <ul>\n       {% for key, value in data.items %}\n           <li>{{ key }}: {{ value }}</li>\n       {% endfor %}\n   </ul>\n   ```\n\nThis approach allows you to fetch data from external APIs and display it in your Django templates. The `requests` library is used to handle the HTTP requests, and the data is passed to the template through the context dictionary.",
+        "latency_ms": 2495,
+        "citations_valid": false,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "oos-02",
+      "category": "out_of_scope",
+      "question": "How do I use requests with Flask sessions?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "Declined to answer, as required.",
+        "grader": "mechanical",
+        "answer": "This question is outside the scope of the requests/urllib3 corpus.",
+        "latency_ms": 2491,
+        "citations_valid": true,
+        "route": "REFUSE",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "Answered a question that is outside the corpus instead of refusing.",
+        "grader": "mechanical",
+        "answer": "To use requests with Flask sessions, you can utilize the `requests.Session` object to persist parameters and cookies across requests. Here's how you can do it:\n\n1. **Create a Session Object**: Instantiate a `Session` object from the `requests` library. This allows you to persist cookies and other parameters across multiple requests.\n\n   ```python\n   s = requests.Session()\n   ```\n\n2. **Persist Cookies**: You can set cookies that will be persisted across requests made from the session instance.\n\n   ```python\n   s.get('https://httpbin.org/cookies/set/sessioncookie/123456789')\n   r = s.get('https://httpbin.org/cookies')\n   print(r.text)  # Output will include the session cookie\n   ```\n\n3. **Set Default Data**: You can set default headers or authentication that will be used for all requests made with the session.\n\n   ```python\n   s.auth = ('user', 'pass')\n   s.headers.update({'x-test': 'true'})\n   ```\n\n4. **Override Session Parameters**: Method-level parameters can override session parameters for individual requests.\n\n   ```python\n   s.get('https://httpbin.org/headers', headers={'x-test2': 'true'})\n   ```\n\n5. **Context Management**: You can use the session as a context manager to ensure it is properly closed after use.\n\n   ```python\n   with requests.Session() as s:\n       s.get('https://httpbin.org/cookies/set/sessioncookie/123456789')\n   ```\n\nBy using a `Session` object, you can efficiently manage cookies and other session-level data across multiple requests in your Flask application. [e1f3ec2877dc6c73]",
+        "latency_ms": 3885,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "oos-03",
+      "category": "out_of_scope",
+      "question": "What is the capital of France?",
+      "hybrid": {
+        "verdict": "incorrect",
+        "reason": "Answered a question that is outside the corpus instead of refusing.",
+        "grader": "mechanical",
+        "answer": "The context does not contain information about the capital of France.",
+        "latency_ms": 5803,
+        "citations_valid": false,
+        "route": "BOTH",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "Answered a question that is outside the corpus instead of refusing.",
+        "grader": "mechanical",
+        "answer": "The context does not contain information about the capital of France.",
+        "latency_ms": 993,
+        "citations_valid": false,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "oos-04",
+      "category": "out_of_scope",
+      "question": "How do I deploy a FastAPI app to AWS Lambda?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "Declined to answer, as required.",
+        "grader": "mechanical",
+        "answer": "The context does not provide specific instructions on how to deploy a FastAPI app to AWS Lambda.",
+        "latency_ms": 8129,
+        "citations_valid": false,
+        "route": "BOTH",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "Declined to answer, as required.",
+        "grader": "mechanical",
+        "answer": "The context does not provide specific instructions on how to deploy a FastAPI app to AWS Lambda.",
+        "latency_ms": 1808,
+        "citations_valid": false,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "oos-05",
+      "category": "out_of_scope",
+      "question": "Is requests faster than httpx for async workloads?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "Declined to answer, as required.",
+        "grader": "mechanical",
+        "answer": "This question is outside the scope of the requests/urllib3 corpus.",
+        "latency_ms": 2725,
+        "citations_valid": true,
+        "route": "REFUSE",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "Declined to answer, as required.",
+        "grader": "mechanical",
+        "answer": "Requests is not inherently faster than httpx for async workloads because Requests does not provide non-blocking IO by default. It relies on blocking IO, which means it will block until the entire response is downloaded [e038e4ad79e338b9]. For async capabilities, Requests needs to be combined with other libraries like `requests-threads` or `grequests` [e038e4ad79e338b9]. On the other hand, httpx is designed to support async operations natively, making it more suitable for async workloads.",
+        "latency_ms": 3395,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "oos-06",
+      "category": "out_of_scope",
+      "question": "How do I install Python on Windows?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "Declined to answer, as required.",
+        "grader": "mechanical",
+        "answer": "The context does not provide information on how to install Python on Windows.",
+        "latency_ms": 5598,
+        "citations_valid": false,
+        "route": "BOTH",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "Declined to answer, as required.",
+        "grader": "mechanical",
+        "answer": "The context does not provide information on how to install Python on Windows.",
+        "latency_ms": 908,
+        "citations_valid": false,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "oos-07",
+      "category": "out_of_scope",
+      "question": "Write me a web scraper using requests and BeautifulSoup.",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "Declined to answer, as required.",
+        "grader": "mechanical",
+        "answer": "This question is outside the scope of the requests/urllib3 corpus.",
+        "latency_ms": 2542,
+        "citations_valid": true,
+        "route": "REFUSE",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "Answered a question that is outside the corpus instead of refusing.",
+        "grader": "mechanical",
+        "answer": "To create a web scraper using `requests` and `BeautifulSoup`, you can follow this example:\n\n```python\nimport requests\nfrom bs4 import BeautifulSoup\n\ndef scrape_website(url):\n    # Send a GET request to the specified URL\n    response = requests.get(url)  # [8dea8182a91fc727]\n\n    # Check if the request was successful\n    if response.status_code == 200:\n        # Parse the HTML content using BeautifulSoup\n        soup = BeautifulSoup(response.content, 'html.parser')\n\n        # Example: Extract all the text from paragraph tags\n        paragraphs = soup.find_all('p')\n        for p in paragraphs:\n            print(p.get_text())\n    else:\n        print(f\"Failed to retrieve the page. Status code: {response.status_code}\")\n\n# Example usage\nscrape_website('https://example.com')\n```\n\nThis script sends a GET request to the specified URL and parses the HTML content using BeautifulSoup to extract and print text from all paragraph tags. Adjust the `soup.find_all()` method to target different HTML elements as needed.",
+        "latency_ms": 1926,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "oos-08",
+      "category": "out_of_scope",
+      "question": "Who maintains urllib3 and what is their email address?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "Declined to answer, as required.",
+        "grader": "mechanical",
+        "answer": "This question is outside the scope of the requests/urllib3 corpus.",
+        "latency_ms": 2310,
+        "citations_valid": true,
+        "route": "REFUSE",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "Answered a question that is outside the corpus instead of refusing.",
+        "grader": "mechanical",
+        "answer": "The maintainer of urllib3 is Seth Michael Larson, and their email address is sethmichaellarson@gmail.com [b772cc534a4fae79].",
+        "latency_ms": 999,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "oos-09",
+      "category": "out_of_scope",
+      "question": "What will be added to requests in version 4.0?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "Declined to answer, as required.",
+        "grader": "mechanical",
+        "answer": "This question is outside the scope of the requests/urllib3 corpus.",
+        "latency_ms": 2199,
+        "citations_valid": true,
+        "route": "REFUSE",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "correct",
+        "reason": "Declined to answer, as required.",
+        "grader": "mechanical",
+        "answer": "The context does not provide information about what will be added to requests in version 4.0. [c559f4ba91fee76d] [fe3650b6e1b855d8] [95dd4a0bf22b2f2c] [7d9ad7af63c83fe6] [574ed508d415e4c2]",
+        "latency_ms": 1538,
+        "citations_valid": true,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "oos-10",
+      "category": "out_of_scope",
+      "question": "How does the Go standard library handle HTTP connection pooling?",
+      "hybrid": {
+        "verdict": "correct",
+        "reason": "Declined to answer, as required.",
+        "grader": "mechanical",
+        "answer": "This question is outside the scope of the requests/urllib3 corpus.",
+        "latency_ms": 2283,
+        "citations_valid": true,
+        "route": "REFUSE",
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      },
+      "baseline": {
+        "verdict": "incorrect",
+        "reason": "Answered a question that is outside the corpus instead of refusing.",
+        "grader": "mechanical",
+        "answer": "The Go standard library's handling of HTTP connection pooling is not described in the provided context. The context primarily discusses connection pooling in the context of Python's `urllib3` library, not Go. Therefore, I cannot provide an answer based on the given information.",
+        "latency_ms": 2065,
+        "citations_valid": false,
+        "route": null,
+        "graph_plan": null,
+        "graph_facts_used": 0,
+        "error": null
+      }
+    }
+  ]
+}

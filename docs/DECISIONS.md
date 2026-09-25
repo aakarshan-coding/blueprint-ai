@@ -2192,6 +2192,47 @@ unconditionally authoritative (synthesis prompt), then rank and cap them by rele
 (research note item 5). Both target `3h-01` and the 22 partials directly. The voting in
 D55 can be removed — its 1.7-point effect was on an instability that no longer exists.
 
+---
+
+## D61 — Experiment 1 (dedupe + "relationships, not facts"): a confound, and a regression
+
+Five runs on `2a3cbbc` against D60's five. The graph-side target (`3h-01`, 22 three-hop
+partials) barely moved: `3h-01` 0/5 → 1/5 correct with 4 partial; partials 22 → 20.
+
+**What moved instead was the baseline** — which never sees a graph fact:
+
+| | D60 baseline | exp1 baseline |
+|---|---|---|
+| two_hop | 46.7 [46.7 .. 46.7] | 60.0 [53.3 .. 66.7] |
+| out_of_scope | 62.0 [60.0 .. 70.0] | **42.0 [40.0 .. 50.0]** |
+
+`synthesize.py` is shared by both systems. Rewriting its prompt changed how the model
+answers *everything*: it hedges less and asserts more. On in-scope questions the graders
+reward that (`th-01` baseline 0 → 5, `3h-08` both systems 0 → 5). On out-of-scope
+questions it is a real regression: `oos-01`, `oos-07`, `oos-10` went from refused 5/5 to
+answered — `oos-01`'s new answer is a Django tutorial written from the model's own
+knowledge. The rewrite dropped the original first line ("using only the facts and
+passages in the context") and buried "say so plainly instead of guessing" under the new
+paragraph. Hybrid's out-of-scope score held (86 → 88) only because the router's REFUSE
+route answers most of those questions before synthesis runs.
+
+**The method error, stated so it isn't repeated:** a change to the shared synthesis prompt
+is not a graph-side change, and the hybrid-minus-baseline delta cannot measure it. For
+such a change each system has to be compared against *its own* previous runs, and even
+then a grader that rewards assertion confounds "better" with "more assertive". Exp1's
+pooled +8.3 [5.0 .. 15.0] against D60's +7.7 [5.0 .. 8.4] is not evidence of anything: the
+baseline's out-of-scope collapse alone inflates the delta by ~3 points pooled.
+
+**Kept:** the statement dedupe (hybrid-only, cannot hurt) and the relationships paragraph
+(the mechanism it targets is real and documented in D60). **Restored:** the original
+refusal wording, verbatim, at the top of the prompt — the part the rewrite weakened.
+Exp1b re-measures that. Both systems' out-of-scope must return to D60's bars before
+anything else in the table is read.
+
+---
+
+## Open questions for the Phase 2 sweep
+
 All of these are recall@k questions. None should be settled by argument.
 
 | Question | Options |
