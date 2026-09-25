@@ -133,9 +133,18 @@ def assemble_context(
     retrieved_ids: set[str] = set()
 
     fact_lines = []
+    # Deduplicated by statement as well as by chunk: the LLM pass records the
+    # same relationship from several chunks, so T1 on `verify` handed the
+    # model "verify controls certificate verification" four times among ten
+    # lines (D60, 3h-01). The statement is the fact; it is stated once, with
+    # the first chunk that supports it.
+    stated: set[str] = set()
     for fact in graph_facts:
+        if fact.statement in stated:
+            continue
         if fact.chunk_id is not None and fact.chunk_id in retrieved_ids:
             continue
+        stated.add(fact.statement)
         if fact.chunk_id is not None:
             retrieved_ids.add(fact.chunk_id)
         fact_lines.append(
@@ -157,7 +166,10 @@ def assemble_context(
     # to interpret.
     sections = []
     if fact_lines:
-        sections.append("=== GRAPH FACTS ===\n" + "\n".join(fact_lines))
+        # "RELATIONSHIPS", not "FACTS": the heading is the first authority cue
+        # the model sees, and D60 showed a true structural link presented as
+        # fact being taken as the answer to a question it doesn't answer.
+        sections.append("=== GRAPH RELATIONSHIPS ===\n" + "\n".join(fact_lines))
     if passage_lines:
         sections.append("=== RETRIEVED PASSAGES ===\n" + "\n".join(passage_lines))
 

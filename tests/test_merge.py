@@ -1,5 +1,5 @@
 from graphrag.ontology import RELATIONSHIP_TYPES
-from graphrag.retrieval.merge import REL_PHRASES, verbalize
+from graphrag.retrieval.merge import REL_PHRASES, GraphFact, assemble_context, verbalize
 
 
 def test_every_ontology_relationship_has_a_phrase():
@@ -77,7 +77,7 @@ def test_assemble_context_labels_graph_and_vector_sections_separately():
 
     context, _retrieved_ids = assemble_context(graph_facts=facts, vector_passages=passages)
 
-    assert "GRAPH FACTS" in context
+    assert "GRAPH RELATIONSHIPS" in context
     assert "RETRIEVED PASSAGES" in context
     assert "Session delegates to PoolManager." in context
     assert "Some retrieved passage text." in context
@@ -109,13 +109,13 @@ def test_assemble_context_includes_every_chunk_id_for_validation():
 
 def test_assemble_context_omits_a_section_that_has_nothing_in_it():
     # The vector-only baseline has no graph facts at all; printing an empty
-    # "GRAPH FACTS" header would show it a heading with nothing under it.
+    # "GRAPH RELATIONSHIPS" header would show it a heading with nothing under it.
     # The hybrid system hits the same case when one path returns nothing.
     context, _ = assemble_context(graph_facts=[], vector_passages=[
         {"chunk_id": "c1", "text": "some passage"},
     ])
 
-    assert "GRAPH FACTS" not in context
+    assert "GRAPH RELATIONSHIPS" not in context
     assert "RETRIEVED PASSAGES" in context
 
 
@@ -124,7 +124,7 @@ def test_assemble_context_omits_the_passages_section_when_empty():
         graph_facts=[GraphFact("A wraps B.", "c1")], vector_passages=[]
     )
 
-    assert "GRAPH FACTS" in context
+    assert "GRAPH RELATIONSHIPS" in context
     assert "RETRIEVED PASSAGES" not in context
 
 
@@ -216,3 +216,23 @@ def test_delegation_chain_without_rels_column_still_uses_the_template_verb():
     facts = verbalize("T5_DELEGATION_CHAIN", rows)
 
     assert facts[0].statement == "A delegates to B."
+
+
+def test_assemble_context_states_each_relationship_once():
+    """The LLM pass records the same relationship from several chunks, so
+    T1 on `verify` handed the model "verify controls certificate
+    verification" four times among ten lines (D60, 3h-01). Deduping by chunk
+    id keeps all four; the statement is the fact, so it is stated once, with
+    the first chunk that supports it."""
+    facts = [
+        GraphFact("verify controls concept:certificateverification.", "c1"),
+        GraphFact("verify controls concept:certificateverification.", "c2"),
+        GraphFact("verify controls concept:certificateverification.", "c3"),
+        GraphFact("verify is defined in Session.request.", "c4"),
+    ]
+
+    context, retrieved_ids = assemble_context(graph_facts=facts, vector_passages=[])
+
+    assert context.count("verify controls concept:certificateverification.") == 1
+    assert "[c1]" in context and "[c2]" not in context
+    assert retrieved_ids == {"c1", "c4"}

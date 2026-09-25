@@ -64,7 +64,7 @@ def test_baseline_never_includes_graph_facts():
     )
 
     assert result["graph_facts_used"] == 0
-    assert "GRAPH FACTS" not in client.responses.last_call["input"]
+    assert "GRAPH RELATIONSHIPS" not in client.responses.last_call["input"]
 
 
 def test_baseline_still_validates_citations_the_same_way():

@@ -47,3 +47,21 @@ def test_synthesize_is_deterministic_so_two_systems_with_identical_context_agree
     synthesize_answer("q", context="c", client=client)
 
     assert client.responses.last_call["temperature"] == 0
+
+
+def test_synthesize_does_not_present_graph_relationships_as_authoritative():
+    """The prompt called the graph section "facts proven by the knowledge
+    graph". On 3h-01 the model read "verify is defined in Session.request"
+    as "Session.request is the function that applies verify" -- a true
+    structural link taken as an answer to a question it doesn't answer --
+    and lost to passages that had the right function, five runs out of five
+    (D60). The graph says what is connected; the passages say how it works.
+    """
+    client = _FakeClient("answer")
+    synthesize_answer("q", context="c", client=client)
+
+    instructions = client.responses.last_call["instructions"]
+    assert "GRAPH RELATIONSHIPS" in instructions
+    assert "proven" not in instructions
+    assert "what is connected" in instructions
+    assert "prefer the passage" in instructions

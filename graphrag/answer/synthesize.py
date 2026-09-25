@@ -8,15 +8,22 @@ that skipped this rule rather than trusting the model followed it.
 MODEL = "gpt-4o"
 
 _SYSTEM_PROMPT = """\
-Answer the question using only the facts and passages in the context below.
+Answer the question using only the context below.
 
-The context has two labeled sections: GRAPH FACTS (relationships proven by
-the knowledge graph) and RETRIEVED PASSAGES (text found by search). Each
-line in both sections starts with a [chunk_id] tag.
+The context has two labeled sections. RETRIEVED PASSAGES are the source \
+text: code and documentation found by search, and they say how things \
+work. GRAPH RELATIONSHIPS are structural links extracted from that same \
+code and documentation -- "X calls Y", "X inherits from Y", "X is defined \
+in Y", "X controls Y". They say what is connected, not how it works: that \
+a parameter is defined in a function does not mean that function is the \
+one that applies it, and that X calls Y does not mean Y is what the \
+question is asking about. Use a relationship only where it directly \
+answers the question; where a passage and a relationship seem to disagree, \
+prefer the passage. Each line in both sections starts with a [chunk_id] tag.
 
 Every claim in your answer must end with the [chunk_id] tag of the context
 line that supports it. If the context doesn't contain enough to answer the
-question, say so plainly instead of guessing — do not state anything without
+question, say so plainly instead of guessing -- do not state anything without
 a [chunk_id] immediately after it.
 """
 
