@@ -2260,6 +2260,67 @@ Kept: the dedupe (cannot hurt) and the paragraph (harmless, and the legend build
 
 ---
 
+## D63 — Say what each edge means, next to the line that uses it
+
+A generic disclaimer changed nothing (D62). This is specific and graph-side: `ontology.py`
+carries a one-line meaning per relationship type; T1/T8 return node labels; the verbalizer
+phrases a Parameter's `DEFINED_IN` edge as "is a parameter of" and a method's as "is a
+method of"; `assemble_context` puts a legend for the types actually present directly above
+the graph lines. Built with the facts, so the baseline never sees it. Shared prompt
+untouched.
+
+On the live graph, `3h-01`'s context went from ten lines to seven, reads "is a parameter
+of", and carries "DEFINED_IN: … location only. It does not say what uses, applies, or
+implements the thing." One sample answer still named `Session.request` as the function
+that applies `verify`. Five runs were started (exp2) and **stopped after two** at the
+user's request so the batch below could go in; the two files are kept as partial data and
+exp2 is superseded by the regression check on the full batch.
+
+The hypothesis that sample raises: the pull may not be about *meaning*. The only function
+name in the graph section is `Session.request`, the question asks for a function, and a
+name in a section labelled "relationships" may simply outweigh a name inside a passage. If
+so, the fix is in what the graph returns for a Parameter, not in wording.
+
+---
+
+## D64 — The batch of small fixes (2, 4, 7, 9, 10, 11, 13, 14), and one over-reach
+
+Eight of the fifteen problems named after D60, each a separate commit:
+
+| fix | change | where |
+|---|---|---|
+| 7 | partial rate reported beside accuracy, never folded in | `summarize_runs.py` |
+| 13 | `VOTES = 1` — voting off by default | `consistency.py` |
+| 9 | Python builtin exceptions resolve to `builtins.<name>`, after every corpus rung | `resolve.py` |
+| 11 | `HAS_PARAMETER` is written (Function → Parameter), not just promised | `run_ingestion.py` |
+| 10 | a RAISES/WRAPS edge whose endpoint the AST pass typed as Module/Function/Parameter is skipped at LLM-write time, with its own log reason | `run_ingestion.py` |
+| 14 | the vector store is rebuilt by `run_ingestion` — a fresh clone reproduces both stores | `run_ingestion.py` |
+| 4 | T8 appends a derived, uncited count line; the model is handed a number, not fifteen lines to count | `merge.py` |
+| 2 | graph facts ranked against the question by the search embedding model, top 8 kept; derived lines exempt | `merge.py`, `pipeline.py`, probe |
+
+**Graph after re-applying the AST pass:** `HAS_PARAMETER` 0 → 1,135. WRAPS_EXCEPTION
+`ast` 35 → 54 (wraps of `OSError`, `ValueError` etc. now anchor). 119 edges to `builtins.*`.
+`ast_edges_unresolved` 214 → 82. 1,396 chunks embedded and upserted. 255 tests.
+
+**The over-reach, recorded because it is the kind of mistake worth remembering.** To clear
+the LLM pass's junk exception edges already in the graph ("ReadTimeout wraps
+urllib3.util.timeout"), a one-off Cypher deleted every RAISES/WRAPS edge with a
+Module/Function/Parameter-*labelled* endpoint: 13 edges. Some were true —
+`HTTP2Connection.send RAISES urllib3.exceptions.ConnectionError`. Their target nodes carry a
+`Function` label that was *inferred* from a constructor call, the weakness
+`infer_external_type` documents. The in-code filter (fix 10) is right because it tests
+`node_types`, which only holds what the parser proved; the Cypher tested graph labels,
+which include guesses. Re-applying the AST pass restored every AST-derived edge among the
+13; the handful of LLM-derived ones stay deleted, and a few of those may have been valid.
+Rule: a cleanup query must use the same evidence the write-time filter uses.
+
+**Not yet measured.** The batch changes retrieval (2, 4), the graph (9, 10, 11) and the
+call count (13) at once. One five-run regression check against D60's bars is the next step;
+attribution per fix is not possible from it and is not the point — the point is that the
+pooled range stays at or above [5.0 .. 8.4] and the baseline's stays where it was.
+
+---
+
 ## Open questions for the Phase 2 sweep
 
 All of these are recall@k questions. None should be settled by argument.
