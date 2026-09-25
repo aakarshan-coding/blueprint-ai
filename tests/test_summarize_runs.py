@@ -72,6 +72,33 @@ def test_stability_splits_questions_into_always_right_always_wrong_and_flipping(
     assert stab["baseline"]["flipping"] == ["b1"]
 
 
+def test_aggregate_reports_partial_rate_as_its_own_number():
+    """Partial scores zero in accuracy and stays that way. But hybrid had 22
+    three-hop partials to the baseline's 8 (D60) and that difference was
+    invisible in the table. It is reported beside accuracy, never folded in."""
+    run = _run(
+        hybrid={"a1": "partial", "a2": "correct", "b1": "partial", "b2": "partial"},
+        baseline={"a1": "incorrect", "a2": "incorrect", "b1": "correct", "b2": "incorrect"},
+        category=CATEGORY,
+    )
+
+    agg = aggregate([run])
+
+    assert agg["single_hop"]["hybrid"]["mean"] == 50.0          # partial still not correct
+    assert agg["single_hop"]["hybrid_partial"]["mean"] == 50.0
+    assert agg["two_hop"]["hybrid_partial"]["mean"] == 100.0
+    assert agg["two_hop"]["baseline_partial"]["mean"] == 0.0
+    assert agg["pooled"]["hybrid_partial"]["mean"] == 75.0
+
+
+def test_format_table_shows_partial_beside_accuracy():
+    agg = aggregate([RUN_1, RUN_2])
+
+    text = format_table(agg, runs=2)
+
+    assert "partial" in text
+
+
 def test_format_table_shows_mean_with_its_spread():
     agg = aggregate([RUN_1, RUN_2])
 

@@ -27,6 +27,16 @@ def _accuracy(rows: list[dict], system: str) -> float:
     return round(correct / len(rows) * 100, 1)
 
 
+def _partial_rate(rows: list[dict], system: str) -> float:
+    """Share of questions graded 'partial'. Reported beside accuracy, never
+    folded into it: partial is zero in the headline and stays zero. But hybrid
+    had 22 three-hop partials to the baseline's 8 (D60) — it gets part of the
+    chain far more often — and a table that hides that is hiding the effect
+    the graph actually has."""
+    partial = sum(1 for r in rows if r[system]["verdict"] == "partial")
+    return round(partial / len(rows) * 100, 1)
+
+
 def _stats(values: list[float]) -> dict:
     return {
         "mean": round(sum(values) / len(values), 1),
@@ -61,6 +71,8 @@ def aggregate(runs: list[dict]) -> dict:
             "hybrid": _stats(hybrid),
             "baseline": _stats(baseline),
             "delta": _stats(delta),
+            "hybrid_partial": _stats([_partial_rate(rows, "hybrid") for rows in run_rows]),
+            "baseline_partial": _stats([_partial_rate(rows, "baseline") for rows in run_rows]),
         }
     return out
 
@@ -91,10 +103,12 @@ def stability(runs: list[dict]) -> dict:
 def format_table(agg: dict, *, runs: int) -> str:
     lines = [
         f"{runs} runs, identical code. Accuracy = % correct ('partial' does not count).",
-        "Each cell: mean  [min .. max] across runs.",
+        "Each cell: mean  [min .. max] across runs. The last two columns are the mean % of",
+        "questions graded partial -- reported beside accuracy, never folded into it.",
         "",
-        f"{'category':<14}{'n':>3}   {'hybrid':<22}{'baseline':<22}{'delta':<22}",
-        "-" * 83,
+        f"{'category':<14}{'n':>3}   {'hybrid':<22}{'baseline':<22}{'delta':<22}"
+        f"{'h.partial':>10}{'b.partial':>10}",
+        "-" * 103,
     ]
     for category, entry in agg.items():
         cells = []
@@ -103,7 +117,10 @@ def format_table(agg: dict, *, runs: int) -> str:
             sign = "+" if key == "delta" and s["mean"] >= 0 else ""
             cells.append(f"{sign}{s['mean']:.1f}  [{s['min']:.1f} .. {s['max']:.1f}]")
         marker = " <-- pooled" if category == "pooled" else ""
-        lines.append(f"{category:<14}{entry['n']:>3}   {cells[0]:<22}{cells[1]:<22}{cells[2]:<22}{marker}")
+        lines.append(
+            f"{category:<14}{entry['n']:>3}   {cells[0]:<22}{cells[1]:<22}{cells[2]:<22}"
+            f"{entry['hybrid_partial']['mean']:>10.1f}{entry['baseline_partial']['mean']:>10.1f}{marker}"
+        )
     return "\n".join(lines)
 
 
