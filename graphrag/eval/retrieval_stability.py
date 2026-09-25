@@ -39,57 +39,24 @@ def _hash(text: str) -> str:
 
 
 def probe_hybrid(question: str, *, conn, neo4j_session, client, resolver, model) -> dict:
-    """Everything answer_hybrid() does up to (not including) synthesis."""
-    from graphrag.retrieval.cypher_templates import run_template
-    from graphrag.retrieval.graph_query import (
-        build_template_values, describe_entities, extract_mentions,
-        plan_graph_query, resolve_mentions,
+    """Everything answer_hybrid() does up to (not including) synthesis --
+    literally the same call (fix 12). This probe used to re-implement the
+    sequence and drifted from the pipeline twice; now it cannot."""
+    from graphrag.retrieval.retrieve import retrieve
+
+    r = retrieve(
+        question, conn=conn, neo4j_session=neo4j_session, openai_client=client,
+        resolver=resolver, embedding_model=model,
     )
-    from graphrag.retrieval.merge import assemble_context, rank_facts, verbalize
-    from graphrag.retrieval.router import classify_question, effective_route
-    from graphrag.retrieval.vector_search import search_chunks
-
-    decision = classify_question(question, client=client)
-    route = effective_route(decision)
-    if route == "REFUSE":
-        return {"route": route, "plan": "-", "context_hash": "refused"}
-
-    graph_facts, plan_repr = [], "-"
-    if route in ("GRAPH", "BOTH"):
-        try:
-            # Mirrors answer_hybrid's two-stage planner (D59). Same caveat as
-            # the passages line below: this sequence lives in two places.
-            mentions = extract_mentions(question, client=client)
-            candidates = resolve_mentions(
-                mentions, resolver=resolver,
-                describe=lambda ids: describe_entities(neo4j_session, ids),
-            )
-            plan = plan_graph_query(question, candidates=candidates, client=client)
-            if plan is None:
-                plan_repr = "NO_CANDIDATES"
-            else:
-                values, known_ids = build_template_values(plan)
-                plan_repr = f"{plan.template_id}({json.dumps(values, sort_keys=True)})"
-                rows = run_template(
-                    neo4j_session, plan.template_id, values, known_entity_ids=known_ids
-                )
-                graph_facts = verbalize(
-                    plan.template_id, rows,
-                    entity_id=values.get("entity_id"),
-                    relationship=values.get("relationship"),
-                )
-        except Exception as e:
-            plan_repr = f"ERROR:{type(e).__name__}"
-
-    # Mirrors answer_hybrid: facts ranked and capped, then passages on every
-    # non-refused route. This block has already drifted from the pipeline
-    # once (it carried the old fallback rule after the pipeline dropped it),
-    # which is the cost of the sequence living in two places rather than one.
-    graph_facts = rank_facts(question, graph_facts, model=model)
-    passages = search_chunks(question, conn=conn, model=model)
-
-    context, _ids = assemble_context(graph_facts=graph_facts, vector_passages=passages)
-    return {"route": route, "plan": plan_repr, "context_hash": _hash(context)}
+    if r.refused:
+        return {"route": r.route, "plan": "-", "context_hash": "refused"}
+    if r.graph_error:
+        plan_repr = f"ERROR:{r.graph_error.split(':')[0]}"
+    elif r.plan is None:
+        plan_repr = "NO_CANDIDATES" if r.route in ("GRAPH", "BOTH") else "-"
+    else:
+        plan_repr = r.plan
+    return {"route": r.route, "plan": plan_repr, "context_hash": _hash(r.context)}
 
 
 def probe_baseline(question: str, *, conn, model) -> dict:
