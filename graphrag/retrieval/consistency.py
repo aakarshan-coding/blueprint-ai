@@ -23,11 +23,13 @@ from typing import Callable, TypeVar
 
 T = TypeVar("T")
 
-# Three is the smallest number that can produce a majority at all. Five would
-# converge harder, but each extra trial buys less than the last while costing
-# the same, and the remaining variance is dominated by genuinely ambiguous
-# questions that more votes don't settle.
-VOTES = 3
+# One: voting is off by default. Three votes bought 1.7 points for 3x the
+# calls (D55) against an instability that turned out to be structural, not
+# random -- resolve-first planning (D59) removed it, and graph fact counts
+# were then identical across five runs on 58 of 60 questions (D60). The
+# mechanism stays for callers that want it; the default no longer pays for
+# a problem that is gone.
+VOTES = 1
 
 
 def majority_vote(

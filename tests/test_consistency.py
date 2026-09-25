@@ -65,3 +65,13 @@ def test_rejects_a_non_positive_trial_count():
     call, _ = _calls("A")
     with pytest.raises(ValueError):
         majority_vote(call, trials=0)
+
+
+def test_voting_is_off_by_default():
+    """Majority voting bought 1.7 points for 3x the calls (D55) against an
+    instability that resolve-first planning later removed entirely: graph
+    fact counts were identical across five runs on 58 of 60 questions (D60).
+    The mechanism stays available; the default is one call."""
+    from graphrag.retrieval.consistency import VOTES
+
+    assert VOTES == 1
