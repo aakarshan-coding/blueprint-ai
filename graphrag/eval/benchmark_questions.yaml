@@ -422,3 +422,225 @@
   category: out_of_scope
   question: "How does the Go standard library handle HTTP connection pooling?"
   expects: "REFUSE — a different language entirely"
+
+# ------------------------------------------- additions, 2026-09-25 (D65)
+# Three-hop and aggregation were the two categories where one question moved
+# the score by 8-13 points (D60). Fifteen more of each, written from the source
+# files named in `source` and checked against them line by line before being
+# added -- not generated from the graph. The aggregation answers are things a
+# person can verify by reading the class list in requests/exceptions.py.
+
+# ---------------------------------------------------------- three hop (more)
+
+- id: 3h-13
+  category: three_hop
+  question: "When Response.json() cannot decode the body, what exception does requests raise, what does it inherit from directly, and what is that parent's own base class?"
+  expects: "JSONDecodeError -> InvalidJSONError -> RequestException"
+  must_contain: ["JSONDecodeError", "InvalidJSONError", "RequestException"]
+  source: "models.py Response.json (raise RequestsJSONDecodeError); exceptions.py class JSONDecodeError(InvalidJSONError, ...), class InvalidJSONError(RequestException)"
+
+- id: 3h-14
+  category: three_hop
+  question: "What does Response.raise_for_status() raise on a 4xx or 5xx status, what does that exception inherit from, and what does that base class itself derive from?"
+  expects: "HTTPError -> RequestException -> IOError"
+  must_contain: ["HTTPError", "RequestException"]
+  must_contain_any: ["IOError", "OSError"]
+  source: "models.py raise_for_status; exceptions.py class HTTPError(RequestException), class RequestException(IOError)"
+
+- id: 3h-15
+  category: three_hop
+  question: "When urllib3's Retry is exhausted, what does it raise, what does HTTPAdapter.send convert that into when the reason is a ResponseError, and what does the resulting exception inherit from?"
+  expects: "MaxRetryError -> RetryError -> RequestException"
+  must_contain: ["MaxRetryError", "RetryError", "RequestException"]
+  source: "urllib3/util/retry.py increment (raise MaxRetryError); adapters.py send (isinstance(e.reason, ResponseError) -> raise RetryError); exceptions.py class RetryError(RequestException)"
+
+- id: 3h-16
+  category: three_hop
+  question: "If a streamed response body is cut short, what does urllib3 raise, what does requests convert it to inside iter_content, and what is that exception's base class?"
+  expects: "ProtocolError -> ChunkedEncodingError -> RequestException"
+  must_contain: ["ChunkedEncodingError", "RequestException"]
+  source: "models.py iter_content (except ProtocolError -> raise ChunkedEncodingError); exceptions.py class ChunkedEncodingError(RequestException)"
+
+- id: 3h-17
+  category: three_hop
+  question: "When decoding a streamed body fails, which urllib3 error is caught in iter_content, which requests exception replaces it, and which two classes does that exception inherit from?"
+  expects: "DecodeError -> ContentDecodingError, which inherits RequestException and urllib3's HTTPError (BaseHTTPError)"
+  must_contain: ["ContentDecodingError", "RequestException"]
+  source: "models.py iter_content (except DecodeError -> raise ContentDecodingError); exceptions.py class ContentDecodingError(RequestException, BaseHTTPError)"
+
+- id: 3h-18
+  category: three_hop
+  question: "How does a Session decide which adapter handles a URL, which method makes that choice, and what does the chosen adapter's send() ultimately call in urllib3?"
+  expects: "Adapters are mounted by URL prefix; Session.get_adapter picks the longest matching prefix; HTTPAdapter.send calls conn.urlopen on a urllib3 HTTPConnectionPool"
+  must_contain: ["get_adapter", "urlopen"]
+  source: "sessions.py mount, get_adapter (url.lower().startswith(prefix.lower())), send (adapter = self.get_adapter; adapter.send); adapters.py send (conn.urlopen)"
+
+- id: 3h-19
+  category: three_hop
+  question: "What value does verify=False cause to be set on the urllib3 connection, which HTTPAdapter method sets it, and where does the verify value originally enter the call chain?"
+  expects: "cert_reqs = CERT_NONE, set by HTTPAdapter.cert_verify; verify enters as a parameter of Session.request / requests.get"
+  must_contain: ["CERT_NONE", "cert_verify"]
+  source: "adapters.py cert_verify (conn.cert_reqs = 'CERT_NONE' / 'CERT_REQUIRED'); sessions.py request(verify=...)"
+
+- id: 3h-20
+  category: three_hop
+  question: "Which exception does iter_content raise if the content was already consumed, what does it inherit from besides RequestException, and in which method is the check made?"
+  expects: "StreamConsumedError, which also inherits TypeError; the check is in Response.iter_content"
+  must_contain: ["StreamConsumedError", "TypeError"]
+  source: "models.py iter_content (raise StreamConsumedError); exceptions.py class StreamConsumedError(RequestException, TypeError)"
+
+- id: 3h-21
+  category: three_hop
+  question: "When serializing a json= body fails, what exception does requests raise, which PreparedRequest method raises it, and what is its base class?"
+  expects: "InvalidJSONError, raised in PreparedRequest.prepare_body, inherits RequestException"
+  must_contain: ["InvalidJSONError", "RequestException"]
+  source: "models.py prepare_body (raise InvalidJSONError); exceptions.py class InvalidJSONError(RequestException)"
+
+- id: 3h-22
+  category: three_hop
+  question: "Which exception is raised for a URL whose scheme has no adapter, which Session method raises it, and what does that exception inherit from?"
+  expects: "InvalidSchema, raised by Session.get_adapter, inherits RequestException and ValueError"
+  must_contain: ["InvalidSchema", "get_adapter"]
+  source: "sessions.py get_adapter (raise InvalidSchema); exceptions.py class InvalidSchema(RequestException, ValueError)"
+
+- id: 3h-23
+  category: three_hop
+  question: "Starting in HTTPAdapter.__init__, which urllib3 class configures retries, which classmethod turns the max_retries integer into it, and what does that class raise when attempts run out?"
+  expects: "Retry; Retry.from_int; MaxRetryError"
+  must_contain: ["Retry", "from_int", "MaxRetryError"]
+  source: "adapters.py __init__ (Retry.from_int(max_retries)); urllib3/util/retry.py from_int, increment (raise MaxRetryError)"
+
+- id: 3h-24
+  category: three_hop
+  question: "When urllib3 reports a read timeout during HTTPAdapter.send, which requests exception surfaces, what is its parent class, and what is that parent's parent?"
+  expects: "ReadTimeout -> Timeout -> RequestException"
+  must_contain: ["ReadTimeout", "Timeout", "RequestException"]
+  source: "adapters.py send (isinstance(e, ReadTimeoutError) -> raise ReadTimeout); exceptions.py class ReadTimeout(Timeout), class Timeout(RequestException)"
+
+- id: 3h-25
+  category: three_hop
+  question: "If the connection pool has been closed underneath a request, what does urllib3 raise, what does HTTPAdapter.send turn it into, and what is that exception's base class?"
+  expects: "ClosedPoolError -> ConnectionError -> RequestException"
+  must_contain: ["ClosedPoolError", "ConnectionError", "RequestException"]
+  source: "adapters.py send (except ClosedPoolError -> raise ConnectionError); exceptions.py class ConnectionError(RequestException)"
+
+- id: 3h-26
+  category: three_hop
+  question: "If a request body cannot be rewound when following a redirect, what exception is raised, which module's function raises it, and what does it inherit from?"
+  expects: "UnrewindableBodyError, raised in requests.utils.rewind_body, inherits RequestException"
+  must_contain: ["UnrewindableBodyError", "RequestException"]
+  source: "utils.py rewind_body (raise UnrewindableBodyError); exceptions.py class UnrewindableBodyError(RequestException)"
+
+- id: 3h-27
+  category: three_hop
+  question: "Which requests exception is raised when urllib3 rejects a header value during send, which urllib3 exception triggers it, and which two classes does it inherit from?"
+  expects: "requests InvalidHeader, triggered by urllib3's InvalidHeader (_InvalidHeader), inherits RequestException and ValueError"
+  must_contain: ["InvalidHeader", "RequestException", "ValueError"]
+  source: "adapters.py send (isinstance(e, _InvalidHeader) -> raise InvalidHeader); exceptions.py class InvalidHeader(RequestException, ValueError)"
+
+# ---------------------------------------------------------- aggregation (more)
+
+- id: ag-09
+  category: aggregation
+  question: "How many exception classes inherit directly from requests' ConnectionError?"
+  expects: "3 — ProxyError, SSLError, ConnectTimeout"
+  must_contain_any: ["3", "three"]
+  source: "exceptions.py: class ProxyError(ConnectionError), class SSLError(ConnectionError), class ConnectTimeout(ConnectionError, Timeout)"
+
+- id: ag-10
+  category: aggregation
+  question: "Which requests exceptions are subclasses of Timeout?"
+  expects: "ConnectTimeout and ReadTimeout"
+  must_contain: ["ConnectTimeout", "ReadTimeout"]
+  source: "exceptions.py: class ConnectTimeout(ConnectionError, Timeout), class ReadTimeout(Timeout)"
+
+- id: ag-11
+  category: aggregation
+  question: "How many HTTP-method helper functions does requests.api define, not counting request() itself?"
+  expects: "7 — get, options, head, post, put, patch, delete"
+  must_contain_any: ["7", "seven"]
+  source: "api.py: def get, options, head, post, put, patch, delete"
+
+- id: ag-12
+  category: aggregation
+  question: "Which functions in requests.api name a data parameter explicitly in their signature?"
+  expects: "post, put, patch"
+  must_contain: ["post", "put", "patch"]
+  source: "api.py: def post(url, data=None, json=None, ...), def put(url, data=None, ...), def patch(url, data=None, ...)"
+
+- id: ag-13
+  category: aggregation
+  question: "How many warning classes does requests.exceptions define?"
+  expects: "3 — RequestsWarning, FileModeWarning, RequestsDependencyWarning"
+  must_contain_any: ["3", "three"]
+  source: "exceptions.py: class RequestsWarning(Warning), class FileModeWarning(RequestsWarning, DeprecationWarning), class RequestsDependencyWarning(RequestsWarning)"
+
+- id: ag-14
+  category: aggregation
+  question: "Which requests exception inherits from both ConnectionError and Timeout?"
+  expects: "ConnectTimeout"
+  must_contain: ["ConnectTimeout"]
+  source: "exceptions.py: class ConnectTimeout(ConnectionError, Timeout)"
+
+- id: ag-15
+  category: aggregation
+  question: "Which requests exception class has a urllib3 exception among its base classes?"
+  expects: "ContentDecodingError (inherits urllib3's HTTPError as BaseHTTPError)"
+  must_contain: ["ContentDecodingError"]
+  source: "exceptions.py: from urllib3.exceptions import HTTPError as BaseHTTPError; class ContentDecodingError(RequestException, BaseHTTPError)"
+
+- id: ag-16
+  category: aggregation
+  question: "Which methods must a subclass of BaseAdapter implement?"
+  expects: "send and close"
+  must_contain: ["send", "close"]
+  source: "adapters.py class BaseAdapter: def send (raise NotImplementedError), def close (raise NotImplementedError)"
+
+- id: ag-17
+  category: aggregation
+  question: "How many distinct requests exceptions can HTTPAdapter.send raise?"
+  expects: "8 — ConnectTimeout, ConnectionError, InvalidHeader, InvalidURL, ProxyError, ReadTimeout, RetryError, SSLError"
+  must_contain_any: ["8", "eight"]
+  source: "adapters.py send: every `raise` in its except handlers"
+
+- id: ag-18
+  category: aggregation
+  question: "Which requests exceptions are raised inside PreparedRequest.prepare_url?"
+  expects: "InvalidURL and MissingSchema"
+  must_contain: ["InvalidURL", "MissingSchema"]
+  source: "models.py prepare_url: raise InvalidURL (x4), raise MissingSchema"
+
+- id: ag-19
+  category: aggregation
+  question: "How many classes in requests.exceptions have more than one base class?"
+  expects: "9 — JSONDecodeError, ConnectTimeout, MissingSchema, InvalidSchema, InvalidURL, InvalidHeader, ContentDecodingError, StreamConsumedError, FileModeWarning"
+  must_contain_any: ["9", "nine"]
+  source: "exceptions.py class list"
+
+- id: ag-20
+  category: aggregation
+  question: "Which requests exceptions does Response.iter_content raise in place of urllib3 exceptions?"
+  expects: "ChunkedEncodingError (for ProtocolError), ContentDecodingError (for DecodeError), ConnectionError (for ReadTimeoutError), SSLError (for urllib3 SSLError)"
+  must_contain: ["ChunkedEncodingError", "ContentDecodingError", "ConnectionError"]
+  source: "models.py iter_content: the four except clauses in generate()"
+
+- id: ag-21
+  category: aggregation
+  question: "Which urllib3 exception types does HTTPAdapter.send check for as the reason of a MaxRetryError, and which requests exception does each become?"
+  expects: "ConnectTimeoutError -> ConnectTimeout, ResponseError -> RetryError, ProxyError -> ProxyError, SSLError -> SSLError; anything else -> ConnectionError"
+  must_contain: ["ConnectTimeout", "RetryError", "ProxyError"]
+  source: "adapters.py send: except MaxRetryError as e: isinstance(e.reason, ...) branches"
+
+- id: ag-22
+  category: aggregation
+  question: "Which classes in requests.exceptions are warnings rather than exceptions?"
+  expects: "RequestsWarning, FileModeWarning, RequestsDependencyWarning"
+  must_contain: ["RequestsWarning", "FileModeWarning", "RequestsDependencyWarning"]
+  source: "exceptions.py: the three classes deriving from Warning"
+
+- id: ag-23
+  category: aggregation
+  question: "Which requests exception inherits from InvalidURL?"
+  expects: "InvalidProxyURL"
+  must_contain: ["InvalidProxyURL"]
+  source: "exceptions.py: class InvalidProxyURL(InvalidURL)"

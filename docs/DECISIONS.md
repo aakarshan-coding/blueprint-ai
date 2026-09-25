@@ -2321,6 +2321,40 @@ pooled range stays at or above [5.0 .. 8.4] and the baseline's stays where it wa
 
 ---
 
+## D65 — One retrieve(), passages seed the graph, and thirty more questions (fixes 12, 3, 6)
+
+**Fix 12.** The retrieval sequence — route, plan, run, verbalize, rank, search, assemble —
+now lives once, in `retrieval/retrieve.py`, returning a `RetrievalResult`. `answer_hybrid`
+is that plus synthesis and citation checking; `probe_hybrid` is that plus a hash. It had
+been written out three times by hand and drifted twice; the measurement tool was, for a
+while, measuring a different pipeline than the one that answers. No behaviour change;
+264 tests. Shared test fakes in `tests/fakes.py` replace the copies that had grown in ten
+test files (architecture review, #5).
+
+**Fix 3.** Inside `retrieve()`: passages are fetched first, and when the question's own
+mentions resolve to nothing, the top passages seed the graph. Every code chunk *is* a
+node — its `section` is the symbol it defines — so the resolver turns "HTTPAdapter.send"
+into a candidate and the planner proceeds as it would for a named entity. Doc chunks do
+not seed; a heading is not a node. This is the user's design from the first-principles
+session, and it uses the chunk-id join the two stores always had, in the other direction.
+`seeded_from_passages` is recorded on every result so its effect can be counted.
+
+**Fix 6.** Thirty questions added: fifteen three-hop (`3h-13`–`3h-27`), fifteen aggregation
+(`ag-09`–`ag-23`). Three-hop and aggregation were the categories where one question moved
+the score 8–13 points (D60). Every one was written from the source files named in its
+`source` line and each claim was checked against the file before it went in — nine of
+them with a grep the same afternoon — not generated from the graph. The aggregation
+answers are countable by a person reading `requests/exceptions.py`. 79 of 90 questions are
+now mechanically graded. Three-hop is 27 questions, aggregation 23: one question is now
+worth 3.7 and 4.3 points respectively instead of 8.3 and 12.5.
+
+**Consequence for measurement:** D60's per-category bars no longer apply to three-hop or
+aggregation — the sets changed. Pooled changes too (n=90). The next five-run measurement
+is a new baseline for everything after it, not a comparison to D60; the fair comparison to
+D60 is on the original 60 ids, which the summarizer can be asked for by filtering.
+
+---
+
 ## Open questions for the Phase 2 sweep
 
 All of these are recall@k questions. None should be settled by argument.
