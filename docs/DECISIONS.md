@@ -2418,6 +2418,87 @@ five runs measure.
 
 ---
 
+## D67 — A runtime oracle: the graph measured against what the code actually does
+
+**Why.** Every edge in the graph is inferred — by jedi, by the AST pass, or by a model reading
+prose — and the only check on any of them had been spot-reading a dozen. The research note on
+code-graph-rag (`docs/research/2026-09-26-code-graph-rag.md`) showed the field's standard: run
+the code and compare. Its evals score CALLS against a `sys.settrace` execution trace. Nobody
+measures exception wrapping that way, because nobody else models it.
+
+**What it is.** `graphrag/eval/runtime_oracle.py` runs the corpus's own test suite
+(`requests_repo/tests`, 616 passing) under `sys.settrace`, with the corpus source trees first
+on `sys.path` so the traced frames are the files the graph was built from. It records:
+
+- `calls` — (caller, callee) for every call between two corpus functions
+- `raises` — (function, exception) at the frame where an exception was first seen
+- `wraps` — (raised, caught) whenever an exception was raised while another was being
+  handled. That is Python's own implicit-chaining rule (`__context__`), so it is exactly
+  "raised in place of" — a runtime oracle for WRAPS_EXCEPTION.
+
+Then each graph relationship is scored: **recall** (of what happened, how much the graph
+has) and **observed precision** (of what the graph has, how much was seen to happen — a
+lower bound, since an edge on an untested path can still be true). 2m45s per run.
+
+**Three rules make the comparison fair without making it lenient**, each a statement about
+Python rather than a fudge: a call to a class is a call to its `__init__` (61 of the first
+run's 173 "misses" were `Retry(...)` seen as `Retry.__init__`); dunders and properties that
+run without call syntax are excluded — no static tool is ever asked about `__setitem__` or
+`Response.content` (33 + 19 more); and a static edge to a superclass is confirmed by a
+runtime subclass — `NewConnectionError wraps OSError` is confirmed by a
+`ConnectionRefusedError`, never the reverse. The first, unfair run had CALLS recall at 62.9%.
+
+**Result:**
+
+| edge | source | real pairs | in graph | confirmed | recall | observed precision |
+|---|---|---|---|---|---|---|
+| CALLS | jedi | 397 | 679 | 320 | **80.6%** | 47.1% |
+| RAISES | ast | 76 | 178 | 48 | **63.2%** | 27.5% |
+| WRAPS_EXCEPTION | ast | 28 | 44 | 20 | **71.4%** | 38.6% |
+| WRAPS_EXCEPTION | llm | 28 | 42 | 8 | **28.6%** | 21.4% |
+| WRAPS_EXCEPTION | both | 28 | 84 | 21 | **75.0%** | — |
+
+**The sentence that matters:** on the relationship the project exists to showcase, the
+parser-derived wrap edges confirm 20 of 28 real wraps; the LLM-derived ones confirm 8. The
+extractor wired in three days ago (D57) is 2.5× more faithful to what the code does than
+the prose pass it replaced as the primary source. That is the first *measured* evidence for
+the project's founding split — parser for structure, model for prose only — rather than an
+argument for it.
+
+**What the remaining misses are**, from the report:
+
+- *CALLS (77 left):* a third are polymorphic dispatch — `Session.send` calls
+  `adapter.send`; jedi correctly resolves the static type to `BaseAdapter.send`; at runtime
+  it is `HTTPAdapter.send`. The graph knows `HTTPAdapter INHERITS_FROM BaseAdapter`, so this
+  is bridgeable by following overrides (research note item 9; CodeQL's `viableCallable`).
+  The rest: hooks called through a dict (`dispatch_hook → handle_401`, genuinely dynamic),
+  untyped receivers (`jar.copy()`), and the constructor fold being literal about *which*
+  `__init__` ran when a subclass inherits it.
+- *WRAPS (7 left):* four are `MaxRetryError wraps <cause>` — urllib3 catches in `urlopen`
+  and raises in `Retry.increment`, so the wrap spans two functions and a per-handler
+  extractor cannot see it. This is the one structural limit found. The others are a
+  same-type re-raise (`ValueError wraps ValueError`, filtered by design) and alias
+  artifacts (`socket.timeout` *is* `TimeoutError`).
+- *RAISES (28 left):* mostly an oracle limitation — an exception raised in stdlib or C code
+  is first seen in the nearest *corpus* frame, which the oracle then records as the raise
+  site. `iter_content raises ProtocolError` is urllib3's raise seen through requests' frame.
+
+**Observed precision is a floor, and a low one.** 359 of 679 CALLS edges sit on paths the
+tests never ran. `requests`' suite exercises the happy path thoroughly and proxies, SSL
+failures and timeouts barely at all. Those edges are not wrong; they are unmeasured.
+Growing the oracle means running urllib3's own suite too, or the paths a mock server can
+provoke.
+
+**What this changes going forward.** Every extractor change now has a number to move that
+is not the benchmark: wire override-following and watch CALLS recall; fix the two-function
+wrap and watch WRAPS recall. The benchmark measures whether the graph helps answer
+questions; the oracle measures whether the graph is *true*. They had been conflated.
+
+Committed with the trace and report as evidence. `python -m graphrag.eval.runtime_oracle`
+reproduces it; `--no-run` re-scores a saved trace against the current graph.
+
+---
+
 ## Open questions for the Phase 2 sweep
 
 All of these are recall@k questions. None should be settled by argument.
