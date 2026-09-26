@@ -2355,6 +2355,69 @@ D60 is on the original 60 ids, which the summarizer can be asked for by filterin
 
 ---
 
+## D66 — Five runs on the batch (D63–D65): what held, what broke, what the new questions exposed
+
+Five runs on `78131a4`, 90 questions, zero errors. **Sanity first:** baseline out-of-scope
+62.0 [60.0 .. 70.0], identical to D60. The vector store has exactly 1,396 rows and 1,396
+distinct ids after fix 14's re-upsert — the same chunks, so the same vectors.
+
+**Original 60 ids, against D60:**
+
+| | D60 | now |
+|---|---|---|
+| pooled | 61.3 / 53.7, **+7.7** [5.0 .. 8.4] | 64.0 / 55.4, **+8.6** [5.0 .. 13.3] |
+| two_hop | 65.3 / 46.7, +18.6 | 78.7 / 52.0, **+26.7** [20.0 .. 33.3] |
+| three_hop (12) | 43.4 / 53.3, −10.0 | **36.7** / 53.3, **−16.7** [−25.0 .. −8.3] |
+| out_of_scope | 86.0 / 62.0, +24.0 | 90.0 / 62.0, +28.0 |
+
+No regression pooled; two-hop up 13 points with ranges that barely touch. Three-hop down
+7 — and that is a regression, traced below.
+
+**All 90:** pooled 48.7 [46.7 .. 52.2] vs 42.0 [38.9 .. 43.3], **+6.7 [3.4 .. 11.1]**,
+positive in every run. This is the new baseline. On the fifteen new three-hop questions
+both systems score ~23%; on the fifteen new aggregation questions hybrid ~13%, baseline
+~8%. Hard, as intended, and tied.
+
+**What the per-question view found — five things, each concrete:**
+
+1. *The cap at eight (fix 2) hurts list questions.* `3h-04` — "which exceptions derive from
+   RequestException, and which of those also from ValueError" — listed all fifteen in D60
+   and now lists eight; the ValueError ones fall off the end. 5/5 → 3/5. For `T8`, which is
+   already filtered to one relationship, completeness *is* the answer. The cap belongs on
+   the unfiltered neighbourhood, not on T8.
+
+2. *The count line works and is undirected.* `ag-01` answered "There are 16 exceptions that
+   inherit from RequestException" — 15 subclasses plus `RequestException → IOError`, its
+   own base, because T8 matches both directions. "How many inherit from X" means incoming.
+   The count must be split by direction.
+
+3. *`Timeout` has no subclasses in the graph.* `ConnectTimeout(ConnectionError, Timeout)`
+   recorded only `ConnectionError`; `ReadTimeout(Timeout)` recorded nothing. `Timeout` is
+   defined in `requests.exceptions` and also in `urllib3.util.timeout`; the resolver sees
+   two candidates and refuses. It has no rule that a name defined in the module being read
+   is what that module means by it — which is plain Python scope. A same-module rung, placed
+   first, fixes this and presumably some of the 82 still-unresolved AST edges.
+
+4. *Passage seeding (fix 3) fired on zero questions.* "requests" and "urllib3" appear as
+   mentions and resolve to the package Module node, so `candidates` is never empty. Five
+   questions planned on a bare package root. A Module-only candidate list should not block
+   seeding.
+
+5. *Two of the new questions were wrong, and the system was right.* `ag-17` expects "8"
+   raises from `HTTPAdapter.send`; the graph says 9 and includes `ValueError` — which
+   `send` does raise, on a malformed timeout tuple. I counted only requests exceptions.
+   `ag-01` (an original) expects "roughly 20" with no `must_contain`, so the judge failed
+   a correct "15 direct subclasses". Both questions get corrected, not the system.
+
+Also: hybrid three-hop partials 42%, baseline 36% — hybrid gets part of the chain more
+often on the new questions too; still scores zero.
+
+**Not changed yet.** Each of 1–5 is small; together they are the next batch, and they are
+listed for approval rather than applied, because every one of them changes what the next
+five runs measure.
+
+---
+
 ## Open questions for the Phase 2 sweep
 
 All of these are recall@k questions. None should be settled by argument.
