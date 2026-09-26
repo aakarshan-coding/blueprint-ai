@@ -393,6 +393,7 @@ def run_full_ingestion(
             merge_edge(
                 neo4j_session, source_id=edge.source_id, relationship="INHERITS_FROM",
                 target_id=r.canonical_id, chunk_id=edge.chunk_id, confidence=1.0,
+                source="ast",
             )
             stats["ast_edges_written"] += 1
 
@@ -407,6 +408,7 @@ def run_full_ingestion(
             merge_edge(
                 neo4j_session, source_id=edge.source_id, relationship="RAISES",
                 target_id=r.canonical_id, chunk_id=edge.chunk_id, confidence=1.0,
+                source="ast",
             )
             stats["ast_edges_written"] += 1
 
