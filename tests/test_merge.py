@@ -622,3 +622,16 @@ def test_a_modules_members_say_what_kind_of_member_they_are():
     assert "requests.api is a submodule of requests." in statements
     assert "requests.exceptions.Timeout is a class defined in requests." in statements
     assert "requests.api.get is a function defined in requests." in statements
+
+
+def test_a_path_that_revisits_a_node_is_dropped():
+    """super().__init__ plus override-following (D68) produced the edge
+    HTTPAdapter.__init__ -> HTTPAdapter.__init__, and the path walk turned
+    it into "X calls X, which calls Retry" (D78)."""
+    rows = [
+        {"chain": ["A.__init__", "A.__init__", "Retry"], "chunk_ids": ["c1", "c2"],
+         "starts": ["A.__init__", "A.__init__"], "rels": ["CALLS", "CALLS"]},
+        {"chain": ["A.__init__", "Retry"], "chunk_ids": ["c2"], "starts": ["A.__init__"], "rels": ["CALLS"]},
+    ]
+    facts = verbalize("T5_DELEGATION_CHAIN", rows)
+    assert [f.statement for f in facts] == ["A.__init__ calls Retry."]

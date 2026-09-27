@@ -110,12 +110,14 @@ _EXPANSIONS: dict[tuple[str, str | None], list[tuple[str, bool]]] = {
     # a module's members: which are warnings, which have two bases
     ("T8_RELATED_BY", "DEFINED_IN"): [("INHERITS_FROM", False)],
     # what a function raises: what each of those wraps, and inherits from
-    ("T8_RELATED_BY", "RAISES"): [("WRAPS_EXCEPTION", False), ("INHERITS_FROM", False)],
+    # ...and the parents' parents: "what does it inherit from directly, and
+    # what is that parent's own base class" (3h-13, D78)
+    ("T8_RELATED_BY", "RAISES"): [("WRAPS_EXCEPTION", False), ("INHERITS_FROM", False), ("INHERITS_FROM", True)],
     # a call chain: what the callees raise ("what does Retry raise when
     # attempts run out", 3h-23)
     ("T5_DELEGATION_CHAIN", None): [("RAISES", False)],
     # what a class's methods raise: same as a function's raises (D76)
-    ("T10_RAISED_BY_METHODS_OF", None): [("WRAPS_EXCEPTION", False), ("INHERITS_FROM", False)],
+    ("T10_RAISED_BY_METHODS_OF", None): [("WRAPS_EXCEPTION", False), ("INHERITS_FROM", False), ("INHERITS_FROM", True)],
     # subclasses of X: what each of them wraps ("what does requests convert
     # a socket timeout to" from the anchor Timeout, 3h-03, D76)
     ("T8_RELATED_BY", "INHERITS_FROM"): [("WRAPS_EXCEPTION", False)],

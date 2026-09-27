@@ -2985,6 +2985,58 @@ RAISES edges; a Parameter has no CALLS edges) but not on a label that ingestion 
 inconsistently. When the evidence is uncertain, run the planned query and fall back on
 the result, which is certain.
 
+## D78 — Five runs on D76/D77: three-hop 47 → 67, pooled 66 → 74
+
+**Status:** measured. Files `benchmark_results_exp6_1..5.json`; compare to `exp5_*` (D75).
+Same 90 questions, grader and shared prompt. Baseline held (42.9 → 41.5). Two small
+follow-up fixes below, applied after the runs and not yet measured.
+
+| category | hybrid D75 | hybrid now | delta now |
+|---|---|---|---|
+| single_hop | 80.0 | 81.3 | +6.7 [-6.7..13.4] |
+| two_hop | 81.3 | **90.6** | +36.0 [33.3..40.0] |
+| three_hop | 47.4 | **66.7** | **+31.2 [29.7..33.4]** |
+| aggregation | 58.3 | 58.3 | +49.6 [43.5..60.9] |
+| out_of_scope | 92.0 | 96.0 | +32.0 |
+| **pooled** | 66.3 | **74.2** | **+32.7 [27.8..37.8]** |
+
+Three-hop is in the 60–70 band that was the target, in every one of five runs
+(63.0 to 70.4). Two-hop's worst run (80.0) equals D75's mean. Eleven questions went from
+never or rarely right to right in four or five runs: `3h-02` (the route to urlopen),
+`3h-03`, `3h-11`, `3h-16`, `3h-21`, `3h-22`, `3h-26`, `th-10`, `th-13`, `ag-14`, `sh-03`.
+
+**Three regressions, each understood:**
+
+- `3h-13` (correct → partial). Mention grounding dropped `JSONDecodeError`, which the
+  question does not contain, so the anchor became `Response.json` and the raises plan
+  expanded one level of parents: `InvalidJSONError` but not its parent
+  `RequestException`, which the question asks for. Fixed: a raises plan (and T10) now
+  fetches the parents' parents too, as the wrap chain already did.
+- `3h-23` (correct → partial). Two things. The override expansion (D68) turns
+  `super().__init__()` into an edge from `HTTPAdapter.__init__` to itself, 25 such
+  self-loops in the graph, and the path walk rendered "X calls X, which calls Retry".
+  Fixed at read time: a path that revisits a node is dropped. The second is not fixed:
+  jedi's `infer` on `Retry.from_int(max_retries)` returns the class `Retry`, the call's
+  result type, not the classmethod, so the graph has no edge to `from_int` at all. The
+  previous batch got this question from the undirected walk picking up an LLM edge. An
+  ingestion fix (resolve the callee name with `goto` before falling back to `infer`)
+  and an oracle re-score; parked.
+- `ag-13` (0.8 → 0.0). "How many warning classes does requests.exceptions define": with
+  `Warning` grounded out (the question says "warning classes", lowercase), the only
+  mention is the module; seeding then adds `RequestsWarning` from the passages and the
+  planner, told to prefer the specific entity, anchors there. The five facts it gets do
+  contain the three classes; the model does not count them. Both plans are defensible.
+  Left as one of the coin-flip anchors.
+
+**Aggregation did not move** (58.3 both times, wider range now: 52.2 to 69.6). Its
+flipping questions, `ag-04`, `ag-06`, `ag-11`, `ag-13`, `ag-21`, are all anchor
+instability: which of two reasonable entities the mention stage or the seeding hands
+the planner.
+
+**Current claim for the README:** hybrid beats vector-only by +32.7 points pooled
+[+27.8..+37.8] over five runs on 90 questions; +36 on two-hop, +31 on three-hop, +50 on
+aggregation, +32 on out-of-scope; single-hop +7 within noise.
+
 ---
 
 ## Open questions for the Phase 2 sweep

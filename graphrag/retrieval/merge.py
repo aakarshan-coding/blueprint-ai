@@ -171,6 +171,12 @@ def _verbalize_paths(rows: list[dict], *, relationship: str) -> list[GraphFact]:
     the unit that is ranked and cited. A path that is a prefix of another
     returned path is dropped: the longer one says everything it does.
     """
+    # A path that revisits a node says nothing new and reads as nonsense:
+    # "HTTPAdapter.__init__ calls HTTPAdapter.__init__, which calls
+    # Retry" came from the override expansion (D68) turning super().__init__
+    # into an edge back to the caller (D78). Dropped before prefix pruning,
+    # so the cycle-free prefix survives.
+    rows = [row for row in rows if len(set(row["chain"])) == len(row["chain"])]
     chains = [tuple(row["chain"]) for row in rows]
     maximal = [
         row for row, chain in zip(rows, chains)

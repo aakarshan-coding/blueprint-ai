@@ -364,7 +364,8 @@ def test_a_raises_plan_fetches_what_each_exception_wraps_and_inherits():
     statements = [f.statement for f in result.graph_facts]
     assert "requests.exceptions.ChunkedEncodingError wraps urllib3.exceptions.ProtocolError." in statements
     assert "requests.exceptions.ChunkedEncodingError inherits from requests.exceptions.RequestException." in statements
-    assert [rel for rel, _ in session.expansion_queries] == [":WRAPS_EXCEPTION", ":INHERITS_FROM"]
+    # wraps, parents, then the parents' parents (D78)
+    assert [rel for rel, _ in session.expansion_queries] == [":WRAPS_EXCEPTION", ":INHERITS_FROM", ":INHERITS_FROM"]
 
 
 def test_a_call_chain_fetches_what_the_callees_raise():
@@ -479,3 +480,23 @@ def test_a_wrap_chain_that_returns_rows_is_never_replaced():
     assert result.plan_repair is None
     assert "requests.exceptions.ConnectionError wraps urllib3.exceptions.ProtocolError." in [
         f.statement for f in result.graph_facts]
+
+
+def test_a_raises_plan_fetches_grandparents_too():
+    """"...what does it inherit from directly, and what is that parent's own
+    base class" (3h-13): JSONDecodeError -> InvalidJSONError -> RequestException,
+    the second hop from what the first added (D78)."""
+    rows = [{"relationship": "RAISES", "neighbor": "requests.exceptions.JSONDecodeError",
+             "chunk_id": "c1", "outgoing": True}]
+    session = _ChainThenParents(rows, parents={
+        "requests.exceptions.JSONDecodeError": ["requests.exceptions.InvalidJSONError"],
+        "requests.exceptions.InvalidJSONError": ["requests.exceptions.RequestException"],
+    })
+    client = FakeOpenAI(plan={
+        "template_id": "T8_RELATED_BY", "entity_id": "requests.sessions.Session", "relationship": "RAISES",
+    })
+
+    result = _retrieve(neo4j_session=session, openai_client=client)
+
+    statements = [f.statement for f in result.graph_facts]
+    assert "requests.exceptions.InvalidJSONError inherits from requests.exceptions.RequestException." in statements
