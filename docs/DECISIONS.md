@@ -2842,6 +2842,56 @@ name, which voting does not cure when it invents the same one three times. `3h-0
 IMPLEMENTS on BaseAdapter; its answer sits in the passages. `ag-04` still anchors on
 `Session` rather than `Session.request`.
 
+## D75 — Five runs on the D71–D74 batch: pooled 49.8 → 66.3, and it is the retrieval fixes
+
+**Status:** measured. Files `benchmark_results_exp5_1..5.json`; compare to `exp4_*` (D70).
+Same 90 questions, same grader, same shared synthesis prompt. Baseline code untouched
+and its pooled score held (42.4 → 42.9), the fairness check.
+
+| category | hybrid D70 | hybrid now | delta D70 | delta now |
+|---|---|---|---|---|
+| single_hop | 77.3 | 80.0 | +0.0 [-6.7..13.3] | -1.3 [-13.3..13.4] |
+| two_hop | 74.6 | 81.3 | +21.3 [13.3..26.7] | +30.7 [20..40] |
+| three_hop | 29.6 | **47.4** | -8.1 [-18.5..0] | **+8.2 [0..11.2]** |
+| aggregation | 21.7 | **58.3** | +12.1 [8.7..13.0] | **+48.7 [43.5..52.2]** |
+| out_of_scope | 90.0 | 92.0 | +28.0 | +32.0 |
+| **pooled** | 49.8 | **66.3** | +7.3 [5.5..10.0] | **+23.4 [21.1..24.5]** |
+
+Every run beat baseline by at least 21 points. The worst run of this batch (65.6) is
+13 points above the best run of the previous one (52.2). This is not noise.
+
+**Sixteen questions went from never right to right in most or all runs; one went the
+other way.** Up: `th-12`, `3h-06`, `3h-09`, `3h-13`, `3h-14`, `3h-15`, `3h-17`, `3h-24`,
+`ag-03`, `ag-05`, `ag-06`, `ag-13`, `ag-17`, `ag-18`, `ag-20`, `ag-22`. Each maps to a
+named fix: the wrap-chain parents (D71) for the `3h` exception questions; the dedupe
+(D72) for `ag-03` and `ag-17`, whose nine raise edges the model can now see; the module
+members and repairs (D73) for `ag-05`, `ag-06`, `ag-13`, `ag-22`; the function anchor
+repair and raises-then-wraps expansion (D74) for `3h-17`, `3h-24`, `ag-20`.
+
+**Three-hop became positive for the first time.** It was negative in every table since
+D60. Fifteen of 27 still fall short, and 39% of the answers are graded partial: the
+grader wants all three parts, and the last part is usually the one missing.
+
+**The one regression, `3h-05`** ("what does Session reuse, which library provides it,
+which class implements it"): the router now sends it to BOTH instead of VECTOR, the
+Session neighbourhood lines say nothing about urllib3, and the model answers from those
+lines and omits it. A side effect of the router prompt widening (D73/D74), which bought
+six questions and lost this one. Left as is.
+
+**Aggregation at 58 is still the weakest category by absolute gap to 100**, and
+`ag-04`, `ag-11`, `ag-13` flip between runs: the anchor is still a coin-flip on those
+(`Session` vs `Session.request`; `requests.api` extracted or not).
+
+**Current claim for the README:** hybrid beats vector-only by +23.4 points pooled
+[+21.1..+24.5] over five runs on 90 questions; +31 on two-hop, +8 on three-hop, +49 on
+aggregation, +32 on out-of-scope; single-hop even.
+
+**Lesson, for the log.** Three of the four fixes were retrieval plumbing (a dedupe key,
+a missing last hop, an edge type a module cannot have), found by rebuilding the context
+for a failing question and reading it. None needed a model change. The benchmark said
+"three-hop is hard for the model" for fifteen decisions; the context said the model
+was never shown the answer.
+
 ---
 
 ## Open questions for the Phase 2 sweep
