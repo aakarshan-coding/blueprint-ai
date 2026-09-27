@@ -186,6 +186,20 @@ def retrieve(
                 rows = run_template(
                     neo4j_session, template_id, values, known_entity_ids=known_ids
                 )
+                # A wrap chain from a class that is not an exception walks
+                # nothing ("which PreparedRequest method raises it"). The
+                # labels cannot tell such a class from an exception (D77),
+                # so the chain runs first and the fallback is what the
+                # class's methods raise, only when the chain came back empty.
+                anchor_kind = {c.canonical_id: c.kind for c in candidates}.get(values.get("entity_id"), "")
+                if template_id == "T3_EXCEPTION_WRAP_CHAIN" and not rows and "Class" in anchor_kind:
+                    template_id = "T10_RAISED_BY_METHODS_OF"
+                    values = {"entity_id": values["entity_id"]}
+                    result.plan = f"{template_id}({values})"
+                    result.plan_repair = "the wrap chain returned nothing; what this class's methods raise instead"
+                    rows = run_template(
+                        neo4j_session, template_id, values, known_entity_ids=known_ids
+                    )
                 result.graph_facts = verbalize(
                     template_id, rows,
                     entity_id=values.get("entity_id"),

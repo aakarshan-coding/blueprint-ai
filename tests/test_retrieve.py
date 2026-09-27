@@ -450,4 +450,32 @@ def test_repair_sees_the_kind_of_a_candidate_seeded_from_passages():
     result = _retrieve(conn=FakeConn([row]), neo4j_session=session, resolver=resolver, openai_client=client)
 
     assert result.seeded_from_passages is True
+    # The chain ran (and returned nothing) before the fallback.
+    assert any("WRAPS_EXCEPTION" in q for q, _ in session.queries)
     assert result.plan.startswith("T10_RAISED_BY_METHODS_OF")
+    assert "returned nothing" in result.plan_repair
+
+
+def test_a_wrap_chain_that_returns_rows_is_never_replaced():
+    """The flagship question "if urllib3 raises ProtocolError, what does
+    requests raise" anchors on a class labelled Class alone. The chain
+    returns rows, so nothing falls back (D77)."""
+    chain_rows = [{
+        "chain": ["urllib3.exceptions.ProtocolError", "requests.exceptions.ConnectionError"],
+        "chunk_ids": ["c1"], "starts": ["requests.exceptions.ConnectionError"], "sources": ["ast"],
+    }]
+    resolver = FakeResolver({"ProxyError": "urllib3.exceptions.ProtocolError"})
+    session = _ChainThenParents(chain_rows, parents={})
+    session._descriptions = {"urllib3.exceptions.ProtocolError": (["Class"], 6)}
+    client = FakeOpenAI(
+        mentions=[{"surface": "ProxyError", "package": "urllib3"}],
+        plan={"template_id": "T3_EXCEPTION_WRAP_CHAIN",
+              "entity_id": "urllib3.exceptions.ProtocolError", "max_hops": 2},
+    )
+
+    result = _retrieve(neo4j_session=session, resolver=resolver, openai_client=client)
+
+    assert result.plan.startswith("T3_EXCEPTION_WRAP_CHAIN")
+    assert result.plan_repair is None
+    assert "requests.exceptions.ConnectionError wraps urllib3.exceptions.ProtocolError." in [
+        f.statement for f in result.graph_facts]

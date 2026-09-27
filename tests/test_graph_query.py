@@ -379,7 +379,7 @@ def test_repair_plan_moves_a_wrap_chain_off_a_package_root():
 
     candidates = [
         Candidate("urllib3", kind="Module", degree=70),
-        Candidate("urllib3.exceptions.ClosedPoolError", kind="Class/Exception", degree=3),
+        Candidate("urllib3.exceptions.ClosedPoolError", kind="Class", degree=3),  # label Class alone, as urllib3's are
     ]
     template_id, values, note = repair_plan(
         "T3_EXCEPTION_WRAP_CHAIN", {"entity_id": "urllib3", "max_hops": 2}, candidates
@@ -475,18 +475,20 @@ def test_repair_plan_sends_a_raises_or_wrap_plan_on_a_plain_class_to_its_methods
     from graphrag.retrieval.graph_query import Candidate, repair_plan
     candidates = [Candidate("requests.sessions.Session", kind="Class", degree=40)]
 
-    for template_id, values in (
-        ("T8_RELATED_BY", {"entity_id": "requests.sessions.Session", "relationship": "RAISES"}),
-        ("T3_EXCEPTION_WRAP_CHAIN", {"entity_id": "requests.sessions.Session", "max_hops": 2}),
-    ):
-        out_id, out_values, note = repair_plan(template_id, values, candidates)
-        assert (out_id, out_values) == ("T10_RAISED_BY_METHODS_OF", {"entity_id": "requests.sessions.Session"})
-        assert note
+    out_id, out_values, note = repair_plan(
+        "T8_RELATED_BY", {"entity_id": "requests.sessions.Session", "relationship": "RAISES"}, candidates)
+    assert (out_id, out_values) == ("T10_RAISED_BY_METHODS_OF", {"entity_id": "requests.sessions.Session"})
+    assert note
 
-    # An exception class is a fine wrap-chain anchor and is left alone.
-    exc = [Candidate("requests.exceptions.Timeout", kind="Class/Exception", degree=6)]
-    out = repair_plan("T3_EXCEPTION_WRAP_CHAIN", {"entity_id": "requests.exceptions.Timeout", "max_hops": 2}, exc)
-    assert out[2] is None
+    # A wrap chain on a class is NOT repaired before it runs: urllib3's
+    # exceptions carry the label Class alone, and guessing from the label
+    # emptied the flagship two-hop questions (D77). retrieve() falls back
+    # only after the chain returns nothing.
+    for kind in ("Class", "Class/Exception"):
+        cands = [Candidate("urllib3.exceptions.ProtocolError", kind=kind, degree=6)]
+        out = repair_plan(
+            "T3_EXCEPTION_WRAP_CHAIN", {"entity_id": "urllib3.exceptions.ProtocolError", "max_hops": 2}, cands)
+        assert out[2] is None, kind
 
 
 def test_a_capitalised_surface_must_match_case_and_generic_words_are_not_mentions():

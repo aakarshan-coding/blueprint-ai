@@ -394,14 +394,16 @@ def repair_plan(
             "T1_NEIGHBORS", {"entity_id": entity},
             "a Parameter has only DEFINED_IN and CONTROLS edges; its neighbourhood instead",
         )
-    plain_class = "Class" in kind and "Exception" not in kind
-    # RAISES edges hang off methods. Anchored on a plain class ("which
-    # PreparedRequest method raises it", "which Session method raises it")
-    # a raises or wrap plan walked nothing (D76).
-    if plain_class and (
-        template_id == "T3_EXCEPTION_WRAP_CHAIN"
-        or (template_id == "T8_RELATED_BY" and relationship == "RAISES")
-    ):
+    # RAISES edges hang off methods. A raises plan anchored on a class
+    # ("which Session method raises it") walks nothing; what its methods
+    # raise is the answer (D76). Only RAISES is repaired here: a wrap chain
+    # on a class is left to run, because the labels cannot say whether the
+    # class is an exception. urllib3's exceptions carry the label Class
+    # alone, and a pre-run rule keyed on "Class but not Exception" replaced
+    # the wrap chain from ProtocolError with an empty query on five of the
+    # fifteen two-hop questions (D77). retrieve() falls back to T10 after
+    # the chain runs and returns nothing.
+    if "Class" in kind and template_id == "T8_RELATED_BY" and relationship == "RAISES":
         return (
             "T10_RAISED_BY_METHODS_OF", {"entity_id": entity},
             "RAISES edges hang off methods; what this class's methods raise",
@@ -426,11 +428,6 @@ def repair_plan(
                 return (
                     "T8_RELATED_BY", {"entity_id": other.canonical_id, "relationship": "RAISES"},
                     f"a wrap chain from a module walks nothing; what {other.canonical_id} raises instead",
-                )
-            if "Class" in other.kind and "Exception" not in other.kind:
-                return (
-                    "T10_RAISED_BY_METHODS_OF", {"entity_id": other.canonical_id},
-                    f"a wrap chain from a module walks nothing; what {other.canonical_id}'s methods raise instead",
                 )
             return (
                 template_id, {**values, "entity_id": other.canonical_id},

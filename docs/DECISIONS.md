@@ -2954,6 +2954,37 @@ from 12 of 17 to, after the grounding pass, all but four cases. Newly present:
 half. A raises plan on a class with many methods (HTTPAdapter: 74 lines) is the largest
 context this system now builds.
 
+## D77 — A label the graph does not reliably give is not evidence: the wrap-chain fallback
+
+**Status:** fixed before the D76 benchmark completed; 337 tests. The first run of that
+benchmark was stopped after one pass and its partial file discarded.
+
+**What run 1 showed.** Three-hop 59.3 and aggregation 65.2, both up. Two-hop 46.7, down
+from 81.3. Five of the fifteen two-hop questions, the flagship "if urllib3 raises
+ProtocolError, what does requests raise", answered "the context does not provide
+information" with zero facts.
+
+**The cause.** D76 added a pre-run repair: a wrap chain anchored on a "plain class" (label
+`Class` without `Exception`) becomes "what this class's methods raise". But urllib3's
+exception classes carry the label `Class` alone. Node typing never distinguished
+exceptions (D31: every class-shaped symbol is `Class`; the `Exception` label is added
+only where an edge role implied it). So `ProtocolError`, `ReadTimeoutError`,
+`ClosedPoolError`, `InvalidHeader` and `MaxRetryError` all looked "plain", the chain was
+replaced by an empty methods query, and the answer had nothing.
+
+**The fix.** No pre-run guess. The wrap chain runs as planned; only if it returns no rows
+and the anchor is a class does retrieve() fall back to what the class's methods raise,
+and records that it did. The pre-run repair stays only for a RAISES plan on a class
+(harmless either way: an exception class has no methods that raise). Live: the five
+two-hop questions plan the chain again with 10 to 22 facts each; the three-hop
+questions that needed the fallback (`PreparedRequest`, `HTTPAdapter`) reach it after the
+empty chain, and `Session` still reaches it by the RAISES repair.
+
+**The rule, for the log.** A repair may act on what the graph proves (a Module has no
+RAISES edges; a Parameter has no CALLS edges) but not on a label that ingestion assigns
+inconsistently. When the evidence is uncertain, run the planned query and fall back on
+the result, which is certain.
+
 ---
 
 ## Open questions for the Phase 2 sweep
