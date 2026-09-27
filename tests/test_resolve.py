@@ -88,6 +88,37 @@ def test_a_qualified_surface_never_matches_mid_segment():
     assert result.canonical_id is None
 
 
+def test_a_name_defined_in_the_module_being_read_wins_over_a_same_named_class_elsewhere():
+    """`class ReadTimeout(Timeout)` is written inside requests/exceptions.py,
+    which defines Timeout. urllib3.util.timeout defines a Timeout too. The
+    ladder saw two candidates and refused, so Timeout had no subclasses in
+    the graph (D66). A name defined in the current module is what that
+    module means by it -- plain Python scope, and the rung that was missing."""
+    resolver = Resolver(
+        node_universe={"requests.exceptions.Timeout", "urllib3.util.timeout.Timeout"},
+        import_aliases={},
+    )
+
+    result = resolver.resolve("Timeout", module_context="requests.exceptions")
+
+    assert result.canonical_id == "requests.exceptions.Timeout"
+    assert result.method == "same_module"
+
+
+def test_an_import_into_the_module_still_beats_a_same_module_lookup():
+    # `from urllib3.util.timeout import Timeout` inside a module that does
+    # not itself define Timeout: the import is the binding.
+    resolver = Resolver(
+        node_universe={"urllib3.util.timeout.Timeout", "requests.exceptions.Timeout"},
+        import_aliases={"requests.adapters": {"Timeout": "urllib3.util.timeout.Timeout"}},
+    )
+
+    result = resolver.resolve("Timeout", module_context="requests.adapters")
+
+    assert result.canonical_id == "urllib3.util.timeout.Timeout"
+    assert result.method == "import_alias"
+
+
 def test_a_python_builtin_exception_resolves_to_a_builtins_id():
     """`except OSError: raise ConnectionError(e)` is a wrap the AST extractor
     finds and the graph could not hold: OSError has no node and no import,

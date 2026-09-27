@@ -332,15 +332,34 @@ def test_related_by_adds_a_count_line_so_the_model_need_not_count():
                       relationship="INHERITS_FROM")
     statements = [f.statement for f in facts]
 
-    assert "3 things are related to requests.exceptions.RequestException by INHERITS_FROM." in statements
+    assert "3 things inherit from requests.exceptions.RequestException." in statements
     assert facts[-1].chunk_id is None      # a count is derived, not cited
     assert len(facts) == 4
+
+
+def test_related_by_counts_each_direction_separately():
+    """T8 matches both directions. "How many inherit from RequestException"
+    answered 16 -- fifteen subclasses plus RequestException's own base,
+    IOError (D66, ag-01). Incoming and outgoing are different questions."""
+    rows = [
+        {"relationship": "INHERITS_FROM", "neighbor": "requests.exceptions.HTTPError", "chunk_id": "c1", "outgoing": False},
+        {"relationship": "INHERITS_FROM", "neighbor": "requests.exceptions.Timeout", "chunk_id": "c2", "outgoing": False},
+        {"relationship": "INHERITS_FROM", "neighbor": "builtins.IOError", "chunk_id": "c3", "outgoing": True},
+    ]
+
+    facts = verbalize("T8_RELATED_BY", rows, entity_id="requests.exceptions.RequestException",
+                      relationship="INHERITS_FROM")
+    statements = [f.statement for f in facts]
+
+    assert "2 things inherit from requests.exceptions.RequestException." in statements
+    assert "requests.exceptions.RequestException inherits from 1 thing." in statements
+    assert not any("3 things" in s for s in statements)
 
 
 def test_related_by_with_no_rows_states_a_count_of_zero():
     facts = verbalize("T8_RELATED_BY", [], entity_id="x", relationship="RAISES")
 
-    assert [f.statement for f in facts] == ["0 things are related to x by RAISES."]
+    assert [f.statement for f in facts] == ["0 things raise x."]
 
 
 # --- fix 2: keep the facts that are about the question ----------------------------

@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 Method = Literal[
-    "exact", "self_reference", "import_alias", "reexport", "qualified",
+    "exact", "self_reference", "import_alias", "same_module", "reexport", "qualified",
     "normalized", "public_api", "call_graph", "builtin", "unresolved",
 ]
 
@@ -121,6 +121,17 @@ class Resolver:
             aliases = self.import_aliases.get(module_context, {})
             if surface in aliases:
                 return Resolution(surface, aliases[surface], "import_alias")
+
+            # A name defined in the module being read is what that module
+            # means by it -- plain Python scope. Without this rung
+            # `class ReadTimeout(Timeout)` inside requests/exceptions.py saw
+            # requests' Timeout and urllib3's, refused to choose, and Timeout
+            # had no subclasses in the graph (D66). After imports, because an
+            # import into the module is also a binding; before every
+            # cross-package rung, because those are guesses by comparison.
+            local = f"{module_context}.{surface}"
+            if local in self.node_universe:
+                return Resolution(surface, local, "same_module")
 
         if "." in surface:
             package, _, leaf = surface.rpartition(".")

@@ -83,6 +83,7 @@ def retrieve(
     # seed the graph when the question itself names nothing.
     result.passages = search_chunks(question, conn=conn, model=embedding_model, k=k)
 
+    template_id = None
     if route in ("GRAPH", "BOTH"):
         try:
             describe = lambda ids: describe_entities(neo4j_session, ids)  # noqa: E731
@@ -90,11 +91,16 @@ def retrieve(
             # from ids our code resolved, never from a surface it wrote.
             mentions = extract_mentions(question, client=openai_client)
             candidates = resolve_mentions(mentions, resolver=resolver, describe=describe)
-            if not candidates:
-                seeds = _seed_from_passages(result.passages, resolver=resolver)
+            # A candidate list that is only package/module nodes is no
+            # anchor: "requests" and "urllib3" appear as mentions in most
+            # questions, so this fired on zero of 90 before (D66).
+            only_modules = all("Module" in c.kind for c in candidates)
+            if not candidates or only_modules:
+                have = {c.canonical_id for c in candidates}
+                seeds = [s for s in _seed_from_passages(result.passages, resolver=resolver) if s not in have]
                 if seeds:
                     info = describe(seeds)
-                    candidates = [
+                    candidates = candidates + [
                         Candidate(i, kind=info.get(i, ("unknown", 0))[0],
                                   degree=info.get(i, ("unknown", 0))[1])
                         for i in seeds
@@ -103,6 +109,7 @@ def retrieve(
             result.candidates = candidates
 
             plan = plan_graph_query(question, candidates=candidates, client=openai_client)
+            template_id = plan.template_id if plan is not None else None
             if plan is not None:
                 values, known_ids = build_template_values(plan)
                 result.plan = f"{plan.template_id}({values})"
@@ -120,8 +127,13 @@ def retrieve(
             # than lose the whole question.
             result.graph_error = f"{type(e).__name__}: {e}"
 
-    # Keep the facts most related to the question (fix 2, D64); eight is the cap.
-    result.graph_facts = rank_facts(question, result.graph_facts, model=embedding_model)
+    # Keep the facts most related to the question (fix 2, D64); eight is the
+    # cap -- on the unfiltered neighbourhood and the chains. T8 is already
+    # filtered to one relationship and its rows *are* the answer: capping it
+    # cut "which exceptions derive from RequestException" from fifteen to
+    # eight and dropped the ValueError ones (D66, 3h-04).
+    if template_id != "T8_RELATED_BY":
+        result.graph_facts = rank_facts(question, result.graph_facts, model=embedding_model)
 
     result.context, result.retrieved_ids = assemble_context(
         graph_facts=result.graph_facts, vector_passages=result.passages

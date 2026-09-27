@@ -106,3 +106,58 @@ def test_seeding_is_not_used_when_the_question_itself_resolves():
     result = _retrieve()
 
     assert result.seeded_from_passages is False
+
+
+def test_package_root_candidates_do_not_block_seeding():
+    """"requests" and "urllib3" appear as mentions in most questions and
+    resolve to the package Module node, so `candidates` was never empty and
+    seeding fired on zero of 90 questions (D66). A candidate list that is
+    only Modules is no anchor; the passages' symbols are."""
+    resolver = FakeResolver({
+        "requests": "requests",
+        "HTTPAdapter.send": "requests.adapters.HTTPAdapter.send",
+    })
+    session = FakeSession([T1_ROW], descriptions={"requests": (["Module"], 65)})
+    client = FakeOpenAI(
+        mentions=[{"surface": "requests", "package": "requests"}],
+        plan={"template_id": "T1_NEIGHBORS", "entity_id": "requests.adapters.HTTPAdapter.send"},
+    )
+    row = ("c7", "requests", "src/requests/adapters.py", "HTTPAdapter.send", "code", "...", 0.1)
+
+    result = _retrieve(conn=FakeConn([row]), neo4j_session=session, resolver=resolver, openai_client=client)
+
+    assert result.seeded_from_passages is True
+    assert "requests.adapters.HTTPAdapter.send" in [c.canonical_id for c in result.candidates]
+
+
+# --- D66 fix: the cap belongs on the unfiltered neighbourhood, not on T8 -----------
+
+def test_a_related_by_plan_is_never_capped():
+    """T8 is already filtered to one relationship; its rows *are* the answer.
+    Capping at eight cut "which exceptions derive from RequestException"
+    from fifteen to eight and dropped the ValueError ones (D66, 3h-04)."""
+    rows = [
+        {"relationship": "INHERITS_FROM", "neighbor": f"requests.exceptions.E{i}",
+         "chunk_id": f"g{i}", "outgoing": False}
+        for i in range(12)
+    ]
+    client = FakeOpenAI(plan={
+        "template_id": "T8_RELATED_BY", "entity_id": "requests.sessions.Session",
+        "relationship": "INHERITS_FROM",
+    })
+
+    result = _retrieve(neo4j_session=FakeSession(rows), openai_client=client)
+
+    cited = [f for f in result.graph_facts if f.chunk_id is not None]
+    assert len(cited) == 12
+
+
+def test_a_neighbours_plan_is_still_capped():
+    rows = [
+        {"relationship": "CALLS", "neighbor": f"m.f{i}", "chunk_id": f"g{i}", "outgoing": True}
+        for i in range(12)
+    ]
+
+    result = _retrieve(neo4j_session=FakeSession(rows))
+
+    assert len(result.graph_facts) == 8

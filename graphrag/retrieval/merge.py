@@ -25,6 +25,20 @@ REL_PHRASES = {
 }
 
 
+def _plural(phrase: str) -> str:
+    """The plural-subject form of a relationship phrase: "inherits from" ->
+    "inherit from", "is defined in" -> "are defined in", for count lines
+    whose subject is "N things"."""
+    first, _, rest = phrase.partition(" ")
+    if first == "is":
+        first = "are"
+    elif first == "has":
+        first = "have"
+    elif first.endswith("s") and first != "changed":
+        first = first[:-1]
+    return f"{first} {rest}".strip()
+
+
 @dataclass(frozen=True)
 class GraphFact:
     statement: str
@@ -187,12 +201,21 @@ def verbalize(
         # The count is computed here and stated as a number. "How many
         # exceptions inherit from RequestException?" scored 1/8 for both
         # systems in every run (D60) because the model was handed fifteen
-        # lines and asked to count them. A derived number has no chunk to
-        # cite; the lines it counts do.
+        # lines and asked to count them. Counted per direction: T8 matches
+        # both ways, and "how many inherit from X" answered 16 -- fifteen
+        # subclasses plus X's own base (D66). A derived number has no chunk
+        # to cite; the lines it counts do.
+        incoming = sum(1 for row in rows if not row.get("outgoing", True))
+        outgoing = len(rows) - incoming
+        phrase = REL_PHRASES[relationship]
         facts.append(GraphFact(
-            f"{len(rows)} things are related to {entity_id} by {relationship}.",
-            None, relationship=relationship,
+            f"{incoming} things {_plural(phrase)} {entity_id}.", None, relationship=relationship,
         ))
+        if outgoing:
+            facts.append(GraphFact(
+                f"{entity_id} {phrase} {outgoing} thing{'s' if outgoing != 1 else ''}.",
+                None, relationship=relationship,
+            ))
         return facts
     if template_id == "T3_EXCEPTION_WRAP_CHAIN":
         return _verbalize_chain(rows, relationship="WRAPS_EXCEPTION")

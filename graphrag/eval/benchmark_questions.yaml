@@ -317,7 +317,8 @@
 - id: ag-01
   category: aggregation
   question: "How many requests exceptions inherit from RequestException?"
-  expects: "A count (roughly 20 in requests/exceptions.py)"
+  expects: "15 direct subclasses (InvalidJSONError, HTTPError, ConnectionError, Timeout, URLRequired, TooManyRedirects, MissingSchema, InvalidSchema, InvalidURL, InvalidHeader, ChunkedEncodingError, ContentDecodingError, StreamConsumedError, RetryError, UnrewindableBodyError)"
+  must_contain_any: ["15", "fifteen"]
   source: "requests/exceptions.py"
 
 - id: ag-02
@@ -598,10 +599,10 @@
 
 - id: ag-17
   category: aggregation
-  question: "How many distinct requests exceptions can HTTPAdapter.send raise?"
-  expects: "8 — ConnectTimeout, ConnectionError, InvalidHeader, InvalidURL, ProxyError, ReadTimeout, RetryError, SSLError"
-  must_contain_any: ["8", "eight"]
-  source: "adapters.py send: every `raise` in its except handlers"
+  question: "How many distinct exceptions can HTTPAdapter.send raise?"
+  expects: "9 — ConnectTimeout, ConnectionError, InvalidHeader, InvalidURL, ProxyError, ReadTimeout, RetryError, SSLError, and ValueError (for a malformed timeout tuple)"
+  must_contain_any: ["9", "nine"]
+  source: "adapters.py send: every `raise` in the function, including `raise ValueError(...)` on a bad timeout tuple. First written as 8 counting only requests exceptions; the graph said 9 and was right (D66)."
 
 - id: ag-18
   category: aggregation
