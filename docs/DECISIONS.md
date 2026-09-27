@@ -2679,11 +2679,54 @@ The five now present are the base classes (`RequestException`, `InvalidJSONError
 - `3h-03` `ConnectTimeout`, `3h-16` `ChunkedEncodingError`: wrap edges the extractor
   does not produce (the `ChunkedEncodingError` wrap is raised from a nested function; the
   `ConnectTimeout` one is the two-function `MaxRetryError` shape from D67).
-- `3h-27` `ValueError`: `InvalidHeader(RequestException, ValueError)` has its second base
-  as a builtin; the INHERITS_FROM edge to `builtins.ValueError` is absent.
+- `3h-27` `ValueError`: ~~the INHERITS_FROM edge to `builtins.ValueError` is absent~~.
+  Wrong (corrected in D72): that edge exists, parser-tagged. What is missing is the wrap
+  edge `InvalidHeader → HeaderParsingError`, so the chain never reaches `InvalidHeader`
+  and its parents are never asked for. Same extractor gap as the bullet above.
 
 **Whether the answer model uses the new lines is the benchmark's question.** Same shape
 as D69: a retrieval gain is necessary, not sufficient.
+
+## D72 — Context assembly was throwing away every fact after the first from the same chunk
+
+**Status:** fixed; 304 tests. Retrieval-side only. Not yet benchmarked. Found while
+diagnosing aggregation, but it reaches every category.
+
+**The symptom.** "Which exceptions does HTTPAdapter.send raise?" planned correctly
+(T8, RAISES), the graph returned all nine, the count line said "raises 9 things", and the
+answer model said "the context only mentions InvalidURL", five runs of five (`ag-03`,
+`ag-17`).
+
+**The cause.** `assemble_context` deduplicated facts by chunk id as well as by statement.
+The chunk dedupe was written for one case: a chunk that supports a graph edge also
+surfacing as a vector hit should appear once. But nine RAISES edges extracted from one
+method body all cite that body's chunk, so the first survived and eight were dropped
+before the model saw them. Same for a class's second base class, for every hop of a
+chain that stays inside one function, and for parameters of one signature.
+
+**The fix.** Facts are unique by statement only. A passage is still skipped when a fact
+already cites its chunk, which is the case the dedupe was for. One line removed.
+
+**How far it reached**, rebuilt from the recorded plans of the D70 runs:
+
+| category | questions losing lines | worst cases (lines shown → lines now) |
+|---|---|---|
+| two-hop | 10 of 15 | th-02 10 → 16, th-04 12 → 17 |
+| three-hop | 15 of 27 | 3h-08 2 → 8, 3h-19 2 → 8, 3h-06 10 → 16 |
+| aggregation | 7 of 23 | ag-03 3 → 11, ag-17 3 → 11 |
+| out-of-scope | 2 of 10 | oos-03 1 → 7 |
+
+34 of the 90 questions were handing the model a thinner context than the graph had
+found. Across the questions the grader marked "Missing: X", the missing names present in
+the facts go from 24 of 60 to 27 of 60; the rest are planner and extractor misses.
+
+**What this says about the earlier numbers.** Every benchmark table from D60 on was
+measured with this bug in place. The two-hop lead (+21 to +27) was earned with a third
+of each context missing. Whether restoring it moves the score is, again, the benchmark's
+question; the retrieval side is now measurably more complete.
+
+**Lesson, for the log.** Dedupe on the identity of the thing being deduplicated. The fact
+is the statement; the chunk is its evidence. Two facts may share evidence.
 
 ---
 

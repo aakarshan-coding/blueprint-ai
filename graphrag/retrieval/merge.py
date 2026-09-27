@@ -277,8 +277,14 @@ def assemble_context(
     against, per design §9 ("require a citation per claim... resolves to a
     chunk id that was actually retrieved").
 
-    Deduplicated by chunk_id: the same chunk can justify a graph edge and
-    also surface as a top vector hit, and should appear once, not twice.
+    A chunk appears as a passage at most once, and not at all when a fact
+    already cites it: the same chunk can justify a graph edge and also
+    surface as a top vector hit. Facts are NOT deduplicated by chunk. Nine
+    RAISES edges of HTTPAdapter.send all cite the one chunk holding the
+    method body; deduplicating facts by chunk kept the first and dropped
+    eight, and the model answered "the context only mentions InvalidURL"
+    in five of five runs (D72). The statement is the fact; the chunk is
+    only where it came from.
     """
     retrieved_ids: set[str] = set()
 
@@ -291,8 +297,6 @@ def assemble_context(
     stated: set[str] = set()
     for fact in graph_facts:
         if fact.statement in stated:
-            continue
-        if fact.chunk_id is not None and fact.chunk_id in retrieved_ids:
             continue
         stated.add(fact.statement)
         if fact.chunk_id is not None:

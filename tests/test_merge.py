@@ -540,3 +540,35 @@ def test_parents_rows_verbalize_as_inherits_from_with_provenance():
     assert facts[0].relationship == "INHERITS_FROM"
     assert facts[0].source == "ast"
     assert facts[0].chunk_id == "c3"
+
+
+def test_distinct_facts_from_the_same_chunk_are_all_kept():
+    """Nine RAISES edges of HTTPAdapter.send all cite the one chunk that holds
+    the method body. Deduplicating facts by chunk_id kept the first and
+    silently dropped eight, so the answer model said "the context only
+    mentions InvalidURL" while stating "raises 9 things" (D72, ag-03 and
+    ag-17 in five of five runs). A chunk may justify many facts; the
+    statement is what must be unique."""
+    facts = [
+        GraphFact(f"requests.adapters.HTTPAdapter.send raises requests.exceptions.{e}.",
+                  "same-chunk", relationship="RAISES", source="ast")
+        for e in ("InvalidURL", "ConnectionError", "SSLError")
+    ]
+
+    context, retrieved_ids = assemble_context(graph_facts=facts, vector_passages=[])
+
+    for e in ("InvalidURL", "ConnectionError", "SSLError"):
+        assert f"requests.exceptions.{e}." in context
+    assert retrieved_ids == {"same-chunk"}
+
+
+def test_a_passage_is_not_repeated_when_a_fact_already_cites_its_chunk():
+    """The chunk-level dedupe was meant for this case only: the chunk that
+    supports a graph edge also surfacing as a top vector hit."""
+    facts = [GraphFact("a calls b.", "c1", relationship="CALLS")]
+    passages = [{"chunk_id": "c1", "text": "def a(): b()", "kind": "code", "section": "a"}]
+
+    context, retrieved_ids = assemble_context(graph_facts=facts, vector_passages=passages)
+
+    assert context.count("[c1]") == 1
+    assert retrieved_ids == {"c1"}
