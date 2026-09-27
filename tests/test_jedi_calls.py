@@ -118,3 +118,65 @@ def test_one_edge_per_distinct_target_per_function(tmp_path):
     targets = [e.target_id for e in edges]
 
     assert len(targets) == len(set(targets))
+
+
+# --- override-following (D68) -------------------------------------------------
+
+from graphrag.ingest.jedi_calls import CallEdge, expand_overrides
+
+UNIVERSE = {
+    "requests.adapters.BaseAdapter", "requests.adapters.BaseAdapter.send",
+    "requests.adapters.HTTPAdapter", "requests.adapters.HTTPAdapter.send",
+    "requests.adapters.HTTPAdapter.close",
+    "app.CachingAdapter", "app.CachingAdapter.send",
+    "app.LoggingAdapter",  # inherits HTTPAdapter but does not override send
+    "requests.sessions.Session.send",
+}
+SUBCLASSES = {
+    "requests.adapters.BaseAdapter": ["requests.adapters.HTTPAdapter"],
+    "requests.adapters.HTTPAdapter": ["app.CachingAdapter", "app.LoggingAdapter"],
+}
+CALL = CallEdge(source_id="requests.sessions.Session.send", surface="adapter.send",
+                target_id="requests.adapters.BaseAdapter.send", chunk_id="c1")
+
+
+def test_a_call_to_a_base_method_also_reaches_each_override():
+    """jedi correctly resolves `adapter.send` to `BaseAdapter.send` -- that
+    is the static type. At runtime it is `HTTPAdapter.send`, and the oracle
+    counted that as a miss (D67). The graph knows the inheritance; a call to
+    a base method is a call to every override that could receive it."""
+    extra = expand_overrides([CALL], subclasses=SUBCLASSES, node_universe=UNIVERSE)
+    targets = {e.target_id for e in extra}
+
+    assert "requests.adapters.HTTPAdapter.send" in targets
+    assert all(e.method == "override" for e in extra)
+    assert all(e.source_id == CALL.source_id and e.chunk_id == "c1" for e in extra)
+
+
+def test_overrides_are_followed_transitively():
+    extra = expand_overrides([CALL], subclasses=SUBCLASSES, node_universe=UNIVERSE)
+
+    assert "app.CachingAdapter.send" in {e.target_id for e in extra}
+
+
+def test_a_subclass_that_does_not_override_gets_no_edge():
+    # LoggingAdapter inherits HTTPAdapter.send unchanged; a call reaches the
+    # inherited method, which the HTTPAdapter.send edge already covers.
+    extra = expand_overrides([CALL], subclasses=SUBCLASSES, node_universe=UNIVERSE)
+
+    assert "app.LoggingAdapter.send" not in {e.target_id for e in extra}
+
+
+def test_a_call_to_a_function_or_class_is_left_alone():
+    edges = [
+        CallEdge(source_id="m.f", surface="parse_url", target_id="urllib3.util.url.parse_url", chunk_id="c2"),
+        CallEdge(source_id="m.f", surface="HTTPAdapter", target_id="requests.adapters.HTTPAdapter", chunk_id="c2"),
+    ]
+
+    assert expand_overrides(edges, subclasses=SUBCLASSES, node_universe=UNIVERSE) == []
+
+
+def test_the_original_edge_is_not_repeated():
+    extra = expand_overrides([CALL], subclasses=SUBCLASSES, node_universe=UNIVERSE)
+
+    assert CALL.target_id not in {e.target_id for e in extra}

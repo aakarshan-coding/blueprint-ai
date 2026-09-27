@@ -1755,12 +1755,1923 @@
     ]
    ]
   },
+  "override": {
+   "observed": 397,
+   "in_graph": 96,
+   "confirmed": 9,
+   "recall": 0.023,
+   "observed_precision": 0.094,
+   "missing_from_graph": [
+    [
+     "requests.adapters.HTTPAdapter.__init__",
+     "requests.adapters.BaseAdapter"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.__init__",
+     "requests.adapters.HTTPAdapter.init_poolmanager"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.__init__",
+     "urllib3.util.retry.Retry"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.__init__",
+     "urllib3.util.retry.Retry.from_int"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.__setstate__",
+     "requests.adapters.HTTPAdapter.init_poolmanager"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.build_connection_pool_key_attributes",
+     "requests.adapters._urllib3_request_context"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.build_response",
+     "requests._types.is_prepared"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.build_response",
+     "requests.cookies.extract_cookies_to_jar"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.build_response",
+     "requests.models.Response"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.build_response",
+     "requests.structures.CaseInsensitiveDict"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.build_response",
+     "requests.utils.get_encoding_from_headers"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.close",
+     "urllib3.poolmanager.PoolManager.clear"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.get_connection_with_tls_context",
+     "requests._types.is_prepared"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.get_connection_with_tls_context",
+     "requests.adapters.HTTPAdapter.build_connection_pool_key_attributes"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.get_connection_with_tls_context",
+     "requests.adapters.HTTPAdapter.proxy_manager_for"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.get_connection_with_tls_context",
+     "requests.exceptions.RequestException"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.get_connection_with_tls_context",
+     "requests.utils.prepend_scheme_if_needed"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.get_connection_with_tls_context",
+     "requests.utils.select_proxy"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.get_connection_with_tls_context",
+     "urllib3.poolmanager.PoolManager.connection_from_host"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.get_connection_with_tls_context",
+     "urllib3.util.url.parse_url"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.init_poolmanager",
+     "urllib3.poolmanager.PoolManager"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.proxy_headers",
+     "requests.auth._basic_auth_str"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.proxy_headers",
+     "requests.utils.get_auth_from_url"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.proxy_manager_for",
+     "requests.adapters.HTTPAdapter.proxy_headers"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.proxy_manager_for",
+     "requests.utils.get_auth_from_url"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.proxy_manager_for",
+     "urllib3.contrib.socks.SOCKSProxyManager"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.proxy_manager_for",
+     "urllib3.poolmanager.proxy_from_url"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.request_url",
+     "requests._types.is_prepared"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.request_url",
+     "requests.utils.select_proxy"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.request_url",
+     "requests.utils.urldefragauth"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.send",
+     "requests._types.is_prepared"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.send",
+     "requests.adapters.HTTPAdapter.add_headers"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.send",
+     "requests.adapters.HTTPAdapter.build_response"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.send",
+     "requests.adapters.HTTPAdapter.cert_verify"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.send",
+     "requests.adapters.HTTPAdapter.get_connection_with_tls_context"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.send",
+     "requests.adapters.HTTPAdapter.request_url"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.send",
+     "requests.exceptions.RequestException"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.send",
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.send",
+     "urllib3.util.timeout.Timeout"
+    ],
+    [
+     "requests.api.get",
+     "requests.api.request"
+    ],
+    [
+     "requests.api.head",
+     "requests.api.request"
+    ],
+    [
+     "requests.api.post",
+     "requests.api.request"
+    ],
+    [
+     "requests.api.put",
+     "requests.api.request"
+    ],
+    [
+     "requests.api.request",
+     "requests.sessions.Session"
+    ],
+    [
+     "requests.api.request",
+     "requests.sessions.Session.request"
+    ],
+    [
+     "requests.auth.HTTPBasicAuth.__call__",
+     "requests.auth._basic_auth_str"
+    ],
+    [
+     "requests.auth.HTTPDigestAuth.__call__",
+     "requests.auth.HTTPDigestAuth.build_digest_header"
+    ],
+    [
+     "requests.auth.HTTPDigestAuth.__call__",
+     "requests.auth.HTTPDigestAuth.init_per_thread_state"
+    ],
+    [
+     "requests.auth.HTTPDigestAuth.__call__",
+     "requests.models.RequestHooksMixin.register_hook"
+    ],
+    [
+     "requests.auth.HTTPDigestAuth.handle_401",
+     "requests.adapters.HTTPAdapter.send"
+    ],
+    [
+     "requests.auth.HTTPDigestAuth.handle_401",
+     "requests.auth.HTTPDigestAuth.build_digest_header"
+    ],
+    [
+     "requests.auth.HTTPDigestAuth.handle_401",
+     "requests.cookies.extract_cookies_to_jar"
+    ],
+    [
+     "requests.auth.HTTPDigestAuth.handle_401",
+     "requests.models.PreparedRequest.copy"
+    ],
+    [
+     "requests.auth.HTTPDigestAuth.handle_401",
+     "requests.models.PreparedRequest.prepare_cookies"
+    ],
+    [
+     "requests.auth.HTTPDigestAuth.handle_401",
+     "requests.models.Response.close"
+    ],
+    [
+     "requests.auth.HTTPDigestAuth.handle_401",
+     "requests.utils.parse_dict_header"
+    ],
+    [
+     "requests.auth._basic_auth_str",
+     "requests._internal_utils.to_native_string"
+    ],
+    [
+     "requests.cookies.MockRequest.__init__",
+     "requests._types.is_prepared"
+    ],
+    [
+     "requests.cookies.MockRequest.get_full_url",
+     "requests._internal_utils.to_native_string"
+    ],
+    [
+     "requests.cookies.MockRequest.get_origin_req_host",
+     "requests.cookies.MockRequest.get_host"
+    ],
+    [
+     "requests.cookies.MockRequest.origin_req_host",
+     "requests.cookies.MockRequest.get_origin_req_host"
+    ],
+    [
+     "requests.cookies.MockRequest.unverifiable",
+     "requests.cookies.MockRequest.is_unverifiable"
+    ],
+    [
+     "requests.cookies.RequestsCookieJar.__getitem__",
+     "requests.cookies.RequestsCookieJar._find_no_duplicates"
+    ],
+    [
+     "requests.cookies.RequestsCookieJar.__setitem__",
+     "requests.cookies.RequestsCookieJar.set"
+    ],
+    [
+     "requests.cookies.RequestsCookieJar.copy",
+     "requests.cookies.RequestsCookieJar.get_policy"
+    ],
+    [
+     "requests.cookies.RequestsCookieJar.copy",
+     "requests.cookies.RequestsCookieJar.update"
+    ],
+    [
+     "requests.cookies.RequestsCookieJar.get",
+     "requests.cookies.RequestsCookieJar._find_no_duplicates"
+    ],
+    [
+     "requests.cookies.RequestsCookieJar.items",
+     "requests.cookies.RequestsCookieJar.iteritems"
+    ],
+    [
+     "requests.cookies.RequestsCookieJar.keys",
+     "requests.cookies.RequestsCookieJar.iterkeys"
+    ],
+    [
+     "requests.cookies.RequestsCookieJar.set",
+     "requests.cookies.RequestsCookieJar.set_cookie"
+    ],
+    [
+     "requests.cookies.RequestsCookieJar.set",
+     "requests.cookies.create_cookie"
+    ],
+    [
+     "requests.cookies.RequestsCookieJar.update",
+     "requests.cookies.RequestsCookieJar.set_cookie"
+    ],
+    [
+     "requests.cookies.RequestsCookieJar.values",
+     "requests.cookies.RequestsCookieJar.itervalues"
+    ],
+    [
+     "requests.cookies._copy_cookie_jar",
+     "requests.cookies.RequestsCookieJar.copy"
+    ],
+    [
+     "requests.cookies.cookiejar_from_dict",
+     "requests.cookies.RequestsCookieJar.set_cookie"
+    ],
+    [
+     "requests.cookies.cookiejar_from_dict",
+     "requests.cookies.create_cookie"
+    ],
+    [
+     "requests.cookies.extract_cookies_to_jar",
+     "requests.cookies.MockRequest"
+    ],
+    [
+     "requests.cookies.extract_cookies_to_jar",
+     "requests.cookies.MockResponse"
+    ],
+    [
+     "requests.cookies.get_cookie_header",
+     "requests.cookies.MockRequest"
+    ],
+    [
+     "requests.cookies.get_cookie_header",
+     "requests.cookies.MockRequest.get_new_headers"
+    ],
+    [
+     "requests.cookies.merge_cookies",
+     "requests.cookies.RequestsCookieJar.update"
+    ],
+    [
+     "requests.cookies.merge_cookies",
+     "requests.cookies.cookiejar_from_dict"
+    ],
+    [
+     "requests.cookies.morsel_to_cookie",
+     "requests.cookies.create_cookie"
+    ],
+    [
+     "requests.exceptions.JSONDecodeError.__init__",
+     "requests.exceptions.RequestException"
+    ],
+    [
+     "requests.help.info",
+     "requests.help._implementation"
+    ],
+    [
+     "requests.hooks.dispatch_hook",
+     "requests.auth.HTTPDigestAuth.handle_401"
+    ],
+    [
+     "requests.hooks.dispatch_hook",
+     "requests.auth.HTTPDigestAuth.handle_redirect"
+    ],
+    [
+     "requests.models.PreparedRequest.__init__",
+     "requests.hooks.default_hooks"
+    ],
+    [
+     "requests.models.PreparedRequest.copy",
+     "requests.cookies._copy_cookie_jar"
+    ],
+    [
+     "requests.models.PreparedRequest.copy",
+     "requests.models.PreparedRequest"
+    ],
+    [
+     "requests.models.PreparedRequest.copy",
+     "requests.structures.CaseInsensitiveDict.copy"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare",
+     "requests.models.PreparedRequest.prepare_auth"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare",
+     "requests.models.PreparedRequest.prepare_body"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare",
+     "requests.models.PreparedRequest.prepare_cookies"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare",
+     "requests.models.PreparedRequest.prepare_headers"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare",
+     "requests.models.PreparedRequest.prepare_hooks"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare",
+     "requests.models.PreparedRequest.prepare_method"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare",
+     "requests.models.PreparedRequest.prepare_url"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_auth",
+     "requests.auth.HTTPBasicAuth"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_auth",
+     "requests.models.PreparedRequest.prepare_content_length"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_auth",
+     "requests.utils.get_auth_from_url"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_body",
+     "requests._types.has_read"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_body",
+     "requests.exceptions.RequestException"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_body",
+     "requests.models.PreparedRequest.prepare_content_length"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_body",
+     "requests.models.RequestEncodingMixin._encode_files"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_body",
+     "requests.models.RequestEncodingMixin._encode_params"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_body",
+     "requests.utils.super_len"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_content_length",
+     "requests.utils.super_len"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_cookies",
+     "requests.cookies.cookiejar_from_dict"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_cookies",
+     "requests.cookies.get_cookie_header"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_headers",
+     "requests._internal_utils.to_native_string"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_headers",
+     "requests.structures.CaseInsensitiveDict"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_headers",
+     "requests.utils.check_header_validity"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_hooks",
+     "requests.models.RequestHooksMixin.register_hook"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_method",
+     "requests._internal_utils.to_native_string"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_url",
+     "requests._internal_utils.to_native_string"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_url",
+     "requests._internal_utils.unicode_is_ascii"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_url",
+     "requests.exceptions.RequestException"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_url",
+     "requests.models.RequestEncodingMixin._encode_params"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_url",
+     "requests.utils.requote_uri"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_url",
+     "urllib3.util.url.parse_url"
+    ],
+    [
+     "requests.models.Request.__init__",
+     "requests.hooks.default_hooks"
+    ],
+    [
+     "requests.models.Request.__init__",
+     "requests.models.RequestHooksMixin.register_hook"
+    ],
+    [
+     "requests.models.Request.prepare",
+     "requests.models.PreparedRequest"
+    ],
+    [
+     "requests.models.Request.prepare",
+     "requests.models.PreparedRequest.prepare"
+    ],
+    [
+     "requests.models.RequestEncodingMixin._encode_files",
+     "requests._types.has_read"
+    ],
+    [
+     "requests.models.RequestEncodingMixin._encode_files",
+     "requests.utils.guess_filename"
+    ],
+    [
+     "requests.models.RequestEncodingMixin._encode_files",
+     "requests.utils.to_key_val_list"
+    ],
+    [
+     "requests.models.RequestEncodingMixin._encode_files",
+     "urllib3.fields.RequestField"
+    ],
+    [
+     "requests.models.RequestEncodingMixin._encode_files",
+     "urllib3.fields.RequestField.make_multipart"
+    ],
+    [
+     "requests.models.RequestEncodingMixin._encode_files",
+     "urllib3.filepost.encode_multipart_formdata"
+    ],
+    [
+     "requests.models.RequestEncodingMixin._encode_params",
+     "requests._types.has_read"
+    ],
+    [
+     "requests.models.RequestEncodingMixin._encode_params",
+     "requests.utils.to_key_val_list"
+    ],
+    [
+     "requests.models.Response.__exit__",
+     "requests.models.Response.close"
+    ],
+    [
+     "requests.models.Response.__init__",
+     "requests.cookies.cookiejar_from_dict"
+    ],
+    [
+     "requests.models.Response.__init__",
+     "requests.structures.CaseInsensitiveDict"
+    ],
+    [
+     "requests.models.Response.__iter__",
+     "requests.models.Response.iter_content"
+    ],
+    [
+     "requests.models.Response.close",
+     "urllib3.response.HTTPResponse.close"
+    ],
+    [
+     "requests.models.Response.close",
+     "urllib3.response.HTTPResponse.release_conn"
+    ],
+    [
+     "requests.models.Response.content",
+     "requests.models.Response.iter_content"
+    ],
+    [
+     "requests.models.Response.iter_content",
+     "requests.exceptions.RequestException"
+    ],
+    [
+     "requests.models.Response.iter_content",
+     "urllib3.response.HTTPResponse.stream"
+    ],
+    [
+     "requests.models.Response.iter_lines",
+     "requests.models.Response.iter_content"
+    ],
+    [
+     "requests.models.Response.iter_lines",
+     "urllib3.response.HTTPResponse.stream"
+    ],
+    [
+     "requests.models.Response.json",
+     "requests.exceptions.JSONDecodeError"
+    ],
+    [
+     "requests.models.Response.json",
+     "requests.utils.guess_json_utf"
+    ],
+    [
+     "requests.models.Response.links",
+     "requests.utils.parse_header_links"
+    ],
+    [
+     "requests.models.Response.ok",
+     "requests.models.Response.raise_for_status"
+    ],
+    [
+     "requests.models.Response.raise_for_status",
+     "requests.exceptions.RequestException"
+    ],
+    [
+     "requests.sessions.Session.__exit__",
+     "requests.sessions.Session.close"
+    ],
+    [
+     "requests.sessions.Session.__init__",
+     "requests.adapters.HTTPAdapter"
+    ],
+    [
+     "requests.sessions.Session.__init__",
+     "requests.cookies.cookiejar_from_dict"
+    ],
+    [
+     "requests.sessions.Session.__init__",
+     "requests.hooks.default_hooks"
+    ],
+    [
+     "requests.sessions.Session.__init__",
+     "requests.sessions.Session.mount"
+    ],
+    [
+     "requests.sessions.Session.__init__",
+     "requests.utils.default_headers"
+    ],
+    [
+     "requests.sessions.Session.close",
+     "requests.adapters.HTTPAdapter.close"
+    ],
+    [
+     "requests.sessions.Session.get",
+     "requests.sessions.Session.request"
+    ],
+    [
+     "requests.sessions.Session.get_adapter",
+     "requests.exceptions.RequestException"
+    ],
+    [
+     "requests.sessions.Session.merge_environment_settings",
+     "requests.sessions.merge_setting"
+    ],
+    [
+     "requests.sessions.Session.merge_environment_settings",
+     "requests.utils.get_environ_proxies"
+    ],
+    [
+     "requests.sessions.Session.prepare_request",
+     "requests.cookies.cookiejar_from_dict"
+    ],
+    [
+     "requests.sessions.Session.prepare_request",
+     "requests.cookies.merge_cookies"
+    ],
+    [
+     "requests.sessions.Session.prepare_request",
+     "requests.models.PreparedRequest"
+    ],
+    [
+     "requests.sessions.Session.prepare_request",
+     "requests.models.PreparedRequest.prepare"
+    ],
+    [
+     "requests.sessions.Session.prepare_request",
+     "requests.sessions.merge_hooks"
+    ],
+    [
+     "requests.sessions.Session.prepare_request",
+     "requests.sessions.merge_setting"
+    ],
+    [
+     "requests.sessions.Session.prepare_request",
+     "requests.utils.get_netrc_auth"
+    ],
+    [
+     "requests.sessions.Session.request",
+     "requests._types.is_prepared"
+    ],
+    [
+     "requests.sessions.Session.request",
+     "requests.models.Request"
+    ],
+    [
+     "requests.sessions.Session.request",
+     "requests.sessions.Session.merge_environment_settings"
+    ],
+    [
+     "requests.sessions.Session.request",
+     "requests.sessions.Session.prepare_request"
+    ],
+    [
+     "requests.sessions.Session.request",
+     "requests.sessions.Session.send"
+    ],
+    [
+     "requests.sessions.Session.send",
+     "requests._types.is_prepared"
+    ],
+    [
+     "requests.sessions.Session.send",
+     "requests.cookies.extract_cookies_to_jar"
+    ],
+    [
+     "requests.sessions.Session.send",
+     "requests.hooks.dispatch_hook"
+    ],
+    [
+     "requests.sessions.Session.send",
+     "requests.sessions.Session.get_adapter"
+    ],
+    [
+     "requests.sessions.Session.send",
+     "requests.sessions.SessionRedirectMixin.resolve_redirects"
+    ],
+    [
+     "requests.sessions.Session.send",
+     "requests.utils.resolve_proxies"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.get_redirect_target",
+     "requests._internal_utils.to_native_string"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.rebuild_auth",
+     "requests._types.is_prepared"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.rebuild_auth",
+     "requests.sessions.SessionRedirectMixin.should_strip_auth"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.rebuild_auth",
+     "requests.utils.get_netrc_auth"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.rebuild_proxies",
+     "requests._types.is_prepared"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.rebuild_proxies",
+     "requests.auth._basic_auth_str"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.rebuild_proxies",
+     "requests.utils.get_auth_from_url"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.rebuild_proxies",
+     "requests.utils.resolve_proxies"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.resolve_redirects",
+     "requests._internal_utils.to_native_string"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.resolve_redirects",
+     "requests.cookies.extract_cookies_to_jar"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.resolve_redirects",
+     "requests.cookies.merge_cookies"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.resolve_redirects",
+     "requests.exceptions.RequestException"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.resolve_redirects",
+     "requests.models.PreparedRequest.copy"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.resolve_redirects",
+     "requests.models.PreparedRequest.prepare_cookies"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.resolve_redirects",
+     "requests.models.Response.close"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.resolve_redirects",
+     "requests.sessions.SessionRedirectMixin.get_redirect_target"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.resolve_redirects",
+     "requests.sessions.SessionRedirectMixin.rebuild_auth"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.resolve_redirects",
+     "requests.sessions.SessionRedirectMixin.rebuild_method"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.resolve_redirects",
+     "requests.sessions.SessionRedirectMixin.rebuild_proxies"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.resolve_redirects",
+     "requests.utils.requote_uri"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.resolve_redirects",
+     "requests.utils.rewind_body"
+    ],
+    [
+     "requests.sessions.SessionRedirectMixin.resolve_redirects",
+     "urllib3.response.HTTPResponse.read"
+    ],
+    [
+     "requests.sessions.merge_hooks",
+     "requests.sessions.merge_setting"
+    ],
+    [
+     "requests.sessions.merge_setting",
+     "requests.structures.CaseInsensitiveDict"
+    ],
+    [
+     "requests.sessions.merge_setting",
+     "requests.utils.to_key_val_list"
+    ],
+    [
+     "requests.sessions.session",
+     "requests.sessions.Session"
+    ],
+    [
+     "requests.structures.CaseInsensitiveDict.__eq__",
+     "requests.structures.CaseInsensitiveDict"
+    ],
+    [
+     "requests.structures.CaseInsensitiveDict.__eq__",
+     "requests.structures.CaseInsensitiveDict.lower_items"
+    ],
+    [
+     "requests.structures.CaseInsensitiveDict.copy",
+     "requests.structures.CaseInsensitiveDict"
+    ],
+    [
+     "requests.utils._validate_header_part",
+     "requests.exceptions.RequestException"
+    ],
+    [
+     "requests.utils.add_dict_to_cookiejar",
+     "requests.cookies.cookiejar_from_dict"
+    ],
+    [
+     "requests.utils.address_in_network",
+     "requests.utils.dotted_netmask"
+    ],
+    [
+     "requests.utils.check_header_validity",
+     "requests.utils._validate_header_part"
+    ],
+    [
+     "requests.utils.default_headers",
+     "requests.structures.CaseInsensitiveDict"
+    ],
+    [
+     "requests.utils.default_headers",
+     "requests.utils.default_user_agent"
+    ],
+    [
+     "requests.utils.get_encoding_from_headers",
+     "requests.utils._parse_content_type_header"
+    ],
+    [
+     "requests.utils.get_environ_proxies",
+     "requests.utils.should_bypass_proxies"
+    ],
+    [
+     "requests.utils.parse_dict_header",
+     "requests.utils.unquote_header_value"
+    ],
+    [
+     "requests.utils.prepend_scheme_if_needed",
+     "urllib3.util.url.parse_url"
+    ],
+    [
+     "requests.utils.proxy_bypass",
+     "requests.utils.proxy_bypass_registry"
+    ],
+    [
+     "requests.utils.requote_uri",
+     "requests.utils.unquote_unreserved"
+    ],
+    [
+     "requests.utils.resolve_proxies",
+     "requests.utils.get_environ_proxies"
+    ],
+    [
+     "requests.utils.resolve_proxies",
+     "requests.utils.should_bypass_proxies"
+    ],
+    [
+     "requests.utils.rewind_body",
+     "requests.exceptions.RequestException"
+    ],
+    [
+     "requests.utils.should_bypass_proxies",
+     "requests.utils.address_in_network"
+    ],
+    [
+     "requests.utils.should_bypass_proxies",
+     "requests.utils.is_ipv4_address"
+    ],
+    [
+     "requests.utils.should_bypass_proxies",
+     "requests.utils.is_valid_cidr"
+    ],
+    [
+     "requests.utils.should_bypass_proxies",
+     "requests.utils.proxy_bypass"
+    ],
+    [
+     "requests.utils.stream_decode_response_unicode",
+     "requests.models.Response.iter_content"
+    ],
+    [
+     "requests.utils.stream_decode_response_unicode",
+     "requests.utils.iter_slices"
+    ],
+    [
+     "requests.utils.unquote_unreserved",
+     "requests.exceptions.RequestException"
+    ],
+    [
+     "urllib3._collections.HTTPHeaderDict.__init__",
+     "urllib3._collections.HTTPHeaderDict.extend"
+    ],
+    [
+     "urllib3._collections.HTTPHeaderDict.extend",
+     "urllib3._collections.HTTPHeaderDict.add"
+    ],
+    [
+     "urllib3.connection.HTTPConnection.__init__",
+     "urllib3.util.timeout.Timeout.resolve_default_timeout"
+    ],
+    [
+     "urllib3.connection.HTTPConnection._new_conn",
+     "urllib3.exceptions.NameResolutionError"
+    ],
+    [
+     "urllib3.connection.HTTPConnection._new_conn",
+     "urllib3.exceptions.NewConnectionError"
+    ],
+    [
+     "urllib3.connection.HTTPConnection._new_conn",
+     "urllib3.util.connection.create_connection"
+    ],
+    [
+     "urllib3.connection.HTTPConnection.connect",
+     "urllib3.connection.HTTPConnection._new_conn"
+    ],
+    [
+     "urllib3.connection.HTTPConnection.getresponse",
+     "urllib3._collections.HTTPHeaderDict"
+    ],
+    [
+     "urllib3.connection.HTTPConnection.getresponse",
+     "urllib3.connection._normalize_header_values"
+    ],
+    [
+     "urllib3.connection.HTTPConnection.getresponse",
+     "urllib3.response.HTTPResponse"
+    ],
+    [
+     "urllib3.connection.HTTPConnection.getresponse",
+     "urllib3.util.response.assert_header_parsing"
+    ],
+    [
+     "urllib3.connection.HTTPConnection.is_connected",
+     "urllib3.util.wait.wait_for_read"
+    ],
+    [
+     "urllib3.connection.HTTPConnection.request",
+     "urllib3.connection.HTTPConnection.putheader"
+    ],
+    [
+     "urllib3.connection.HTTPConnection.request",
+     "urllib3.connection.HTTPConnection.putrequest"
+    ],
+    [
+     "urllib3.connection.HTTPConnection.request",
+     "urllib3.connection._get_default_user_agent"
+    ],
+    [
+     "urllib3.connection.HTTPConnection.request",
+     "urllib3.util.request.body_to_chunks"
+    ],
+    [
+     "urllib3.connection.HTTPConnection.request",
+     "urllib3.util.util.to_str"
+    ],
+    [
+     "urllib3.connection.HTTPSConnection.__init__",
+     "urllib3.connection.HTTPConnection"
+    ],
+    [
+     "urllib3.connection.HTTPSConnection.connect",
+     "urllib3.connection.HTTPConnection._new_conn"
+    ],
+    [
+     "urllib3.connection.HTTPSConnection.connect",
+     "urllib3.connection._ssl_wrap_socket_and_match_hostname"
+    ],
+    [
+     "urllib3.connection._normalize_header_values",
+     "urllib3.connection._normalize_header_value"
+    ],
+    [
+     "urllib3.connection._ssl_wrap_socket_and_match_hostname",
+     "urllib3.util.ssl_.create_urllib3_context"
+    ],
+    [
+     "urllib3.connection._ssl_wrap_socket_and_match_hostname",
+     "urllib3.util.ssl_.is_ipaddress"
+    ],
+    [
+     "urllib3.connection._ssl_wrap_socket_and_match_hostname",
+     "urllib3.util.ssl_.resolve_cert_reqs"
+    ],
+    [
+     "urllib3.connection._ssl_wrap_socket_and_match_hostname",
+     "urllib3.util.ssl_.resolve_ssl_version"
+    ],
+    [
+     "urllib3.connection._ssl_wrap_socket_and_match_hostname",
+     "urllib3.util.ssl_.ssl_wrap_socket"
+    ],
+    [
+     "urllib3.connection._wrap_proxy_error",
+     "urllib3.exceptions.ProxyError"
+    ],
+    [
+     "urllib3.connectionpool.ConnectionPool.__init__",
+     "urllib3.connectionpool._normalize_host"
+    ],
+    [
+     "urllib3.connectionpool.ConnectionPool.__init__",
+     "urllib3.util.url._normalize_host"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.__init__",
+     "urllib3._request_methods.RequestMethods"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.__init__",
+     "urllib3.connectionpool.ConnectionPool"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.__init__",
+     "urllib3.connectionpool.ConnectionPool._new_pool_queue"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.__init__",
+     "urllib3.util.timeout.Timeout.from_float"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool._get_conn",
+     "urllib3.connection.HTTPConnection.close"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool._get_conn",
+     "urllib3.connectionpool.HTTPConnectionPool._new_conn"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool._get_conn",
+     "urllib3.util.connection.is_connection_dropped"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool._get_timeout",
+     "urllib3.util.timeout.Timeout.clone"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool._make_request",
+     "urllib3.connection.HTTPConnection.getresponse"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool._make_request",
+     "urllib3.connection.HTTPConnection.request"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool._make_request",
+     "urllib3.connectionpool.HTTPConnectionPool._get_timeout"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool._make_request",
+     "urllib3.connectionpool.HTTPConnectionPool._raise_timeout"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool._make_request",
+     "urllib3.connectionpool.HTTPConnectionPool._validate_conn"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool._make_request",
+     "urllib3.util.timeout.Timeout.resolve_default_timeout"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool._make_request",
+     "urllib3.util.timeout.Timeout.start_connect"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool._new_conn",
+     "urllib3.connection.HTTPConnection"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool._new_conn",
+     "urllib3.contrib.socks.SOCKSConnection"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool._raise_timeout",
+     "urllib3.exceptions.RequestError"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "requests.structures.CaseInsensitiveDict.copy"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.connection.HTTPConnection.close"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.connection._wrap_proxy_error"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.connectionpool.HTTPConnectionPool._get_conn"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.connectionpool.HTTPConnectionPool._get_timeout"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.connectionpool.HTTPConnectionPool._make_request"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.connectionpool.HTTPConnectionPool._put_conn"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.util.proxy.connection_requires_http_tunnel"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.util.request.set_file_position"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.util.retry.Retry.increment"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.util.retry.Retry.is_retry"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.util.retry.Retry.sleep"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.util.url._encode_target"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.util.url.parse_url"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.util.util.to_str"
+    ],
+    [
+     "urllib3.connectionpool.HTTPSConnectionPool.__init__",
+     "urllib3.connectionpool.HTTPConnectionPool"
+    ],
+    [
+     "urllib3.connectionpool.HTTPSConnectionPool._new_conn",
+     "urllib3.connection.HTTPSConnection"
+    ],
+    [
+     "urllib3.connectionpool.HTTPSConnectionPool._new_conn",
+     "urllib3.contrib.socks.SOCKSConnection"
+    ],
+    [
+     "urllib3.connectionpool.HTTPSConnectionPool._validate_conn",
+     "urllib3.connection.HTTPSConnection.connect"
+    ],
+    [
+     "urllib3.connectionpool.HTTPSConnectionPool._validate_conn",
+     "urllib3.connectionpool.HTTPConnectionPool._validate_conn"
+    ],
+    [
+     "urllib3.connectionpool._close_pool_connections",
+     "urllib3.connection.HTTPConnection.close"
+    ],
+    [
+     "urllib3.connectionpool._normalize_host",
+     "urllib3.util.url._normalize_host"
+    ],
+    [
+     "urllib3.contrib.socks.SOCKSConnection.__init__",
+     "urllib3.connection.HTTPConnection"
+    ],
+    [
+     "urllib3.contrib.socks.SOCKSConnection.__init__",
+     "urllib3.connection.HTTPSConnection"
+    ],
+    [
+     "urllib3.contrib.socks.SOCKSConnection._new_conn",
+     "urllib3.exceptions.NewConnectionError"
+    ],
+    [
+     "urllib3.contrib.socks.SOCKSProxyManager.__init__",
+     "urllib3.poolmanager.PoolManager"
+    ],
+    [
+     "urllib3.contrib.socks.SOCKSProxyManager.__init__",
+     "urllib3.util.url.parse_url"
+    ],
+    [
+     "urllib3.exceptions.MaxRetryError.__init__",
+     "urllib3.exceptions.RequestError"
+    ],
+    [
+     "urllib3.exceptions.NameResolutionError.__init__",
+     "urllib3.exceptions.NewConnectionError"
+    ],
+    [
+     "urllib3.exceptions.RequestError.__init__",
+     "urllib3.exceptions.PoolError"
+    ],
+    [
+     "urllib3.fields.RequestField._render_part",
+     "urllib3.fields.format_multipart_header_param"
+    ],
+    [
+     "urllib3.fields.RequestField._render_parts",
+     "urllib3.fields.RequestField._render_part"
+    ],
+    [
+     "urllib3.fields.RequestField.from_tuples",
+     "urllib3.fields.RequestField"
+    ],
+    [
+     "urllib3.fields.RequestField.from_tuples",
+     "urllib3.fields.RequestField.make_multipart"
+    ],
+    [
+     "urllib3.fields.RequestField.make_multipart",
+     "urllib3.fields.RequestField._render_parts"
+    ],
+    [
+     "urllib3.filepost.encode_multipart_formdata",
+     "urllib3.fields.RequestField.render_headers"
+    ],
+    [
+     "urllib3.filepost.encode_multipart_formdata",
+     "urllib3.filepost.choose_boundary"
+    ],
+    [
+     "urllib3.filepost.encode_multipart_formdata",
+     "urllib3.filepost.iter_field_objects"
+    ],
+    [
+     "urllib3.filepost.iter_field_objects",
+     "urllib3.fields.RequestField.from_tuples"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.__init__",
+     "urllib3._collections.RecentlyUsedContainer"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.__init__",
+     "urllib3._request_methods.RequestMethods"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager._new_pool",
+     "urllib3.connectionpool.HTTPConnectionPool"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager._new_pool",
+     "urllib3.connectionpool.HTTPSConnectionPool"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.clear",
+     "urllib3._collections.RecentlyUsedContainer.clear"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.connection_from_context",
+     "urllib3.poolmanager.PoolManager.connection_from_pool_key"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.connection_from_context",
+     "urllib3.poolmanager._default_key_normalizer"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.connection_from_host",
+     "urllib3.poolmanager.PoolManager._merge_pool_kwargs"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.connection_from_host",
+     "urllib3.poolmanager.PoolManager.connection_from_context"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.connection_from_pool_key",
+     "urllib3.poolmanager.PoolManager._new_pool"
+    ],
+    [
+     "urllib3.poolmanager.ProxyManager.__init__",
+     "urllib3.poolmanager.PoolManager"
+    ],
+    [
+     "urllib3.poolmanager.ProxyManager.__init__",
+     "urllib3.util.url.parse_url"
+    ],
+    [
+     "urllib3.poolmanager.ProxyManager.connection_from_host",
+     "urllib3.poolmanager.PoolManager.connection_from_host"
+    ],
+    [
+     "urllib3.poolmanager.proxy_from_url",
+     "urllib3.poolmanager.ProxyManager"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse._init_decoder",
+     "urllib3.response._get_decoder"
+    ],
+    [
+     "urllib3.response.HTTPResponse.__init__",
+     "urllib3.response.BaseHTTPResponse"
+    ],
+    [
+     "urllib3.response.HTTPResponse.__init__",
+     "urllib3.response.BytesQueueBuffer"
+    ],
+    [
+     "urllib3.response.HTTPResponse.__init__",
+     "urllib3.response.HTTPResponse._init_length"
+    ],
+    [
+     "urllib3.response.HTTPResponse._error_catcher",
+     "urllib3.connection.HTTPConnection.close"
+    ],
+    [
+     "urllib3.response.HTTPResponse._error_catcher",
+     "urllib3.response.HTTPResponse.release_conn"
+    ],
+    [
+     "urllib3.response.HTTPResponse._raw_read",
+     "urllib3.response.HTTPResponse._fp_read"
+    ],
+    [
+     "urllib3.response.HTTPResponse._update_chunk_length",
+     "urllib3.response.HTTPResponse.close"
+    ],
+    [
+     "urllib3.response.HTTPResponse.close",
+     "urllib3.connection.HTTPConnection.close"
+    ],
+    [
+     "urllib3.response.HTTPResponse.drain_conn",
+     "urllib3.response.HTTPResponse._raw_read"
+    ],
+    [
+     "urllib3.response.HTTPResponse.read",
+     "urllib3.response.BaseHTTPResponse._decode"
+    ],
+    [
+     "urllib3.response.HTTPResponse.read",
+     "urllib3.response.BaseHTTPResponse._init_decoder"
+    ],
+    [
+     "urllib3.response.HTTPResponse.read",
+     "urllib3.response.BytesQueueBuffer.get"
+    ],
+    [
+     "urllib3.response.HTTPResponse.read",
+     "urllib3.response.BytesQueueBuffer.put"
+    ],
+    [
+     "urllib3.response.HTTPResponse.read",
+     "urllib3.response.HTTPResponse._raw_read"
+    ],
+    [
+     "urllib3.response.HTTPResponse.read_chunked",
+     "urllib3.response.BaseHTTPResponse._init_decoder"
+    ],
+    [
+     "urllib3.response.HTTPResponse.read_chunked",
+     "urllib3.response.HTTPResponse._update_chunk_length"
+    ],
+    [
+     "urllib3.response.HTTPResponse.read_chunked",
+     "urllib3.response.HTTPResponse.supports_chunked_reads"
+    ],
+    [
+     "urllib3.response.HTTPResponse.read_chunked",
+     "urllib3.util.response.is_response_to_head"
+    ],
+    [
+     "urllib3.response.HTTPResponse.release_conn",
+     "urllib3.connectionpool.HTTPConnectionPool._put_conn"
+    ],
+    [
+     "urllib3.response.HTTPResponse.stream",
+     "urllib3.response.HTTPResponse.read"
+    ],
+    [
+     "urllib3.response.HTTPResponse.stream",
+     "urllib3.response.HTTPResponse.read_chunked"
+    ],
+    [
+     "urllib3.response.HTTPResponse.stream",
+     "urllib3.response.HTTPResponse.supports_chunked_reads"
+    ],
+    [
+     "urllib3.response.HTTPResponse.stream",
+     "urllib3.util.response.is_fp_closed"
+    ],
+    [
+     "urllib3.response._get_decoder",
+     "urllib3.response.GzipDecoder"
+    ],
+    [
+     "urllib3.util.connection.create_connection",
+     "urllib3.util.connection._set_socket_options"
+    ],
+    [
+     "urllib3.util.connection.create_connection",
+     "urllib3.util.connection.allowed_gai_family"
+    ],
+    [
+     "urllib3.util.request.body_to_chunks",
+     "urllib3.util.util.to_bytes"
+    ],
+    [
+     "urllib3.util.retry.Retry._sleep_backoff",
+     "urllib3.util.retry.Retry.get_backoff_time"
+    ],
+    [
+     "urllib3.util.retry.Retry.increment",
+     "urllib3.exceptions.MaxRetryError"
+    ],
+    [
+     "urllib3.util.retry.Retry.increment",
+     "urllib3.response.BaseHTTPResponse.get_redirect_location"
+    ],
+    [
+     "urllib3.util.retry.Retry.increment",
+     "urllib3.util.retry.Retry._is_connection_error"
+    ],
+    [
+     "urllib3.util.retry.Retry.increment",
+     "urllib3.util.retry.Retry._is_read_error"
+    ],
+    [
+     "urllib3.util.retry.Retry.increment",
+     "urllib3.util.retry.Retry.is_exhausted"
+    ],
+    [
+     "urllib3.util.retry.Retry.increment",
+     "urllib3.util.retry.Retry.new"
+    ],
+    [
+     "urllib3.util.retry.Retry.increment",
+     "urllib3.util.util.reraise"
+    ],
+    [
+     "urllib3.util.retry.Retry.is_retry",
+     "urllib3.util.retry.Retry._is_method_retryable"
+    ],
+    [
+     "urllib3.util.retry.Retry.new",
+     "urllib3.util.retry.Retry"
+    ],
+    [
+     "urllib3.util.retry.Retry.sleep",
+     "urllib3.util.retry.Retry._sleep_backoff"
+    ],
+    [
+     "urllib3.util.retry.Retry.sleep",
+     "urllib3.util.retry.Retry.sleep_for_retry"
+    ],
+    [
+     "urllib3.util.retry.Retry.sleep_for_retry",
+     "urllib3.util.retry.Retry.get_retry_after"
+    ],
+    [
+     "urllib3.util.ssl_.ssl_wrap_socket",
+     "urllib3.util.ssl_._ssl_wrap_socket_impl"
+    ],
+    [
+     "urllib3.util.timeout.Timeout.__init__",
+     "urllib3.util.timeout.Timeout._validate_timeout"
+    ],
+    [
+     "urllib3.util.timeout.Timeout.clone",
+     "urllib3.util.timeout.Timeout"
+    ],
+    [
+     "urllib3.util.timeout.Timeout.from_float",
+     "urllib3.util.timeout.Timeout"
+    ],
+    [
+     "urllib3.util.timeout.Timeout.read_timeout",
+     "urllib3.util.timeout.Timeout.resolve_default_timeout"
+    ],
+    [
+     "urllib3.util.url._encode_invalid_chars",
+     "urllib3.util.util.to_str"
+    ],
+    [
+     "urllib3.util.url._encode_target",
+     "urllib3.util.url._encode_invalid_chars"
+    ],
+    [
+     "urllib3.util.url._idna_encode",
+     "urllib3.exceptions.LocationParseError"
+    ],
+    [
+     "urllib3.util.url._normalize_host",
+     "urllib3.util.url._idna_encode"
+    ],
+    [
+     "urllib3.util.url._normalize_host",
+     "urllib3.util.util.to_str"
+    ],
+    [
+     "urllib3.util.url.parse_url",
+     "urllib3.exceptions.LocationParseError"
+    ],
+    [
+     "urllib3.util.url.parse_url",
+     "urllib3.util.url._encode_invalid_chars"
+    ],
+    [
+     "urllib3.util.url.parse_url",
+     "urllib3.util.url._normalize_host"
+    ],
+    [
+     "urllib3.util.url.parse_url",
+     "urllib3.util.url._remove_path_dot_segments"
+    ],
+    [
+     "urllib3.util.wait.wait_for_read",
+     "urllib3.util.wait.select_wait_for_socket"
+    ],
+    [
+     "urllib3.util.wait.wait_for_read",
+     "urllib3.util.wait.wait_for_socket"
+    ],
+    [
+     "urllib3.util.wait.wait_for_socket",
+     "urllib3.util.wait._have_working_poll"
+    ],
+    [
+     "urllib3.util.wait.wait_for_socket",
+     "urllib3.util.wait.select_wait_for_socket"
+    ]
+   ],
+   "unconfirmed_in_graph": [
+    [
+     "requests.adapters.HTTPAdapter.__init__",
+     "requests.adapters.HTTPAdapter.__init__"
+    ],
+    [
+     "requests.exceptions.JSONDecodeError.__init__",
+     "requests.exceptions.JSONDecodeError.__init__"
+    ],
+    [
+     "urllib3._request_methods.RequestMethods.request_encode_body",
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen"
+    ],
+    [
+     "urllib3._request_methods.RequestMethods.request_encode_body",
+     "urllib3.poolmanager.PoolManager.urlopen"
+    ],
+    [
+     "urllib3._request_methods.RequestMethods.request_encode_body",
+     "urllib3.poolmanager.ProxyManager.urlopen"
+    ],
+    [
+     "urllib3._request_methods.RequestMethods.request_encode_url",
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen"
+    ],
+    [
+     "urllib3._request_methods.RequestMethods.request_encode_url",
+     "urllib3.poolmanager.PoolManager.urlopen"
+    ],
+    [
+     "urllib3._request_methods.RequestMethods.request_encode_url",
+     "urllib3.poolmanager.ProxyManager.urlopen"
+    ],
+    [
+     "urllib3.connection.HTTPConnection.request",
+     "urllib3.http2.connection.HTTP2Connection.putheader"
+    ],
+    [
+     "urllib3.connection.HTTPConnection.request",
+     "urllib3.http2.connection.HTTP2Connection.putrequest"
+    ],
+    [
+     "urllib3.connection.HTTPConnection.request_chunked",
+     "urllib3.http2.connection.HTTP2Connection.request"
+    ],
+    [
+     "urllib3.connection.HTTPSConnection.__init__",
+     "urllib3.connection.HTTPSConnection.__init__"
+    ],
+    [
+     "urllib3.connection.HTTPSConnection.__init__",
+     "urllib3.contrib.socks.SOCKSConnection.__init__"
+    ],
+    [
+     "urllib3.connection.HTTPSConnection.__init__",
+     "urllib3.http2.connection.HTTP2Connection.__init__"
+    ],
+    [
+     "urllib3.connectionpool.ConnectionPool.__exit__",
+     "urllib3.connectionpool.HTTPConnectionPool.close"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.__init__",
+     "urllib3.connectionpool.HTTPConnectionPool.__init__"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.__init__",
+     "urllib3.connectionpool.HTTPSConnectionPool.__init__"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.__init__",
+     "urllib3.contrib.socks.SOCKSProxyManager.__init__"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.__init__",
+     "urllib3.poolmanager.PoolManager.__init__"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.__init__",
+     "urllib3.poolmanager.ProxyManager.__init__"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.connectionpool.HTTPSConnectionPool._prepare_proxy"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.drain_conn"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.http2.connection.HTTP2Response.get_redirect_location"
+    ],
+    [
+     "urllib3.connectionpool.HTTPSConnectionPool.__init__",
+     "urllib3.connectionpool.HTTPSConnectionPool.__init__"
+    ],
+    [
+     "urllib3.connectionpool.HTTPSConnectionPool._prepare_proxy",
+     "urllib3.http2.connection.HTTP2Connection.connect"
+    ],
+    [
+     "urllib3.connectionpool.HTTPSConnectionPool._prepare_proxy",
+     "urllib3.http2.connection.HTTP2Connection.set_tunnel"
+    ],
+    [
+     "urllib3.connectionpool.HTTPSConnectionPool._validate_conn",
+     "urllib3.connectionpool.HTTPSConnectionPool._validate_conn"
+    ],
+    [
+     "urllib3.contrib.emscripten.connection.EmscriptenHTTPSConnection.__init__",
+     "urllib3.contrib.emscripten.connection.EmscriptenHTTPSConnection.__init__"
+    ],
+    [
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__",
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__"
+    ],
+    [
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__",
+     "urllib3.http2.connection.HTTP2Response.__init__"
+    ],
+    [
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__",
+     "urllib3.response.HTTPResponse.__init__"
+    ],
+    [
+     "urllib3.contrib.socks.SOCKSConnection.__init__",
+     "urllib3.connection.HTTPSConnection.__init__"
+    ],
+    [
+     "urllib3.contrib.socks.SOCKSConnection.__init__",
+     "urllib3.contrib.socks.SOCKSConnection.__init__"
+    ],
+    [
+     "urllib3.contrib.socks.SOCKSConnection.__init__",
+     "urllib3.http2.connection.HTTP2Connection.__init__"
+    ],
+    [
+     "urllib3.contrib.socks.SOCKSProxyManager.__init__",
+     "urllib3.contrib.socks.SOCKSProxyManager.__init__"
+    ],
+    [
+     "urllib3.contrib.socks.SOCKSProxyManager.__init__",
+     "urllib3.poolmanager.ProxyManager.__init__"
+    ],
+    [
+     "urllib3.exceptions.HostChangedError.__init__",
+     "urllib3.exceptions.HostChangedError.__init__"
+    ],
+    [
+     "urllib3.exceptions.HostChangedError.__init__",
+     "urllib3.exceptions.MaxRetryError.__init__"
+    ],
+    [
+     "urllib3.exceptions.MaxRetryError.__init__",
+     "urllib3.exceptions.HostChangedError.__init__"
+    ],
+    [
+     "urllib3.exceptions.MaxRetryError.__init__",
+     "urllib3.exceptions.MaxRetryError.__init__"
+    ],
+    [
+     "urllib3.exceptions.NameResolutionError.__init__",
+     "urllib3.exceptions.NameResolutionError.__init__"
+    ],
+    [
+     "urllib3.exceptions.RequestError.__init__",
+     "urllib3.exceptions.HostChangedError.__init__"
+    ],
+    [
+     "urllib3.exceptions.RequestError.__init__",
+     "urllib3.exceptions.MaxRetryError.__init__"
+    ],
+    [
+     "urllib3.exceptions.RequestError.__init__",
+     "urllib3.exceptions.RequestError.__init__"
+    ],
+    [
+     "urllib3.http2.connection.HTTP2Connection.__init__",
+     "urllib3.http2.connection.HTTP2Connection.__init__"
+    ],
+    [
+     "urllib3.http2.connection.HTTP2Connection.close",
+     "urllib3.http2.connection.HTTP2Connection.close"
+    ],
+    [
+     "urllib3.http2.connection.HTTP2Connection.connect",
+     "urllib3.http2.connection.HTTP2Connection.connect"
+    ],
+    [
+     "urllib3.http2.connection.HTTP2Response.__init__",
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__"
+    ],
+    [
+     "urllib3.http2.connection.HTTP2Response.__init__",
+     "urllib3.http2.connection.HTTP2Response.__init__"
+    ],
+    [
+     "urllib3.http2.connection.HTTP2Response.__init__",
+     "urllib3.response.HTTPResponse.__init__"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.__init__",
+     "urllib3.connectionpool.HTTPConnectionPool.__init__"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.__init__",
+     "urllib3.connectionpool.HTTPSConnectionPool.__init__"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.__init__",
+     "urllib3.contrib.socks.SOCKSProxyManager.__init__"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.__init__",
+     "urllib3.poolmanager.PoolManager.__init__"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.__init__",
+     "urllib3.poolmanager.ProxyManager.__init__"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.connection_from_url",
+     "urllib3.poolmanager.ProxyManager.connection_from_host"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.urlopen",
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.drain_conn"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.urlopen",
+     "urllib3.http2.connection.HTTP2Response.get_redirect_location"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.urlopen",
+     "urllib3.poolmanager.ProxyManager.connection_from_host"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.urlopen",
+     "urllib3.poolmanager.ProxyManager.urlopen"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.urlopen",
+     "urllib3.response.HTTPResponse.drain_conn"
+    ],
+    [
+     "urllib3.poolmanager.ProxyManager.__init__",
+     "urllib3.contrib.socks.SOCKSProxyManager.__init__"
+    ],
+    [
+     "urllib3.poolmanager.ProxyManager.__init__",
+     "urllib3.poolmanager.ProxyManager.__init__"
+    ],
+    [
+     "urllib3.poolmanager.ProxyManager.connection_from_host",
+     "urllib3.poolmanager.ProxyManager.connection_from_host"
+    ],
+    [
+     "urllib3.poolmanager.ProxyManager.urlopen",
+     "urllib3.poolmanager.ProxyManager.urlopen"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse._decode",
+     "urllib3.response.DeflateDecoder.decompress"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse._decode",
+     "urllib3.response.MultiDecoder.decompress"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse._flush_decoder",
+     "urllib3.response.DeflateDecoder.decompress"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse._flush_decoder",
+     "urllib3.response.DeflateDecoder.flush"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse._flush_decoder",
+     "urllib3.response.GzipDecoder.decompress"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse._flush_decoder",
+     "urllib3.response.GzipDecoder.flush"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse._flush_decoder",
+     "urllib3.response.MultiDecoder.decompress"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse._flush_decoder",
+     "urllib3.response.MultiDecoder.flush"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse.readinto",
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.read"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse.readinto",
+     "urllib3.response.HTTPResponse.read"
+    ],
+    [
+     "urllib3.response.HTTPResponse.__init__",
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__"
+    ],
+    [
+     "urllib3.response.HTTPResponse.__init__",
+     "urllib3.http2.connection.HTTP2Response.__init__"
+    ],
+    [
+     "urllib3.response.HTTPResponse.__init__",
+     "urllib3.response.HTTPResponse.__init__"
+    ],
+    [
+     "urllib3.response.HTTPResponse._error_catcher",
+     "urllib3.http2.connection.HTTP2Connection.close"
+    ],
+    [
+     "urllib3.response.HTTPResponse.close",
+     "urllib3.http2.connection.HTTP2Connection.close"
+    ],
+    [
+     "urllib3.response.MultiDecoder.decompress",
+     "urllib3.response.DeflateDecoder.decompress"
+    ],
+    [
+     "urllib3.response.MultiDecoder.decompress",
+     "urllib3.response.GzipDecoder.decompress"
+    ],
+    [
+     "urllib3.response.MultiDecoder.decompress",
+     "urllib3.response.MultiDecoder.decompress"
+    ],
+    [
+     "urllib3.response.MultiDecoder.flush",
+     "urllib3.response.DeflateDecoder.flush"
+    ],
+    [
+     "urllib3.response.MultiDecoder.flush",
+     "urllib3.response.GzipDecoder.flush"
+    ],
+    [
+     "urllib3.response.MultiDecoder.flush",
+     "urllib3.response.MultiDecoder.flush"
+    ],
+    [
+     "urllib3.util.retry.Retry.increment",
+     "urllib3.http2.connection.HTTP2Response.get_redirect_location"
+    ]
+   ]
+  },
   "all": {
    "observed": 397,
-   "in_graph": 679,
-   "confirmed": 320,
-   "recall": 0.806,
-   "observed_precision": 0.471,
+   "in_graph": 775,
+   "confirmed": 329,
+   "recall": 0.829,
+   "observed_precision": 0.425,
    "missing_from_graph": [
     [
      "requests.adapters.HTTPAdapter.__init__",
@@ -1773,10 +3684,6 @@
     [
      "requests.adapters.HTTPAdapter.get_connection_with_tls_context",
      "requests.exceptions.RequestException"
-    ],
-    [
-     "requests.adapters.HTTPAdapter.get_connection_with_tls_context",
-     "urllib3.poolmanager.ProxyManager.connection_from_host"
     ],
     [
      "requests.adapters.HTTPAdapter.proxy_manager_for",
@@ -1867,16 +3774,8 @@
      "requests.exceptions.RequestException"
     ],
     [
-     "requests.sessions.Session.send",
-     "requests.adapters.HTTPAdapter.send"
-    ],
-    [
      "requests.sessions.SessionRedirectMixin.resolve_redirects",
      "requests.exceptions.RequestException"
-    ],
-    [
-     "requests.sessions.SessionRedirectMixin.resolve_redirects",
-     "requests.sessions.Session.send"
     ],
     [
      "requests.sessions.SessionRedirectMixin.resolve_redirects",
@@ -1911,16 +3810,8 @@
      "requests.exceptions.RequestException"
     ],
     [
-     "urllib3.connection.HTTPConnection.connect",
-     "urllib3.contrib.socks.SOCKSConnection._new_conn"
-    ],
-    [
      "urllib3.connection.HTTPSConnection.__init__",
      "urllib3.connection.HTTPConnection"
-    ],
-    [
-     "urllib3.connection.HTTPSConnection.connect",
-     "urllib3.contrib.socks.SOCKSConnection._new_conn"
     ],
     [
      "urllib3.connectionpool.HTTPConnectionPool.__init__",
@@ -1939,20 +3830,12 @@
      "urllib3.connection.HTTPConnection.close"
     ],
     [
-     "urllib3.connectionpool.HTTPConnectionPool._get_conn",
-     "urllib3.connectionpool.HTTPSConnectionPool._new_conn"
-    ],
-    [
      "urllib3.connectionpool.HTTPConnectionPool._make_request",
      "urllib3.connection.HTTPConnection.getresponse"
     ],
     [
      "urllib3.connectionpool.HTTPConnectionPool._make_request",
      "urllib3.connection.HTTPConnection.request"
-    ],
-    [
-     "urllib3.connectionpool.HTTPConnectionPool._make_request",
-     "urllib3.connectionpool.HTTPSConnectionPool._validate_conn"
     ],
     [
      "urllib3.connectionpool.HTTPConnectionPool._new_conn",
@@ -1973,10 +3856,6 @@
     [
      "urllib3.connectionpool.HTTPConnectionPool.urlopen",
      "urllib3.connection.HTTPConnection.close"
-    ],
-    [
-     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
-     "urllib3.response.HTTPResponse.drain_conn"
     ],
     [
      "urllib3.connectionpool.HTTPSConnectionPool.__init__",
@@ -2043,10 +3922,6 @@
      "urllib3.poolmanager.PoolManager"
     ],
     [
-     "urllib3.response.BaseHTTPResponse._decode",
-     "urllib3.response.GzipDecoder.decompress"
-    ],
-    [
      "urllib3.response.HTTPResponse.__init__",
      "urllib3.response.BaseHTTPResponse"
     ],
@@ -2075,6 +3950,10 @@
     [
      "requests.adapters.HTTPAdapter.__init__",
      "requests.adapters.BaseAdapter.__init__"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.__init__",
+     "requests.adapters.HTTPAdapter.__init__"
     ],
     [
      "requests.adapters.HTTPAdapter.get_connection",
@@ -2183,6 +4062,10 @@
     [
      "requests.cookies.cookiejar_from_dict",
      "requests.cookies.RequestsCookieJar"
+    ],
+    [
+     "requests.exceptions.JSONDecodeError.__init__",
+     "requests.exceptions.JSONDecodeError.__init__"
     ],
     [
      "requests.exceptions.JSONDecodeError.__init__",
@@ -2414,11 +4297,35 @@
     ],
     [
      "urllib3._request_methods.RequestMethods.request_encode_body",
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen"
+    ],
+    [
+     "urllib3._request_methods.RequestMethods.request_encode_body",
      "urllib3.filepost.encode_multipart_formdata"
+    ],
+    [
+     "urllib3._request_methods.RequestMethods.request_encode_body",
+     "urllib3.poolmanager.PoolManager.urlopen"
+    ],
+    [
+     "urllib3._request_methods.RequestMethods.request_encode_body",
+     "urllib3.poolmanager.ProxyManager.urlopen"
     ],
     [
      "urllib3._request_methods.RequestMethods.request_encode_url",
      "urllib3._request_methods.RequestMethods.urlopen"
+    ],
+    [
+     "urllib3._request_methods.RequestMethods.request_encode_url",
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen"
+    ],
+    [
+     "urllib3._request_methods.RequestMethods.request_encode_url",
+     "urllib3.poolmanager.PoolManager.urlopen"
+    ],
+    [
+     "urllib3._request_methods.RequestMethods.request_encode_url",
+     "urllib3.poolmanager.ProxyManager.urlopen"
     ],
     [
      "urllib3.connection.HTTPConnection._new_conn",
@@ -2437,12 +4344,36 @@
      "urllib3._base_connection._ResponseOptions"
     ],
     [
+     "urllib3.connection.HTTPConnection.request",
+     "urllib3.http2.connection.HTTP2Connection.putheader"
+    ],
+    [
+     "urllib3.connection.HTTPConnection.request",
+     "urllib3.http2.connection.HTTP2Connection.putrequest"
+    ],
+    [
      "urllib3.connection.HTTPConnection.request_chunked",
      "urllib3.connection.HTTPConnection.request"
     ],
     [
+     "urllib3.connection.HTTPConnection.request_chunked",
+     "urllib3.http2.connection.HTTP2Connection.request"
+    ],
+    [
      "urllib3.connection.HTTPSConnection.__init__",
      "urllib3.connection.HTTPConnection.__init__"
+    ],
+    [
+     "urllib3.connection.HTTPSConnection.__init__",
+     "urllib3.connection.HTTPSConnection.__init__"
+    ],
+    [
+     "urllib3.connection.HTTPSConnection.__init__",
+     "urllib3.contrib.socks.SOCKSConnection.__init__"
+    ],
+    [
+     "urllib3.connection.HTTPSConnection.__init__",
+     "urllib3.http2.connection.HTTP2Connection.__init__"
     ],
     [
      "urllib3.connection.HTTPSConnection.__init__",
@@ -2509,6 +4440,10 @@
      "urllib3.connectionpool.ConnectionPool.close"
     ],
     [
+     "urllib3.connectionpool.ConnectionPool.__exit__",
+     "urllib3.connectionpool.HTTPConnectionPool.close"
+    ],
+    [
      "urllib3.connectionpool.ConnectionPool.__init__",
      "urllib3.exceptions.LocationValueError"
     ],
@@ -2519,6 +4454,26 @@
     [
      "urllib3.connectionpool.HTTPConnectionPool.__init__",
      "urllib3.connectionpool.ConnectionPool.__init__"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.__init__",
+     "urllib3.connectionpool.HTTPConnectionPool.__init__"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.__init__",
+     "urllib3.connectionpool.HTTPSConnectionPool.__init__"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.__init__",
+     "urllib3.contrib.socks.SOCKSProxyManager.__init__"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.__init__",
+     "urllib3.poolmanager.PoolManager.__init__"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.__init__",
+     "urllib3.poolmanager.ProxyManager.__init__"
     ],
     [
      "urllib3.connectionpool.HTTPConnectionPool._get_conn",
@@ -2586,6 +4541,14 @@
     ],
     [
      "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.connectionpool.HTTPSConnectionPool._prepare_proxy"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.drain_conn"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
      "urllib3.exceptions.HostChangedError"
     ],
     [
@@ -2595,6 +4558,10 @@
     [
      "urllib3.connectionpool.HTTPConnectionPool.urlopen",
      "urllib3.exceptions.SSLError"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.http2.connection.HTTP2Response.get_redirect_location"
     ],
     [
      "urllib3.connectionpool.HTTPConnectionPool.urlopen",
@@ -2613,12 +4580,28 @@
      "urllib3.connectionpool.HTTPConnectionPool.__init__"
     ],
     [
+     "urllib3.connectionpool.HTTPSConnectionPool.__init__",
+     "urllib3.connectionpool.HTTPSConnectionPool.__init__"
+    ],
+    [
      "urllib3.connectionpool.HTTPSConnectionPool._prepare_proxy",
      "urllib3.connection.HTTPConnection.set_tunnel"
     ],
     [
      "urllib3.connectionpool.HTTPSConnectionPool._prepare_proxy",
      "urllib3.connection.HTTPSConnection.connect"
+    ],
+    [
+     "urllib3.connectionpool.HTTPSConnectionPool._prepare_proxy",
+     "urllib3.http2.connection.HTTP2Connection.connect"
+    ],
+    [
+     "urllib3.connectionpool.HTTPSConnectionPool._prepare_proxy",
+     "urllib3.http2.connection.HTTP2Connection.set_tunnel"
+    ],
+    [
+     "urllib3.connectionpool.HTTPSConnectionPool._validate_conn",
+     "urllib3.connectionpool.HTTPSConnectionPool._validate_conn"
     ],
     [
      "urllib3.connectionpool._url_from_pool",
@@ -2667,6 +4650,10 @@
     [
      "urllib3.contrib.emscripten.connection.EmscriptenHTTPSConnection.__init__",
      "urllib3.contrib.emscripten.connection.EmscriptenHTTPConnection.__init__"
+    ],
+    [
+     "urllib3.contrib.emscripten.connection.EmscriptenHTTPSConnection.__init__",
+     "urllib3.contrib.emscripten.connection.EmscriptenHTTPSConnection.__init__"
     ],
     [
      "urllib3.contrib.emscripten.fetch._JSPIReadStream.__del__",
@@ -2850,11 +4837,23 @@
     ],
     [
      "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__",
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__"
+    ],
+    [
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__",
      "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper._init_length"
     ],
     [
      "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__",
+     "urllib3.http2.connection.HTTP2Response.__init__"
+    ],
+    [
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__",
      "urllib3.response.BaseHTTPResponse.__init__"
+    ],
+    [
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__",
+     "urllib3.response.HTTPResponse.__init__"
     ],
     [
      "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper._error_catcher",
@@ -2961,12 +4960,40 @@
      "urllib3.connection.HTTPConnection.__init__"
     ],
     [
+     "urllib3.contrib.socks.SOCKSConnection.__init__",
+     "urllib3.connection.HTTPSConnection.__init__"
+    ],
+    [
+     "urllib3.contrib.socks.SOCKSConnection.__init__",
+     "urllib3.contrib.socks.SOCKSConnection.__init__"
+    ],
+    [
+     "urllib3.contrib.socks.SOCKSConnection.__init__",
+     "urllib3.http2.connection.HTTP2Connection.__init__"
+    ],
+    [
      "urllib3.contrib.socks.SOCKSConnection._new_conn",
      "urllib3.exceptions.ConnectTimeoutError"
     ],
     [
      "urllib3.contrib.socks.SOCKSProxyManager.__init__",
+     "urllib3.contrib.socks.SOCKSProxyManager.__init__"
+    ],
+    [
+     "urllib3.contrib.socks.SOCKSProxyManager.__init__",
      "urllib3.poolmanager.PoolManager.__init__"
+    ],
+    [
+     "urllib3.contrib.socks.SOCKSProxyManager.__init__",
+     "urllib3.poolmanager.ProxyManager.__init__"
+    ],
+    [
+     "urllib3.exceptions.HostChangedError.__init__",
+     "urllib3.exceptions.HostChangedError.__init__"
+    ],
+    [
+     "urllib3.exceptions.HostChangedError.__init__",
+     "urllib3.exceptions.MaxRetryError.__init__"
     ],
     [
      "urllib3.exceptions.HostChangedError.__init__",
@@ -2978,7 +5005,19 @@
     ],
     [
      "urllib3.exceptions.MaxRetryError.__init__",
+     "urllib3.exceptions.HostChangedError.__init__"
+    ],
+    [
+     "urllib3.exceptions.MaxRetryError.__init__",
+     "urllib3.exceptions.MaxRetryError.__init__"
+    ],
+    [
+     "urllib3.exceptions.MaxRetryError.__init__",
      "urllib3.exceptions.RequestError.__init__"
+    ],
+    [
+     "urllib3.exceptions.NameResolutionError.__init__",
+     "urllib3.exceptions.NameResolutionError.__init__"
     ],
     [
      "urllib3.exceptions.NameResolutionError.__init__",
@@ -2986,7 +5025,19 @@
     ],
     [
      "urllib3.exceptions.RequestError.__init__",
+     "urllib3.exceptions.HostChangedError.__init__"
+    ],
+    [
+     "urllib3.exceptions.RequestError.__init__",
+     "urllib3.exceptions.MaxRetryError.__init__"
+    ],
+    [
+     "urllib3.exceptions.RequestError.__init__",
      "urllib3.exceptions.PoolError.__init__"
+    ],
+    [
+     "urllib3.exceptions.RequestError.__init__",
+     "urllib3.exceptions.RequestError.__init__"
     ],
     [
      "urllib3.fields.RequestField.from_tuples",
@@ -3006,6 +5057,10 @@
     ],
     [
      "urllib3.http2.connection.HTTP2Connection.__init__",
+     "urllib3.http2.connection.HTTP2Connection.__init__"
+    ],
+    [
+     "urllib3.http2.connection.HTTP2Connection.__init__",
      "urllib3.http2.connection.HTTP2Connection._new_h2_conn"
     ],
     [
@@ -3021,8 +5076,16 @@
      "urllib3.http2.connection.HTTP2Connection._new_h2_conn"
     ],
     [
+     "urllib3.http2.connection.HTTP2Connection.close",
+     "urllib3.http2.connection.HTTP2Connection.close"
+    ],
+    [
      "urllib3.http2.connection.HTTP2Connection.connect",
      "urllib3.connection.HTTPSConnection.connect"
+    ],
+    [
+     "urllib3.http2.connection.HTTP2Connection.connect",
+     "urllib3.http2.connection.HTTP2Connection.connect"
     ],
     [
      "urllib3.http2.connection.HTTP2Connection.endheaders",
@@ -3074,7 +5137,19 @@
     ],
     [
      "urllib3.http2.connection.HTTP2Response.__init__",
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__"
+    ],
+    [
+     "urllib3.http2.connection.HTTP2Response.__init__",
+     "urllib3.http2.connection.HTTP2Response.__init__"
+    ],
+    [
+     "urllib3.http2.connection.HTTP2Response.__init__",
      "urllib3.response.BaseHTTPResponse.__init__"
+    ],
+    [
+     "urllib3.http2.connection.HTTP2Response.__init__",
+     "urllib3.response.HTTPResponse.__init__"
     ],
     [
      "urllib3.poolmanager.PoolManager.__exit__",
@@ -3083,6 +5158,26 @@
     [
      "urllib3.poolmanager.PoolManager.__init__",
      "urllib3._request_methods.RequestMethods.__init__"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.__init__",
+     "urllib3.connectionpool.HTTPConnectionPool.__init__"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.__init__",
+     "urllib3.connectionpool.HTTPSConnectionPool.__init__"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.__init__",
+     "urllib3.contrib.socks.SOCKSProxyManager.__init__"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.__init__",
+     "urllib3.poolmanager.PoolManager.__init__"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.__init__",
+     "urllib3.poolmanager.ProxyManager.__init__"
     ],
     [
      "urllib3.poolmanager.PoolManager._proxy_requires_url_absolute_form",
@@ -3102,6 +5197,10 @@
     ],
     [
      "urllib3.poolmanager.PoolManager.connection_from_url",
+     "urllib3.poolmanager.ProxyManager.connection_from_host"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.connection_from_url",
      "urllib3.util.url.parse_url"
     ],
     [
@@ -3111,6 +5210,14 @@
     [
      "urllib3.poolmanager.PoolManager.urlopen",
      "urllib3.connectionpool.HTTPConnectionPool.urlopen"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.urlopen",
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.drain_conn"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.urlopen",
+     "urllib3.http2.connection.HTTP2Response.get_redirect_location"
     ],
     [
      "urllib3.poolmanager.PoolManager.urlopen",
@@ -3126,11 +5233,23 @@
     ],
     [
      "urllib3.poolmanager.PoolManager.urlopen",
+     "urllib3.poolmanager.ProxyManager.connection_from_host"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.urlopen",
+     "urllib3.poolmanager.ProxyManager.urlopen"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.urlopen",
      "urllib3.response.BaseHTTPResponse.drain_conn"
     ],
     [
      "urllib3.poolmanager.PoolManager.urlopen",
      "urllib3.response.BaseHTTPResponse.get_redirect_location"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.urlopen",
+     "urllib3.response.HTTPResponse.drain_conn"
     ],
     [
      "urllib3.poolmanager.PoolManager.urlopen",
@@ -3142,6 +5261,10 @@
     ],
     [
      "urllib3.poolmanager.ProxyManager.__init__",
+     "urllib3.contrib.socks.SOCKSProxyManager.__init__"
+    ],
+    [
+     "urllib3.poolmanager.ProxyManager.__init__",
      "urllib3.exceptions.ProxySchemeUnknown"
     ],
     [
@@ -3149,8 +5272,16 @@
      "urllib3.poolmanager.PoolManager.__init__"
     ],
     [
+     "urllib3.poolmanager.ProxyManager.__init__",
+     "urllib3.poolmanager.ProxyManager.__init__"
+    ],
+    [
      "urllib3.poolmanager.ProxyManager._set_proxy_headers",
      "urllib3.util.url.parse_url"
+    ],
+    [
+     "urllib3.poolmanager.ProxyManager.connection_from_host",
+     "urllib3.poolmanager.ProxyManager.connection_from_host"
     ],
     [
      "urllib3.poolmanager.ProxyManager.urlopen",
@@ -3159,6 +5290,10 @@
     [
      "urllib3.poolmanager.ProxyManager.urlopen",
      "urllib3.poolmanager.ProxyManager._set_proxy_headers"
+    ],
+    [
+     "urllib3.poolmanager.ProxyManager.urlopen",
+     "urllib3.poolmanager.ProxyManager.urlopen"
     ],
     [
      "urllib3.poolmanager.ProxyManager.urlopen",
@@ -3193,6 +5328,14 @@
      "urllib3.response.ContentDecoder.decompress"
     ],
     [
+     "urllib3.response.BaseHTTPResponse._decode",
+     "urllib3.response.DeflateDecoder.decompress"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse._decode",
+     "urllib3.response.MultiDecoder.decompress"
+    ],
+    [
      "urllib3.response.BaseHTTPResponse._flush_decoder",
      "urllib3.response.ContentDecoder.decompress"
     ],
@@ -3201,8 +5344,40 @@
      "urllib3.response.ContentDecoder.flush"
     ],
     [
+     "urllib3.response.BaseHTTPResponse._flush_decoder",
+     "urllib3.response.DeflateDecoder.decompress"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse._flush_decoder",
+     "urllib3.response.DeflateDecoder.flush"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse._flush_decoder",
+     "urllib3.response.GzipDecoder.decompress"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse._flush_decoder",
+     "urllib3.response.GzipDecoder.flush"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse._flush_decoder",
+     "urllib3.response.MultiDecoder.decompress"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse._flush_decoder",
+     "urllib3.response.MultiDecoder.flush"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse.readinto",
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.read"
+    ],
+    [
      "urllib3.response.BaseHTTPResponse.readinto",
      "urllib3.response.BaseHTTPResponse.read"
+    ],
+    [
+     "urllib3.response.BaseHTTPResponse.readinto",
+     "urllib3.response.HTTPResponse.read"
     ],
     [
      "urllib3.response.DeflateDecoder.decompress",
@@ -3210,7 +5385,19 @@
     ],
     [
      "urllib3.response.HTTPResponse.__init__",
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__"
+    ],
+    [
+     "urllib3.response.HTTPResponse.__init__",
+     "urllib3.http2.connection.HTTP2Response.__init__"
+    ],
+    [
+     "urllib3.response.HTTPResponse.__init__",
      "urllib3.response.BaseHTTPResponse.__init__"
+    ],
+    [
+     "urllib3.response.HTTPResponse.__init__",
+     "urllib3.response.HTTPResponse.__init__"
     ],
     [
      "urllib3.response.HTTPResponse.__init__",
@@ -3233,6 +5420,10 @@
      "urllib3.exceptions.SSLError"
     ],
     [
+     "urllib3.response.HTTPResponse._error_catcher",
+     "urllib3.http2.connection.HTTP2Connection.close"
+    ],
+    [
      "urllib3.response.HTTPResponse._init_length",
      "urllib3.exceptions.InvalidHeader"
     ],
@@ -3247,6 +5438,10 @@
     [
      "urllib3.response.HTTPResponse._update_chunk_length",
      "urllib3.exceptions.ProtocolError"
+    ],
+    [
+     "urllib3.response.HTTPResponse.close",
+     "urllib3.http2.connection.HTTP2Connection.close"
     ],
     [
      "urllib3.response.HTTPResponse.data",
@@ -3325,8 +5520,32 @@
      "urllib3.response.ContentDecoder.decompress"
     ],
     [
+     "urllib3.response.MultiDecoder.decompress",
+     "urllib3.response.DeflateDecoder.decompress"
+    ],
+    [
+     "urllib3.response.MultiDecoder.decompress",
+     "urllib3.response.GzipDecoder.decompress"
+    ],
+    [
+     "urllib3.response.MultiDecoder.decompress",
+     "urllib3.response.MultiDecoder.decompress"
+    ],
+    [
      "urllib3.response.MultiDecoder.flush",
      "urllib3.response.ContentDecoder.flush"
+    ],
+    [
+     "urllib3.response.MultiDecoder.flush",
+     "urllib3.response.DeflateDecoder.flush"
+    ],
+    [
+     "urllib3.response.MultiDecoder.flush",
+     "urllib3.response.GzipDecoder.flush"
+    ],
+    [
+     "urllib3.response.MultiDecoder.flush",
+     "urllib3.response.MultiDecoder.flush"
     ],
     [
      "urllib3.response._get_decoder",
@@ -3367,6 +5586,10 @@
     [
      "urllib3.util.retry.Retry.increment",
      "urllib3.exceptions.ResponseError"
+    ],
+    [
+     "urllib3.util.retry.Retry.increment",
+     "urllib3.http2.connection.HTTP2Response.get_redirect_location"
     ],
     [
      "urllib3.util.retry.Retry.increment",

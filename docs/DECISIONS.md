@@ -2499,6 +2499,52 @@ reproduces it; `--no-run` re-scores a saved trace against the current graph.
 
 ---
 
+## D68 — The D66 batch applied, and calls follow overrides
+
+**The five D66 fixes**, each measured on the graph or the trace rather than assumed:
+
+- *Same-module rung* (`resolve.py`): a name defined in the module being read is what that
+  module means by it. Added 18 INHERITS_FROM edges (99 → 117); `Timeout` now has
+  `ConnectTimeout` and `ReadTimeout`; unresolved AST facts 82 → 65. Placed after
+  `import_alias` (an import into the module is also a binding) and before every
+  cross-package rung (those are guesses by comparison).
+- *Direction-aware counts* (`merge.py`): "15 things inherit from X" and "X inherits from
+  1 thing" are two lines, not "16 things are related".
+- *T8 exempt from the cap* (`retrieve.py`): its rows are the answer.
+- *Seeding past package roots* (`retrieve.py`): a candidate list that is only Module nodes
+  no longer blocks seeding from passages.
+- *Two questions corrected*: `ag-17` → 9 (the graph was right; `send` raises `ValueError` on
+  a bad timeout tuple); `ag-01` given `must_contain_any: ["15", "fifteen"]`.
+
+**Override-following** (`jedi_calls.expand_overrides`, wired in `run_full_ingestion`). jedi
+resolves `adapter.send` in `Session.send` to `BaseAdapter.send` — the receiver's static
+type, and the right static answer. At runtime it is `HTTPAdapter.send`, and D67's oracle
+counted a third of the remaining CALLS misses as this shape. The graph knows the
+inheritance, so a call to a base method now also reaches every override a subclass
+defines, transitively; a subclass that inherits the method unchanged gets no edge. Tagged
+`source="override"` so the tier stays visible.
+
+**Oracle, re-scored on the same trace:**
+
+| | before | after |
+|---|---|---|
+| CALLS edges | 679 (jedi) | 679 jedi + 96 override |
+| CALLS recall | 80.6% | **82.9%** |
+| override edges confirmed | — | 9 of 96 |
+
+Nine confirmed is honest and small: most overrides sit on paths the requests suite never
+runs (contrib adapters, SOCKS). The 87 unconfirmed are not wrong; they are unmeasured —
+the same floor D67 described. `Session.send → HTTPAdapter.send`, the flagship link, is
+among the nine.
+
+RAISES and WRAPS unchanged, as expected: nothing here touches them. 287 tests.
+
+**Next in the approved list:** make provenance visible at the answer step — every graph
+line tagged by whether a parser or a model produced it, parser-derived lines first when
+capping, and one legend sentence saying which to prefer on disagreement.
+
+---
+
 ## Open questions for the Phase 2 sweep
 
 All of these are recall@k questions. None should be settled by argument.

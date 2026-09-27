@@ -142,3 +142,48 @@ def resolve_calls(
             )
 
     return edges
+
+
+def expand_overrides(
+    edges: list[CallEdge],
+    *,
+    subclasses: dict[str, list[str]],
+    node_universe: set[str],
+) -> list[CallEdge]:
+    """Follow a call to a base-class method down to every override of it.
+
+    jedi resolves `adapter.send` in `Session.send` to `BaseAdapter.send`,
+    which is the receiver's static type and the right static answer. At
+    runtime it is `HTTPAdapter.send`, and the runtime oracle counted that
+    as a miss -- a third of the remaining CALLS misses were this shape
+    (D67). The graph already knows the inheritance, so a call to a base
+    method is also a call to each override a subclass defines, followed
+    transitively. A subclass that inherits the method unchanged gets no
+    edge: the base edge already covers it. Emitted with method="override"
+    so the tier stays visible on the edge (D68).
+    """
+    extra: list[CallEdge] = []
+    seen: set[tuple[str, str]] = set()
+    for edge in edges:
+        owner, _, method = edge.target_id.rpartition(".")
+        if not method or owner not in subclasses:
+            continue
+        frontier = list(subclasses.get(owner, []))
+        visited: set[str] = set()
+        while frontier:
+            cls = frontier.pop()
+            if cls in visited:
+                continue
+            visited.add(cls)
+            frontier.extend(subclasses.get(cls, []))
+            override = f"{cls}.{method}"
+            if override in node_universe and override != edge.target_id:
+                key = (edge.source_id, override)
+                if key in seen:
+                    continue
+                seen.add(key)
+                extra.append(CallEdge(
+                    source_id=edge.source_id, surface=edge.surface,
+                    target_id=override, chunk_id=edge.chunk_id, method="override",
+                ))
+    return extra

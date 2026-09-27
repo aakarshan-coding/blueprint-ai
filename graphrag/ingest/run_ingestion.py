@@ -31,7 +31,7 @@ from graphrag.ingest.chunk import (
     iter_symbols,
 )
 from graphrag.ingest.embed import embed_texts, load_model
-from graphrag.ingest.jedi_calls import build_project, resolve_calls
+from graphrag.ingest.jedi_calls import build_project, expand_overrides, resolve_calls
 from graphrag.ingest.load_vectors import upsert_chunks
 from graphrag.ingest.load_graph import (
     build_defined_in_edges,
@@ -382,6 +382,7 @@ def run_full_ingestion(
         )
 
     print("Writing AST relationship edges (INHERITS_FROM, RAISES)...")
+    subclasses: dict[str, list[str]] = {}
     for edge in edges["inherits_from"]:
         module_context = module_of(edge.source_id, node_types)
         for surface in edge.target_surfaces:
@@ -390,6 +391,7 @@ def run_full_ingestion(
                 stats["ast_edges_unresolved"] += 1
                 continue
             type_if_external(r.canonical_id, "INHERITS_FROM")
+            subclasses.setdefault(r.canonical_id, []).append(edge.source_id)
             merge_edge(
                 neo4j_session, source_id=edge.source_id, relationship="INHERITS_FROM",
                 target_id=r.canonical_id, chunk_id=edge.chunk_id, confidence=1.0,
@@ -429,6 +431,18 @@ def run_full_ingestion(
         if edge.target_id not in node_universe:
             stats["ast_edges_unresolved"] += 1
             continue
+        merge_edge(
+            neo4j_session, source_id=edge.source_id, relationship="CALLS",
+            target_id=edge.target_id, chunk_id=edge.chunk_id, confidence=1.0,
+            source=edge.method, surface=edge.surface,
+        )
+        stats["ast_edges_written"] += 1
+
+    # A call to a base-class method also reaches each override (D68):
+    # jedi's static answer plus the runtime possibilities the inheritance
+    # edges make knowable, each tagged with its own tier.
+    print("Writing override CALLS edges...")
+    for edge in expand_overrides(edges["jedi_calls"], subclasses=subclasses, node_universe=node_universe):
         merge_edge(
             neo4j_session, source_id=edge.source_id, relationship="CALLS",
             target_id=edge.target_id, chunk_id=edge.chunk_id, confidence=1.0,
