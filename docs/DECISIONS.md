@@ -2543,6 +2543,49 @@ RAISES and WRAPS unchanged, as expected: nothing here touches them. 287 tests.
 line tagged by whether a parser or a model produced it, parser-derived lines first when
 capping, and one legend sentence saying which to prefer on disagreement.
 
+## D69 — Provenance at the answer step: every graph line says whether a parser or a model produced it
+
+**Status:** applied; 294 tests. Retrieval-side only, so the graph did not need a re-apply.
+
+**The gap.** D67 measured that parser-extracted WRAPS edges are right about 71% of the time
+and model-extracted ones about 29%. The graph already stored that difference as an edge
+property (`source` = `ast` / `jedi` / `override` / `llm`), but the answer model never saw
+it: both kinds were rendered as identical lines. It had no way to prefer the reliable one.
+
+**The change, in three parts:**
+
+1. Every fact template now returns the edge's `source` (T1 and T8 per row, T3 and T5 per
+   hop, `coalesce(r.source, 'llm')` so older untagged edges count as model-derived).
+2. Each line in the context carries a tag: `(code)` for `ast` / `jedi` / `override`,
+   `(docs)` for `llm`. A fact with no source at all gets no tag. The legend gains one
+   sentence: what the tags mean, and "where they disagree, prefer (code)."
+3. `rank_facts` breaks ties toward proven lines: relevance rounded to one decimal decides
+   first, then provenance, then exact relevance. So a `(docs)` line that is clearly more
+   relevant still wins, but within a 0.1 band the parser's line is kept when the cap of 8
+   bites. Derived (uncited) facts are exempt, as before.
+
+**What this looks like live**, wrap chain for `urllib3.exceptions.ReadTimeoutError`:
+
+```
+[9c27379132f22b8d] (code) requests.exceptions.ConnectionError wraps urllib3.exceptions.ReadTimeoutError.
+[cadc8910b0a08d20] (docs) requests.exceptions.ConnectTimeout wraps requests.exceptions.ConnectionError.
+[96696d150067f667] (code) urllib3.exceptions.ReadTimeoutError wraps socket.timeout.
+[a36824363193e78b] (docs) concept:readtimeoutsoversslconnections wraps urllib3.exceptions.ReadTimeoutError.
+```
+
+The `(docs)` lines are exactly the ones D67 flagged as the unreliable tier (a concept node
+"wrapping" an exception is not a thing the code does). The model can now discount them
+instead of weighing them equally.
+
+**What this does not do.** It does not delete the `(docs)` edges; D64 showed that cleanup
+without evidence removes true edges. It does not change the shared synthesis prompt (D61
+rule); the tags and the legend sentence live in the context block, which only the hybrid
+system builds. Whether the model actually acts on the tag is a benchmark question, not
+something a unit test can settle.
+
+**Measurement.** The whole batch (D66 fixes, D68 overrides, D69 provenance) goes to one
+five-run benchmark, compared against D66's table. Launched only on the user's say-so.
+
 ---
 
 ## Open questions for the Phase 2 sweep

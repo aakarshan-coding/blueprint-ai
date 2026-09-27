@@ -436,3 +436,76 @@ def test_no_graph_lines_means_no_legend():
     )
 
     assert "Relationship meanings:" not in context
+
+
+# --- D69: provenance visible at the answer step --------------------------------
+
+def test_a_neighbour_fact_carries_the_edges_source():
+    rows = [{"relationship": "CALLS", "neighbor": "b", "chunk_id": "c1", "outgoing": True, "source": "jedi"}]
+
+    facts = verbalize("T1_NEIGHBORS", rows, entity_id="a")
+
+    assert facts[0].source == "jedi"
+
+
+def test_a_chain_fact_carries_each_hops_source():
+    rows = [{"chain": ["A", "B", "C"], "chunk_ids": ["c1", "c2"], "starts": ["A", "B"],
+             "sources": ["ast", "llm"]}]
+
+    facts = verbalize("T3_EXCEPTION_WRAP_CHAIN", rows)
+    by_chunk = {f.chunk_id: f.source for f in facts}
+
+    assert by_chunk == {"c1": "ast", "c2": "llm"}
+
+
+def test_context_lines_are_tagged_by_provenance():
+    """"ReadTimeout wraps urllib3.util.timeout" (a module) came from a model
+    reading a docstring; "ReadTimeout wraps ReadTimeoutError" came from the
+    parser. To the answer model they looked identical (D56, D67). Now each
+    line says which it is."""
+    facts = [
+        GraphFact("X wraps Y.", "c1", relationship="WRAPS_EXCEPTION", source="ast"),
+        GraphFact("X wraps Z.", "c2", relationship="WRAPS_EXCEPTION", source="llm"),
+        GraphFact("X calls W.", "c3", relationship="CALLS", source="override"),
+    ]
+
+    context, _ = assemble_context(graph_facts=facts, vector_passages=[])
+
+    assert "[c1] (code) X wraps Y." in context
+    assert "[c2] (docs) X wraps Z." in context
+    assert "[c3] (code) X calls W." in context
+
+
+def test_the_legend_says_which_provenance_to_prefer():
+    facts = [
+        GraphFact("X wraps Y.", "c1", relationship="WRAPS_EXCEPTION", source="ast"),
+        GraphFact("X wraps Z.", "c2", relationship="WRAPS_EXCEPTION", source="llm"),
+    ]
+
+    context, _ = assemble_context(graph_facts=facts, vector_passages=[])
+
+    assert "(code)" in context.split("=== GRAPH RELATIONSHIPS ===")[0]
+    assert "prefer" in context.split("=== GRAPH RELATIONSHIPS ===")[0].lower()
+
+
+def test_a_fact_without_a_source_is_untagged():
+    facts = [GraphFact("2 things inherit from X.", None, relationship="INHERITS_FROM")]
+
+    context, _ = assemble_context(graph_facts=facts, vector_passages=[])
+
+    assert "2 things inherit from X." in context
+    assert "(code)" not in context and "(docs)" not in context
+
+
+def test_rank_facts_puts_proven_lines_before_model_lines_at_equal_relevance():
+    from graphrag.retrieval.merge import rank_facts
+
+    facts = [
+        GraphFact("verify controls certificate verification.", "c1", relationship="CONTROLS", source="llm"),
+        GraphFact("verify controls certificate verification checks.", "c2", relationship="CONTROLS", source="ast"),
+    ]
+    # _FakeEmbedder scores both identically (same keywords), so order is
+    # decided by provenance alone.
+    kept = rank_facts("What does verify do to certificate checks?", facts, model=_FakeEmbedder(), k=8)
+
+    assert [f.chunk_id for f in kept] == ["c2", "c1"]

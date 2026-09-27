@@ -46,6 +46,21 @@ class GraphFact:
     # Which relationship type the statement expresses, so assemble_context can
     # put that type's meaning in the legend above it (D63).
     relationship: str | None = None
+    # Which extractor produced the edge: "ast" / "jedi" / "override" are
+    # parser-proven, "llm" is a model reading prose. Shown on the line as
+    # (code) or (docs) so the answer model can tell them apart (D69).
+    source: str | None = None
+
+
+_PROVEN_SOURCES = frozenset({"ast", "jedi", "override"})
+
+
+def _provenance_tag(source: str | None) -> str:
+    if source in _PROVEN_SOURCES:
+        return "(code)"
+    if source == "llm":
+        return "(docs)"
+    return ""
 
 
 def _phrase(relationship: str, subject_labels: list[str], object_labels: list[str]) -> str:
@@ -89,9 +104,10 @@ def _verbalize_neighbors(rows: list[dict], *, entity_id: str) -> list[GraphFact]
             subject, obj = row["neighbor"], entity_id
             subject_labels, object_labels = neighbor_labels, entity_labels
         verb = _phrase(relationship, subject_labels, object_labels)
-        facts.append(
-            GraphFact(f"{subject} {verb} {obj}.", row["chunk_id"], relationship=relationship)
-        )
+        facts.append(GraphFact(
+            f"{subject} {verb} {obj}.", row["chunk_id"],
+            relationship=relationship, source=row.get("source"),
+        ))
     return facts
 
 
@@ -116,12 +132,13 @@ def _verbalize_chain(rows: list[dict], *, relationship: str) -> list[GraphFact]:
         # a hop is verbalized with its own verb, falling back to the
         # template's default only when the column is absent.
         rels = row.get("rels") or [None] * len(chunk_ids)
+        sources = row.get("sources") or [None] * len(chunk_ids)
         for i, (a, b, chunk_id) in enumerate(zip(chain, chain[1:], chunk_ids)):
             source, target = (a, b) if starts[i] == a else (b, a)
             hop_relationship = rels[i] if rels[i] in REL_PHRASES else relationship
             edges[(source, target, chunk_id)] = GraphFact(
                 f"{source} {REL_PHRASES[hop_relationship]} {target}.", chunk_id,
-                relationship=hop_relationship,
+                relationship=hop_relationship, source=sources[i],
             )
     return list(edges.values())
 
@@ -162,7 +179,11 @@ def rank_facts(
         (_cosine(question_vector, v), i, f)
         for i, (v, f) in enumerate(zip(fact_vectors, cited))
     ]
-    scored.sort(key=lambda t: (-t[0], t[1]))
+    # Within a 0.1 band of relevance, a parser-proven line outranks a
+    # model-derived one (D69); relevance still decides across bands.
+    scored.sort(key=lambda t: (
+        -round(t[0], 1), 0 if t[2].source in _PROVEN_SOURCES else 1, -t[0], t[1],
+    ))
     return [f for score, _i, f in scored if score >= min_score][:k] + derived
 
 
@@ -256,9 +277,9 @@ def assemble_context(
         stated.add(fact.statement)
         if fact.chunk_id is not None:
             retrieved_ids.add(fact.chunk_id)
-        fact_lines.append(
-            f"[{fact.chunk_id}] {fact.statement}" if fact.chunk_id else fact.statement
-        )
+        tag = _provenance_tag(fact.source)
+        body = f"{tag} {fact.statement}" if tag else fact.statement
+        fact_lines.append(f"[{fact.chunk_id}] {body}" if fact.chunk_id else body)
 
     passage_lines = []
     for passage in vector_passages:
@@ -289,6 +310,14 @@ def assemble_context(
         legend = "Relationship meanings:\n" + "\n".join(
             f"- {rel}: {RELATIONSHIP_MEANINGS[rel]}" for rel in used
         )
+        # Provenance is the other thing the model could not see (D56, D67):
+        # a parser-extracted line and a model-extracted line looked the same.
+        if any(_provenance_tag(f.source) for f in graph_facts):
+            legend += (
+                "\nLines marked (code) were extracted from the source by a parser; "
+                "lines marked (docs) by a model reading documentation. Where they "
+                "disagree, prefer (code)."
+            )
         # "RELATIONSHIPS", not "FACTS": the heading is the first authority cue
         # the model sees, and D60 showed a true structural link presented as
         # fact being taken as the answer to a question it doesn't answer.

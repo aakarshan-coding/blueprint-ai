@@ -246,3 +246,20 @@ def test_neighbour_templates_return_node_labels_for_phrasing():
 
         assert "labels(a) AS entity_labels" in query, template_id
         assert "labels(b) AS neighbor_labels" in query, template_id
+
+
+def test_every_fact_template_returns_the_edges_source():
+    """Edges carry source="ast" / "jedi" / "override" (parser-proven) or
+    "llm" (a model reading prose). The answer step can only prefer proven
+    lines if the templates hand the tag through (D69)."""
+    for template_id, values in (
+        ("T1_NEIGHBORS", {"entity_id": "requests.sessions.Session"}),
+        ("T8_RELATED_BY", {"entity_id": "requests.sessions.Session", "relationship": "CALLS"}),
+        ("T3_EXCEPTION_WRAP_CHAIN", {"entity_id": "requests.sessions.Session", "max_hops": 2}),
+        ("T5_DELEGATION_CHAIN", {"entity_id": "requests.sessions.Session", "max_hops": 2}),
+    ):
+        session = _FakeSession()
+        run_template(session, template_id, values, known_entity_ids=KNOWN_IDS)
+        query, _ = session.calls[0]
+
+        assert "r.source" in query, template_id

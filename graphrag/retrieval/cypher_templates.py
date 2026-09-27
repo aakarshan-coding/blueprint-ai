@@ -53,7 +53,8 @@ TEMPLATES: dict[str, Template] = {
             "MATCH (a {id: $entity_id})-[r]-(b) "
             "RETURN type(r) AS relationship, b.id AS neighbor, "
             "r.chunk_id AS chunk_id, startNode(r).id = $entity_id AS outgoing, "
-            "labels(a) AS entity_labels, labels(b) AS neighbor_labels"
+            "labels(a) AS entity_labels, labels(b) AS neighbor_labels, "
+            "coalesce(r.source, 'llm') AS source"
         ),
         params=(ParamSpec("entity_id", "entity_id"),),
         description=(
@@ -87,7 +88,8 @@ TEMPLATES: dict[str, Template] = {
             "MATCH p = (a {id: $entity_id})-[:WRAPS_EXCEPTION*1..__max_hops__]-(b) "
             "RETURN [n IN nodes(p) | n.id] AS chain, "
             "[r IN relationships(p) | r.chunk_id] AS chunk_ids, "
-            "[r IN relationships(p) | startNode(r).id] AS starts"
+            "[r IN relationships(p) | startNode(r).id] AS starts, "
+            "[r IN relationships(p) | coalesce(r.source, 'llm')] AS sources"
         ),
         params=(
             ParamSpec("entity_id", "entity_id"),
@@ -113,7 +115,8 @@ TEMPLATES: dict[str, Template] = {
             "RETURN [n IN nodes(p) | n.id] AS chain, "
             "[r IN relationships(p) | r.chunk_id] AS chunk_ids, "
             "[r IN relationships(p) | startNode(r).id] AS starts, "
-            "[r IN relationships(p) | type(r)] AS rels"
+            "[r IN relationships(p) | type(r)] AS rels, "
+            "[r IN relationships(p) | coalesce(r.source, 'llm')] AS sources"
         ),
         params=(
             ParamSpec("entity_id", "entity_id"),
@@ -148,7 +151,8 @@ TEMPLATES: dict[str, Template] = {
             "MATCH (a {id: $entity_id})-[r:__relationship__]-(b) "
             "RETURN b.id AS neighbor, r.chunk_id AS chunk_id, "
             "startNode(r).id = $entity_id AS outgoing, "
-            "labels(a) AS entity_labels, labels(b) AS neighbor_labels"
+            "labels(a) AS entity_labels, labels(b) AS neighbor_labels, "
+            "coalesce(r.source, 'llm') AS source"
         ),
         params=(
             ParamSpec("entity_id", "entity_id"),
