@@ -161,7 +161,8 @@ TEMPLATES: dict[str, Template] = {
         description=(
             "Everything connected to one entity by a single named relationship "
             "type. Use for 'which classes inherit from X', 'what does X call', "
-            "and for COUNTING those — 'how many exceptions inherit from "
+            "'what does module X define' (DEFINED_IN), 'what parameters does X "
+            "accept' (DEFINED_IN), and for COUNTING those — 'how many exceptions inherit from "
             "RequestException' is answered by counting what this returns. "
             "Prefer this over T6_COUNT_BY_REL whenever the question names an "
             "entity. Needs entity_surface and relationship."

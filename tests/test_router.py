@@ -148,3 +148,13 @@ def test_classify_question_can_be_called_without_voting():
     classify_question("q", client=client, votes=1)
 
     assert client.responses.calls == 1
+
+
+def test_router_is_told_that_module_contents_questions_are_graph_questions():
+    """"How many warning classes does requests.exceptions define?" went to
+    VECTOR in five of five runs, and vector search cannot count (D73). The
+    members are DEFINED_IN edges; the router has to know that is a graph
+    shape."""
+    from graphrag.retrieval.router import _SYSTEM_PROMPT
+    graph_section = _SYSTEM_PROMPT.split("Route to VECTOR")[0]
+    assert "define" in graph_section

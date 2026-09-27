@@ -24,6 +24,7 @@ from graphrag.retrieval.graph_query import (
     Candidate,
     build_template_values,
     describe_entities,
+    repair_plan,
     extract_mentions,
     plan_graph_query,
     resolve_mentions,
@@ -46,6 +47,8 @@ class RetrievalResult:
     context: str = ""
     retrieved_ids: set[str] = field(default_factory=set)
     graph_error: str | None = None
+    # Why the plan was changed after the model wrote it, or None (D73).
+    plan_repair: str | None = None
     # How many parent-class facts were added after the cap (D71); 0 when the
     # plan was not a wrap chain or the kept chain nodes have no parents.
     expanded: int = 0
@@ -111,6 +114,7 @@ def retrieve(
             # from ids our code resolved, never from a surface it wrote.
             mentions = extract_mentions(question, client=openai_client)
             candidates = resolve_mentions(mentions, resolver=resolver, describe=describe)
+            own_candidates = list(candidates)
             # A candidate list that is only package/module nodes is no
             # anchor: "requests" and "urllib3" appear as mentions in most
             # questions, so this fired on zero of 90 before (D66).
@@ -132,12 +136,17 @@ def retrieve(
             template_id = plan.template_id if plan is not None else None
             if plan is not None:
                 values, known_ids = build_template_values(plan)
-                result.plan = f"{plan.template_id}({values})"
+                template_id, values, result.plan_repair = repair_plan(
+                    template_id, values, own_candidates
+                )
+                if "entity_id" in values:
+                    known_ids = {values["entity_id"]}
+                result.plan = f"{template_id}({values})"
                 rows = run_template(
-                    neo4j_session, plan.template_id, values, known_entity_ids=known_ids
+                    neo4j_session, template_id, values, known_entity_ids=known_ids
                 )
                 result.graph_facts = verbalize(
-                    plan.template_id, rows,
+                    template_id, rows,
                     entity_id=values.get("entity_id"),
                     relationship=values.get("relationship"),
                 )
@@ -165,7 +174,12 @@ def retrieve(
     # cannot crowd out the chain they explain; bounded by the cap, so at
     # most a few lines. Walking 4 hops instead does not help: it returns 72
     # wrap facts against a cap of 8, and still no inheritance edge.
-    if template_id == "T3_EXCEPTION_WRAP_CHAIN" and result.graph_facts:
+    # The same last hop for a module's members (D73): "which classes in
+    # requests.exceptions are warnings" and "how many have more than one
+    # base" are answered by the members' INHERITS_FROM edges, which the
+    # members query does not fetch. Bounded by the member count.
+    members_plan = template_id == "T8_RELATED_BY" and result.plan and "'DEFINED_IN'" in result.plan
+    if (template_id == "T3_EXCEPTION_WRAP_CHAIN" or members_plan) and result.graph_facts:
         try:
             result.graph_facts, result.expanded = _expand_parents(
                 result.graph_facts, neo4j_session=neo4j_session

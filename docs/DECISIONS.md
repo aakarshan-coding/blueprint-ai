@@ -2728,6 +2728,62 @@ question; the retrieval side is now measurably more complete.
 **Lesson, for the log.** Dedupe on the identity of the thing being deduplicated. The fact
 is the statement; the chunk is its evidence. Two facts may share evidence.
 
+## D73 — Module-scoped aggregation: route it, plan it, phrase it, and cite it
+
+**Status:** applied; 315 tests; graph re-applied. Router and planner prompts (hybrid-only, D61 rule intact),
+one deterministic plan repair, one phrasing rule, one expansion, one ingestion fix with a
+graph re-apply. Not yet benchmarked.
+
+**The questions.** Six aggregation questions count or list what a module or function
+defines: modules in `requests`, helpers in `requests.api`, warning classes in
+`requests.exceptions`, parameters of `Session.request`, classes with two bases. All six
+were wrong in five of five runs (D70). The graph had every answer as DEFINED_IN edges
+(25 classes under `requests.exceptions`, 8 functions under `requests.api`, 16 parameters
+under `Session.request`, 18 submodules under `requests`). Nothing fetched them.
+
+**Four separate reasons, each with its own fix:**
+
+1. *The router sent them to vector search*, which cannot count. Its GRAPH criteria now
+   include "counts or lists of what a module, class or function defines or contains".
+   Live check after the change: 6 of the 7 tested now route GRAPH; "What parameters does
+   Session.request accept?" still goes VECTOR at 0.90. Parked.
+2. *The planner would not anchor on a module.* Its guidance said a Module "answers
+   nothing", which was right for every question until these. It is now told the one
+   exception (a contents question is T8 with DEFINED_IN on the module) and the builtin
+   case ("which exceptions are also ValueErrors" is INHERITS_FROM on `builtins.ValueError`,
+   which resolves). Live check: `gpt-4o-mini` followed the builtin rule and still planned
+   INHERITS_FROM on `requests.exceptions` twice and a corpus-wide count twice. So the
+   second half of this fix is deterministic: `repair_plan` rewrites a Module anchor's
+   relationship to DEFINED_IN (a Module has no other edges) and scopes a corpus-wide
+   count to the one module the question named. The repair is recorded on the result.
+3. *The member lines could not be told apart.* "x is defined in requests" for a submodule,
+   a class and a function alike. Now "is a submodule of", "is a class defined in", "is a
+   function defined in" by label, so "how many modules" and "how many warning classes"
+   are countable from the lines. Members of a module also get their parents appended
+   after the cap (the D71 expansion), which is what makes "are warnings" answerable:
+   `requests.exceptions` yields 26 member lines plus 34 inheritance lines.
+4. *The lines cited nothing and were tagged as a model's reading.* DEFINED_IN and
+   HAS_PARAMETER edges were written with the placeholder chunk id `"ast"` and no source,
+   rendering as `[ast] (docs) requests.api.get is a function defined in requests.api.`
+   Now each cites its subject's own chunk (834 of 834 symbols map to a real chunk id,
+   same walk as the AST pass, same id function as the chunker) and carries
+   `source="ast"`, so it reads `(code)`. Submodule edges keep the placeholder: a module
+   has no chunk of its own.
+
+**The re-apply bit back once.** MERGE keys on chunk id, so the edges with new real chunk
+ids were created beside the old placeholder ones, and the first live check said "16
+things are defined in requests.api". Cleaned by the D64 rule: delete a placeholder edge
+only where a twin with a real chunk id exists (1969 DEFINED_IN, 1135 HAS_PARAMETER
+removed; 52 submodule placeholders remain, correctly). Ingestion now does this itself.
+
+**Cost.** Member questions hand the model up to about 60 lines. That is the size of the
+answer, not noise, and T8 is uncapped for the reason D66 gave.
+
+**Not fixed here, parked.** Mention extraction is not deterministic: the same question
+yielded `Session.request` on one call and `Session` plus `request` on the next, which
+changes the candidates and so the plan. `ag-04` hinges on this. And `ag-19` ("more than
+one base class") now has the lines it needs but asks the model to count across 60 of them.
+
 ---
 
 ## Open questions for the Phase 2 sweep

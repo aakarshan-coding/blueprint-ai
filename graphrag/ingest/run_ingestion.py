@@ -23,6 +23,7 @@ from graphrag.ingest.ast_extract import (
     module_dotted_name,
 )
 from graphrag.ingest.chunk import (
+    make_chunk_id,
     Chunk,
     chunk_changelog,
     chunk_python,
@@ -293,17 +294,44 @@ def _write_ast_nodes(session, node_universe: set[str], node_types: dict[str, str
         merge_node(session, node_types.get(canonical_id, "Function"), canonical_id)
 
 
-def _write_parameters(session, parameter_edges: list) -> int:
+def symbol_chunk_ids() -> dict[str, str]:
+    """Each code symbol's own chunk id, by canonical id.
+
+    The same walk as run_ast_pass and the same id function as the chunker,
+    so a structural edge can cite the chunk that holds its subject. Before
+    this, DEFINED_IN and HAS_PARAMETER edges carried the placeholder "ast"
+    as their chunk id and no source: rendered as "[ast] (docs) ..." (D73),
+    a citation that resolves to nothing and a provenance tag that is the
+    opposite of the truth. A Module has no chunk of its own (the chunker
+    makes none for module-level code), so submodule edges keep the
+    placeholder.
+    """
+    ids: dict[str, str] = {}
+    for repo, cfg in REPOS.items():
+        src_root = cfg["root"] / cfg["src"]
+        for p in collect_python_files(repo, cfg):
+            text = p.read_text(encoding="utf-8", errors="replace")
+            dotted = module_dotted_name(str(p), src_root=str(src_root), package_root=repo)
+            for name, _node, start, end in iter_symbols(ast.parse(text)):
+                ids[f"{dotted}.{name}"] = make_chunk_id(repo, str(p), start, end)
+    return ids
+
+
+def _write_parameters(session, parameter_edges: list, chunk_ids: dict[str, str] | None = None) -> int:
     """Deterministic — no resolution needed, a parameter's identity is
-    already fully determined by its function and its own name."""
+    already fully determined by its function and its own name. Both edges
+    cite the function's own chunk and are marked parser-derived (D73)."""
+    chunk_ids = chunk_ids or {}
     count = 0
     for edge in parameter_edges:
+        chunk_id = chunk_ids.get(edge.source_id, "ast")
         for param in edge.parameters:
             pid = parameter_id(edge.source_id, param.name)
             merge_node(session, "Parameter", pid)
             merge_edge(
                 session, source_id=pid, relationship="DEFINED_IN",
-                target_id=edge.source_id, chunk_id="ast", confidence=1.0,
+                target_id=edge.source_id, chunk_id=chunk_id, confidence=1.0,
+                source="ast",
             )
             # HAS_PARAMETER was in the ontology and offered to the planner
             # with no edge of that type in the graph -- a T8 plan on it
@@ -311,7 +339,8 @@ def _write_parameters(session, parameter_edges: list) -> int:
             # direction is what "what parameters does X accept" asks.
             merge_edge(
                 session, source_id=edge.source_id, relationship="HAS_PARAMETER",
-                target_id=pid, chunk_id="ast", confidence=1.0,
+                target_id=pid, chunk_id=chunk_id, confidence=1.0,
+                source="ast",
             )
             count += 1
     return count
@@ -353,15 +382,31 @@ def run_full_ingestion(
     print("Writing AST-derived nodes...")
     _write_ast_nodes(neo4j_session, node_universe, node_types)
 
+    chunk_ids = symbol_chunk_ids()
+
     print("Writing parameters...")
-    param_count = _write_parameters(neo4j_session, edges["parameters"])
+    param_count = _write_parameters(neo4j_session, edges["parameters"], chunk_ids)
     print(f"  {param_count} parameters")
 
     print("Writing DEFINED_IN edges...")
     for child, parent in build_defined_in_edges(node_universe):
+        # The member's own chunk is the evidence that it is defined there;
+        # a submodule has none, so its edge keeps the placeholder (D73).
         merge_edge(
             neo4j_session, source_id=child, relationship="DEFINED_IN",
-            target_id=parent, chunk_id="ast", confidence=1.0,
+            target_id=parent, chunk_id=chunk_ids.get(child, "ast"), confidence=1.0,
+            source="ast",
+        )
+    # MERGE keys on chunk_id, so an edge whose chunk id changed from the
+    # placeholder to a real one is a second edge, not an update: the first
+    # re-apply after D73 doubled every member count ("16 things are defined
+    # in requests.api"). Delete a placeholder edge exactly where a twin with
+    # a real chunk id now exists; that twin is the same evidence, cited.
+    for relationship in ("DEFINED_IN", "HAS_PARAMETER"):
+        neo4j_session.run(
+            f"MATCH (a)-[old:{relationship}]->(b) WHERE old.chunk_id = 'ast' "
+            f"AND EXISTS {{ MATCH (a)-[new:{relationship}]->(b) WHERE new.chunk_id <> 'ast' }} "
+            "DELETE old"
         )
 
     def type_if_external(canonical_id: str, relationship: str) -> None:

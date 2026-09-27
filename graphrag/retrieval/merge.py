@@ -81,6 +81,17 @@ def _phrase(relationship: str, subject_labels: list[str], object_labels: list[st
             return "is a parameter of"
         if "Function" in subject_labels and "Class" in object_labels:
             return "is a method of"
+        # "How many warning classes does requests.exceptions define?" and
+        # "how many modules make up requests?" need the kind on each line:
+        # a Module's members are classes, functions and submodules mixed,
+        # and the count line counts them all (D73).
+        if "Module" in object_labels:
+            if "Module" in subject_labels:
+                return "is a submodule of"
+            if "Class" in subject_labels:
+                return "is a class defined in"
+            if "Function" in subject_labels:
+                return "is a function defined in"
     return REL_PHRASES[relationship]
 
 

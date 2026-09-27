@@ -284,3 +284,59 @@ def test_build_template_values_for_a_count_plan_has_no_entity():
 
     assert values == {"relationship": "WRAPS_EXCEPTION"}
     assert known_ids == set()
+
+
+def test_planner_is_told_when_a_module_is_the_right_anchor():
+    """The closing guidance warns off Module anchors in general; a question
+    about a module's contents is the exception, and the planner needs to be
+    told which template and relationship express it (D73)."""
+    from graphrag.retrieval.graph_query import SYSTEM_PROMPT
+    assert "DEFINED_IN" in SYSTEM_PROMPT
+    assert "builtins.ValueError" in SYSTEM_PROMPT
+
+
+def test_repair_plan_turns_a_modules_wrong_relationship_into_defined_in():
+    """A Module has only DEFINED_IN and IMPORTS edges. Planned INHERITS_FROM
+    on requests.exceptions returns nothing; its members are what the
+    question wanted (D73)."""
+    from graphrag.retrieval.graph_query import Candidate, repair_plan
+    candidates = [Candidate("requests.exceptions", kind="Module", degree=40)]
+
+    template_id, values, note = repair_plan(
+        "T8_RELATED_BY",
+        {"entity_id": "requests.exceptions", "relationship": "INHERITS_FROM"},
+        candidates,
+    )
+
+    assert template_id == "T8_RELATED_BY"
+    assert values == {"entity_id": "requests.exceptions", "relationship": "DEFINED_IN"}
+    assert note
+
+
+def test_repair_plan_scopes_a_corpus_wide_count_to_the_one_module_named():
+    from graphrag.retrieval.graph_query import Candidate, repair_plan
+    candidates = [Candidate("requests", kind="Module", degree=65)]
+
+    template_id, values, note = repair_plan(
+        "T6_COUNT_BY_REL", {"relationship": "DEFINED_IN"}, candidates
+    )
+
+    assert template_id == "T8_RELATED_BY"
+    assert values == {"entity_id": "requests", "relationship": "DEFINED_IN"}
+    assert note
+
+
+def test_repair_plan_leaves_a_sound_plan_alone():
+    from graphrag.retrieval.graph_query import Candidate, repair_plan
+    candidates = [
+        Candidate("requests.exceptions.Timeout", kind="Class/Exception", degree=6),
+        Candidate("requests", kind="Module", degree=65),
+        Candidate("urllib3", kind="Module", degree=70),
+    ]
+    for template_id, values in (
+        ("T8_RELATED_BY", {"entity_id": "requests.exceptions.Timeout", "relationship": "INHERITS_FROM"}),
+        ("T8_RELATED_BY", {"entity_id": "requests", "relationship": "IMPORTS"}),
+        ("T6_COUNT_BY_REL", {"relationship": "WRAPS_EXCEPTION"}),  # two modules named: no repair
+    ):
+        out_id, out_values, note = repair_plan(template_id, values, candidates)
+        assert (out_id, out_values, note) == (template_id, values, None)

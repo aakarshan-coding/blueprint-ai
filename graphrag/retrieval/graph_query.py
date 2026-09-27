@@ -237,9 +237,16 @@ question is about a specific class, function or exception, choose that. \
 When the question asks which things relate to an entity by one \
 relationship ("which classes inherit from X", "what does X raise", "how \
 many ..."), choose T8_RELATED_BY with that relationship rather than the \
-unfiltered neighbourhood. A Parameter has no call, delegation or wrapping \
-edges -- for a Parameter, T1_NEIGHBORS is the only template that returns \
-anything.
+unfiltered neighbourhood. The one time a Module is the right choice: when \
+the question asks what a module (or class, or function) defines or \
+contains -- its functions, classes, submodules or parameters -- choose \
+T8_RELATED_BY with DEFINED_IN on that module, class or function; the \
+members point at it. When the question asks which classes are also a \
+builtin type ("which exceptions are also ValueErrors", "which classes are \
+warnings"), choose T8_RELATED_BY with INHERITS_FROM on that builtin \
+("builtins.ValueError", "builtins.Warning"). A Parameter has no call, \
+delegation or wrapping edges -- for a Parameter, T1_NEIGHBORS is the only \
+template that returns anything.
 """
 
 SYSTEM_PROMPT = (
@@ -284,6 +291,51 @@ def plan_graph_query(
         return response.output_parsed.plan
 
     return majority_vote(ask, trials=votes)
+
+
+# A Module node has exactly two kinds of edge: its members' DEFINED_IN and
+# its IMPORTS. Every other relationship on a Module returns nothing.
+MODULE_RELATIONSHIPS = frozenset({"DEFINED_IN", "IMPORTS"})
+
+
+def repair_plan(
+    template_id: str, values: dict, candidates: list[Candidate]
+) -> tuple[str, dict, str | None]:
+    """Correct the two plan shapes the model gets structurally wrong, from
+    what the graph knows about the anchor rather than from the question.
+
+    Told in its prompt that a module's contents are DEFINED_IN, gpt-4o-mini
+    still planned INHERITS_FROM on `requests.exceptions` for "how many warning
+    classes does requests.exceptions define" and a corpus-wide count for
+    "how many modules make up requests" (D73, live check). Both are
+    detectable without the question: a Module has no INHERITS_FROM edges,
+    and a corpus-wide count is never what a question naming one module
+    wants. The repair is recorded on the result so the benchmark can see
+    how often it fired. `candidates` are the question's own, not the ones
+    seeded from passages.
+    """
+    kinds = {c.canonical_id: c.kind for c in candidates}
+    entity = values.get("entity_id")
+    relationship = values.get("relationship")
+    if (
+        template_id == "T8_RELATED_BY"
+        and entity is not None
+        and "Module" in kinds.get(entity, "")
+        and relationship not in MODULE_RELATIONSHIPS
+    ):
+        return (
+            template_id, {**values, "relationship": "DEFINED_IN"},
+            f"a Module has no {relationship} edges; DEFINED_IN instead",
+        )
+    if template_id == "T6_COUNT_BY_REL":
+        modules = [c for c in candidates if "Module" in c.kind]
+        if len(modules) == 1:
+            return (
+                "T8_RELATED_BY",
+                {"entity_id": modules[0].canonical_id, "relationship": "DEFINED_IN"},
+                f"the question names one module; its members, not a corpus-wide {relationship} count",
+            )
+    return template_id, values, None
 
 
 def build_template_values(plan) -> tuple[dict, set[str]]:

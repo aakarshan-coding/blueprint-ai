@@ -35,6 +35,9 @@ Route to GRAPH for:
 - multi-hop chains ("if X happens, what does Y raise")
 - comparisons across entities ("how do X and Y differ")
 - aggregations over relationships ("how many exceptions wrap Z")
+- counts or lists of what a module, class or function defines or contains \
+("how many functions does requests.api define", "what parameters does \
+Session.request accept", "which classes in requests.exceptions are warnings")
 
 Route to VECTOR for:
 - definitions ("what is X")

@@ -572,3 +572,22 @@ def test_a_passage_is_not_repeated_when_a_fact_already_cites_its_chunk():
 
     assert context.count("[c1]") == 1
     assert retrieved_ids == {"c1"}
+
+
+def test_a_modules_members_say_what_kind_of_member_they_are():
+    """"How many modules make up requests?" is answered from lines that
+    say submodule, class or function; "is defined in" for all three left the
+    model counting things it could not tell apart (D73)."""
+    rows = [
+        {"relationship": "DEFINED_IN", "neighbor": "requests.api", "chunk_id": "c1", "outgoing": False,
+         "entity_labels": ["Module"], "neighbor_labels": ["Module"]},
+        {"relationship": "DEFINED_IN", "neighbor": "requests.exceptions.Timeout", "chunk_id": "c2",
+         "outgoing": False, "entity_labels": ["Module"], "neighbor_labels": ["Class", "Exception"]},
+        {"relationship": "DEFINED_IN", "neighbor": "requests.api.get", "chunk_id": "c3", "outgoing": False,
+         "entity_labels": ["Module"], "neighbor_labels": ["Function"]},
+    ]
+    facts = verbalize("T8_RELATED_BY", rows, entity_id="requests", relationship="DEFINED_IN")
+    statements = [f.statement for f in facts]
+    assert "requests.api is a submodule of requests." in statements
+    assert "requests.exceptions.Timeout is a class defined in requests." in statements
+    assert "requests.api.get is a function defined in requests." in statements

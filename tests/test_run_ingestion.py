@@ -101,3 +101,34 @@ def test_write_vectors_embeds_every_chunk_and_upserts_it(monkeypatch):
 
     assert written == 3
     assert seen == {"n_chunks": 3, "n_embeddings": 3, "dim": 384}
+
+
+def test_parameter_edges_cite_the_functions_chunk_and_are_marked_parser_derived():
+    """DEFINED_IN and HAS_PARAMETER edges carried the placeholder chunk id
+    "ast" and no source, so a members line rendered as "[ast] (docs) ...":
+    a citation to nothing, tagged as a model's reading (D73)."""
+    session = _FakeSession()
+    edges = [ParametersEdge(
+        source_id="requests.sessions.Session.request",
+        parameters=[Parameter(name="verify", has_default=True, default="None")],
+    )]
+
+    _write_parameters(session, edges, {"requests.sessions.Session.request": "chunk-77"})
+
+    edge_calls = [(q, p) for q, p in session.calls if "[r:" in q]
+    assert edge_calls
+    for _q, params in edge_calls:
+        flat = str(params)
+        assert "chunk-77" in flat
+        assert "'source': 'ast'" in flat or '"source": "ast"' in flat
+
+
+def test_reapply_deletes_placeholder_edges_that_now_have_a_cited_twin():
+    """MERGE keys on chunk_id, so giving DEFINED_IN edges a real chunk id
+    created twins beside the old placeholder edges and doubled every member
+    count (D73). Re-applying must converge, so ingestion removes a
+    placeholder edge exactly where a cited twin exists."""
+    import inspect
+    from graphrag.ingest import run_ingestion
+    src = inspect.getsource(run_ingestion.run_full_ingestion)
+    assert "old.chunk_id = 'ast'" in src and "DELETE old" in src

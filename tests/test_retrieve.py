@@ -247,3 +247,60 @@ def test_a_neighbours_plan_does_not_expand():
 
     assert session.parent_queries == []
     assert result.expanded == 0
+
+
+def test_a_modules_members_are_followed_by_their_parents():
+    """"Which classes in requests.exceptions are warnings?" needs each
+    member's INHERITS_FROM edge, which the members query does not fetch
+    (D73). Same post-cap expansion as the wrap chain (D71)."""
+    rows = [
+        {"relationship": "DEFINED_IN", "neighbor": "requests.exceptions.RequestsWarning",
+         "chunk_id": "c1", "outgoing": False, "entity_labels": ["Module"], "neighbor_labels": ["Class"]},
+    ]
+    session = _ChainThenParents(rows, parents={
+        "requests.exceptions.RequestsWarning": ["builtins.Warning"],
+    })
+    client = FakeOpenAI(plan={
+        "template_id": "T8_RELATED_BY", "entity_id": "requests.sessions.Session",
+        "relationship": "DEFINED_IN",
+    })
+
+    result = _retrieve(neo4j_session=session, openai_client=client)
+
+    statements = [f.statement for f in result.graph_facts]
+    assert "requests.exceptions.RequestsWarning inherits from builtins.Warning." in statements
+    assert result.expanded == 1
+
+
+def test_a_related_by_plan_on_another_relationship_does_not_expand():
+    rows = [{"relationship": "RAISES", "neighbor": "requests.exceptions.SSLError",
+             "chunk_id": "c1", "outgoing": True}]
+    session = _ChainThenParents(rows, parents={"requests.exceptions.SSLError": ["x"]})
+    client = FakeOpenAI(plan={
+        "template_id": "T8_RELATED_BY", "entity_id": "requests.sessions.Session",
+        "relationship": "RAISES",
+    })
+
+    result = _retrieve(neo4j_session=session, openai_client=client)
+
+    assert session.parent_queries == []
+
+
+def test_a_wrong_relationship_on_a_module_anchor_is_repaired_before_running():
+    """The planner chose INHERITS_FROM on the module requests.exceptions
+    (D73, live). A Module has no such edges; the repair runs DEFINED_IN and
+    records why, and the plan string shows what actually ran."""
+    resolver = FakeResolver({"requests.exceptions": "requests.exceptions"})
+    session = FakeSession([], descriptions={"requests.exceptions": (["Module"], 40)})
+    client = FakeOpenAI(
+        mentions=[{"surface": "requests.exceptions", "package": "requests"}],
+        plan={"template_id": "T8_RELATED_BY", "entity_id": "requests.exceptions",
+              "relationship": "INHERITS_FROM"},
+    )
+
+    result = _retrieve(neo4j_session=session, resolver=resolver, openai_client=client)
+
+    assert result.plan_repair
+    assert "'DEFINED_IN'" in result.plan
+    ran = [q for q, _ in session.queries if ":DEFINED_IN" in q]
+    assert ran, "the repaired plan is what ran"
