@@ -2784,6 +2784,64 @@ yielded `Session.request` on one call and `Session` plus `request` on the next, 
 changes the candidates and so the plan. `ag-04` hinges on this. And `ag-19` ("more than
 one base class") now has the lines it needs but asks the model to count across 60 of them.
 
+## D74 — The parked anchors: repairs by shape, expansion by shape, parameter noise, mention votes
+
+**Status:** applied; 324 tests. Retrieval-side only. Not yet benchmarked. This closes the
+list from D71/D73 of "parked, not chased", except where the cause is a hallucinated
+mention (below).
+
+**What the extractor gaps turned out to be.** Checked before touching the extractor: every
+wrap edge D71 called missing exists, parser-tagged (`ChunkedEncodingError wraps
+ProtocolError`, `ConnectTimeout wraps ConnectTimeoutError`, `InvalidHeader wraps
+urllib3.exceptions.InvalidHeader`). The questions lost them because the plan started
+from the wrong node, not because the graph lacked the edge. No extractor change.
+
+**Live evidence on the wrong anchors** (mentions → candidates → plan, real calls):
+- `3h-17`, `ag-20`: the only candidate was `Response.iter_content`, a Function; the plan
+  was a wrap chain from it, which returns nothing, since WRAPS_EXCEPTION joins exceptions.
+- `3h-25`: candidates `urllib3` (Module) and `HTTPAdapter.send`; the plan chose the module.
+- `3h-24`: 33 candidates, 30 of them parameters named `timeout`, from one ambiguous
+  mention "Timeout".
+- `ag-16`: REFUSE at 0.9, three of three calls, for "which methods must a subclass of
+  BaseAdapter implement".
+
+**Fixes, each deterministic where it could be:**
+
+1. `repair_plan` gains three shapes: a wrap chain from a Function becomes "what it
+   raises" (T8 RAISES); T8 WRAPS_EXCEPTION on a Function becomes RAISES; a wrap chain
+   from a Module moves to the most specific other candidate (a Function → its RAISES, an
+   exception → the chain from it).
+2. Expansion is now a table keyed by plan shape, each hop one relationship, outgoing,
+   from the nodes the capped facts name (`T9_EDGES_FROM`, generalised from D71's
+   parents-only template):
+   - wrap chain → parents, then the parents' parents ("what is that parent's parent")
+   - a module's members → parents
+   - what a function raises → what each raised exception wraps, and its parents
+   - a call chain → what the callees raise
+3. `resolve_mentions` drops Parameter candidates from a mention that also resolved to a
+   class or function. Parameters stay when they are all a mention has.
+4. Mentions are voted, three calls, majority on the surface set (`MENTION_VOTES`). The
+   mention list sits upstream of every other decision and was observed to differ call to
+   call (D73). Planner voting stays retired (D60); this is the one vote kept.
+5. The router is told that subclassing questions are in scope. `ag-16` now routes GRAPH.
+
+**Measured on the 18 questions this targets**, full retrieve() with real router, mentions
+and planner, no answer model: the names the grader had marked missing are present in the
+context for 23 of 31, against about 9 before the batch. Repairs fired on exactly the four
+questions above and nowhere else.
+
+**Cost.** "What HTTPAdapter.send raises" now hands the model 71 lines (9 raises, then what
+each wraps and inherits from). That is roughly a thousand tokens; the answer to "which
+nine, wrapping what, deriving from what" is most of it.
+
+**Still not fixed, and why:** `3h-16` and `3h-27` anchor on an exception the model named
+that the question does not contain (`ReadTimeoutError` for a cut-short body,
+`HeaderParsingError` for a rejected header). That is the mention extractor inventing a
+name, which voting does not cure when it invents the same one three times. `3h-03` needs
+3 hops where the planner chooses 2. `ag-16` routes to the graph now but plans
+IMPLEMENTS on BaseAdapter; its answer sits in the passages. `ag-04` still anchors on
+`Session` rather than `Session.request`.
+
 ---
 
 ## Open questions for the Phase 2 sweep

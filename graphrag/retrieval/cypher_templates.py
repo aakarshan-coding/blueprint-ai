@@ -173,13 +173,21 @@ TEMPLATES: dict[str, Template] = {
     # the 27 three-hop questions end "...and what does that inherit from?";
     # the chain template walks WRAPS_EXCEPTION only, so the last hop, an
     # INHERITS_FROM edge the graph already holds, was never fetched.
-    "T9_PARENTS_OF": Template(
+    # Generalised in D74: the same one-hop expansion serves INHERITS_FROM
+    # (parents), WRAPS_EXCEPTION (what a raised exception wraps) and RAISES
+    # (what a called function raises), each chosen by retrieve() from the
+    # plan's shape. Outgoing only: the kept nodes are the subjects.
+    "T9_EDGES_FROM": Template(
         cypher=(
-            "MATCH (a)-[r:INHERITS_FROM]->(b) WHERE a.id IN $entity_ids "
-            "RETURN a.id AS entity, b.id AS parent, r.chunk_id AS chunk_id, "
-            "coalesce(r.source, 'llm') AS source"
+            "MATCH (a)-[r:__relationship__]->(b) WHERE a.id IN $entity_ids "
+            "RETURN a.id AS entity, b.id AS neighbor, r.chunk_id AS chunk_id, "
+            "coalesce(r.source, 'llm') AS source, "
+            "labels(a) AS entity_labels, labels(b) AS neighbor_labels"
         ),
-        params=(ParamSpec("entity_ids", "entity_ids"),),
+        params=(
+            ParamSpec("entity_ids", "entity_ids"),
+            ParamSpec("relationship", "relationship_type"),
+        ),
     ),
     "T7_DOCS_FOR_SYMBOL": Template(
         cypher=(

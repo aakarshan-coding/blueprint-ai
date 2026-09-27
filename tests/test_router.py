@@ -158,3 +158,11 @@ def test_router_is_told_that_module_contents_questions_are_graph_questions():
     from graphrag.retrieval.router import _SYSTEM_PROMPT
     graph_section = _SYSTEM_PROMPT.split("Route to VECTOR")[0]
     assert "define" in graph_section
+
+
+def test_router_is_told_that_subclassing_questions_are_in_scope():
+    """"Which methods must a subclass of BaseAdapter implement?" was refused
+    at 0.9 in three of three calls (D74). The answer is in BaseAdapter's own
+    source; the refusal rule about other frameworks was being over-read."""
+    from graphrag.retrieval.router import _SYSTEM_PROMPT
+    assert "subclass" in _SYSTEM_PROMPT

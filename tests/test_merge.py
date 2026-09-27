@@ -531,10 +531,10 @@ def test_every_cited_fact_names_the_two_nodes_it_joins():
 
 
 def test_parents_rows_verbalize_as_inherits_from_with_provenance():
-    facts = verbalize("T9_PARENTS_OF", [
+    facts = verbalize("T9_EDGES_FROM", [
         {"entity": "requests.exceptions.ConnectionError",
-         "parent": "requests.exceptions.RequestException", "chunk_id": "c3", "source": "ast"},
-    ])
+         "neighbor": "requests.exceptions.RequestException", "chunk_id": "c3", "source": "ast"},
+    ], relationship="INHERITS_FROM")
     assert facts[0].statement == (
         "requests.exceptions.ConnectionError inherits from requests.exceptions.RequestException.")
     assert facts[0].relationship == "INHERITS_FROM"

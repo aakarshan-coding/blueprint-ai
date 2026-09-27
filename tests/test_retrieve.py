@@ -164,20 +164,28 @@ def test_a_neighbours_plan_is_still_capped():
 
 
 class _ChainThenParents(FakeSession):
-    """The wrap-chain query returns `chain_rows`; the parents query returns
-    the parents of whichever ids it was asked about."""
+    """The plan's query returns `chain_rows`; an expansion query returns the
+    outgoing edges of that relationship for whichever ids it was asked
+    about: `parents` for INHERITS_FROM, `wraps` for WRAPS_EXCEPTION,
+    `raises` for RAISES."""
 
-    def __init__(self, chain_rows, parents):
+    def __init__(self, chain_rows, parents=None, wraps=None, raises=None):
         super().__init__(chain_rows)
-        self._parents = parents
+        self._edges = {
+            ":INHERITS_FROM": parents or {}, ":WRAPS_EXCEPTION": wraps or {}, ":RAISES": raises or {},
+        }
         self.parent_queries = []
+        self.expansion_queries = []
 
     def run(self, query, **params):
         if "$entity_ids" in query:
-            self.parent_queries.append(params["entity_ids"])
+            rel = next(r for r in self._edges if r in query)
+            self.expansion_queries.append((rel, params["entity_ids"]))
+            if rel == ":INHERITS_FROM":
+                self.parent_queries.append(params["entity_ids"])
             rows = [
-                {"entity": e, "parent": p, "chunk_id": f"p-{e}", "source": "ast"}
-                for e in params["entity_ids"] for p in self._parents.get(e, [])
+                {"entity": e, "neighbor": p, "chunk_id": f"p-{e}", "source": "ast"}
+                for e in params["entity_ids"] for p in self._edges[rel].get(e, [])
             ]
 
             class R:
@@ -273,12 +281,13 @@ def test_a_modules_members_are_followed_by_their_parents():
 
 
 def test_a_related_by_plan_on_another_relationship_does_not_expand():
-    rows = [{"relationship": "RAISES", "neighbor": "requests.exceptions.SSLError",
+    """CALLS has no expansion registered; only the shapes in _EXPANSIONS do."""
+    rows = [{"relationship": "CALLS", "neighbor": "requests.adapters.HTTPAdapter.send",
              "chunk_id": "c1", "outgoing": True}]
-    session = _ChainThenParents(rows, parents={"requests.exceptions.SSLError": ["x"]})
+    session = _ChainThenParents(rows, parents={"requests.adapters.HTTPAdapter.send": ["x"]})
     client = FakeOpenAI(plan={
         "template_id": "T8_RELATED_BY", "entity_id": "requests.sessions.Session",
-        "relationship": "RAISES",
+        "relationship": "CALLS",
     })
 
     result = _retrieve(neo4j_session=session, openai_client=client)
@@ -304,3 +313,70 @@ def test_a_wrong_relationship_on_a_module_anchor_is_repaired_before_running():
     assert "'DEFINED_IN'" in result.plan
     ran = [q for q, _ in session.queries if ":DEFINED_IN" in q]
     assert ran, "the repaired plan is what ran"
+
+
+def test_a_wrap_chain_fetches_grandparents_from_the_parents_it_added():
+    """"...what is its parent class, and what is that parent's parent?"
+    (3h-24). The second hop starts from what the first added, not from
+    every node again."""
+    chain_rows = [{
+        "chain": ["urllib3.exceptions.ReadTimeoutError", "requests.exceptions.ReadTimeout"],
+        "chunk_ids": ["c1"], "starts": ["requests.exceptions.ReadTimeout"],
+    }]
+    session = _ChainThenParents(chain_rows, parents={
+        "requests.exceptions.ReadTimeout": ["requests.exceptions.Timeout"],
+        "requests.exceptions.Timeout": ["requests.exceptions.RequestException"],
+    })
+
+    result = _retrieve(neo4j_session=session, openai_client=_wrap_plan())
+
+    statements = [f.statement for f in result.graph_facts]
+    assert "requests.exceptions.Timeout inherits from requests.exceptions.RequestException." in statements
+    assert result.expanded == 2
+    assert session.parent_queries[1] == ["requests.exceptions.ReadTimeout", "requests.exceptions.Timeout"]
+
+
+def test_a_raises_plan_fetches_what_each_exception_wraps_and_inherits():
+    """"Which urllib3 error is caught in iter_content, which requests
+    exception replaces it, and what does that inherit from" is RAISES from
+    the function, then WRAPS_EXCEPTION and INHERITS_FROM from each raised
+    exception (D74)."""
+    rows = [{"relationship": "RAISES", "neighbor": "requests.exceptions.ChunkedEncodingError",
+             "chunk_id": "c1", "outgoing": True}]
+    session = _ChainThenParents(
+        rows,
+        wraps={"requests.exceptions.ChunkedEncodingError": ["urllib3.exceptions.ProtocolError"]},
+        parents={"requests.exceptions.ChunkedEncodingError": ["requests.exceptions.RequestException"]},
+    )
+    client = FakeOpenAI(plan={
+        "template_id": "T8_RELATED_BY", "entity_id": "requests.sessions.Session",
+        "relationship": "RAISES",
+    })
+
+    result = _retrieve(neo4j_session=session, openai_client=client)
+
+    statements = [f.statement for f in result.graph_facts]
+    assert "requests.exceptions.ChunkedEncodingError wraps urllib3.exceptions.ProtocolError." in statements
+    assert "requests.exceptions.ChunkedEncodingError inherits from requests.exceptions.RequestException." in statements
+    assert [rel for rel, _ in session.expansion_queries] == [":WRAPS_EXCEPTION", ":INHERITS_FROM"]
+
+
+def test_a_call_chain_fetches_what_the_callees_raise():
+    """"...which classmethod turns max_retries into it, and what does that
+    class raise when attempts run out" (3h-23): RAISES from the chain's
+    nodes (D74)."""
+    chain_rows = [{
+        "chain": ["requests.adapters.HTTPAdapter.__init__", "urllib3.util.retry.Retry.from_int"],
+        "chunk_ids": ["c1"], "starts": ["requests.adapters.HTTPAdapter.__init__"], "rels": ["CALLS"],
+    }]
+    session = _ChainThenParents(chain_rows, raises={
+        "urllib3.util.retry.Retry.from_int": ["urllib3.exceptions.MaxRetryError"],
+    })
+    client = FakeOpenAI(plan={
+        "template_id": "T5_DELEGATION_CHAIN", "entity_id": "requests.sessions.Session", "max_hops": 2,
+    })
+
+    result = _retrieve(neo4j_session=session, openai_client=client)
+
+    statements = [f.statement for f in result.graph_facts]
+    assert "urllib3.util.retry.Retry.from_int raises urllib3.exceptions.MaxRetryError." in statements

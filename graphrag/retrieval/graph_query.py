@@ -81,8 +81,17 @@ knowledge of where a name is defined -- only from the question's wording.
 """
 
 
+# The mention list is the anchor of everything downstream, and it is not
+# stable: the same question gave "Session.request" on one call and "Session"
+# plus "request" on the next (D73, live), which changed the candidates and so
+# the plan. Three cheap calls, majority on the surface set. Planner voting
+# was retired as not worth 3x (D60); this is the one place the vote sits
+# upstream of every other decision.
+MENTION_VOTES = 3
+
+
 def extract_mentions(
-    question: str, *, client, model: str = MODEL, votes: int = VOTES
+    question: str, *, client, model: str = MODEL, votes: int = MENTION_VOTES
 ) -> list[Mention]:
     """The entities a question names, with their package qualifiers."""
     def ask() -> Mentions:
@@ -147,6 +156,7 @@ def resolve_mentions(
     nothing: the planner is never offered an id that doesn't exist.
     """
     ids: list[str] = []
+    groups: list[list[str]] = []
     for mention in mentions:
         resolution = resolver.resolve(mention.surface)
         if resolution.canonical_id is not None:
@@ -159,6 +169,7 @@ def resolve_mentions(
                     found = narrowed
         else:
             found = []
+        groups.append(found)
         for canonical_id in found:
             if canonical_id not in ids:
                 ids.append(canonical_id)
@@ -166,10 +177,20 @@ def resolve_mentions(
     if not ids:
         return []
     info = describe(ids)
+    kind_of = lambda i: info.get(i, ("unknown", 0))[0]  # noqa: E731
+    # "Timeout" is ambiguous between a class and thirty parameters named
+    # timeout, and the resolver offers them all. Handed to the planner, that
+    # list buried the two ids the question was about (3h-24 showed 33
+    # candidates, D74). When one mention's candidates mix a class or
+    # function with parameters, the parameters are the noise.
+    keep: set[str] = set()
+    for found in groups:
+        non_params = [i for i in found if "Parameter" not in kind_of(i)]
+        keep.update(non_params if len(found) > 1 and non_params else found)
     return [
-        Candidate(canonical_id, kind=info.get(canonical_id, ("unknown", 0))[0],
+        Candidate(canonical_id, kind=kind_of(canonical_id),
                   degree=info.get(canonical_id, ("unknown", 0))[1])
-        for canonical_id in ids
+        for canonical_id in ids if canonical_id in keep
     ]
 
 
@@ -317,6 +338,38 @@ def repair_plan(
     kinds = {c.canonical_id: c.kind for c in candidates}
     entity = values.get("entity_id")
     relationship = values.get("relationship")
+    kind = kinds.get(entity, "") if entity else ""
+
+    # A wrap chain starts from an exception. Anchored on a function
+    # ("which urllib3 error is caught in iter_content, which requests
+    # exception replaces it") it returns nothing: WRAPS_EXCEPTION joins two
+    # exceptions. What the function raises is the start of that answer;
+    # retrieve() then fetches what each raised exception wraps (D74).
+    if template_id == "T3_EXCEPTION_WRAP_CHAIN" and "Function" in kind:
+        return (
+            "T8_RELATED_BY", {"entity_id": entity, "relationship": "RAISES"},
+            "a wrap chain cannot start from a function; what it raises instead",
+        )
+    if template_id == "T8_RELATED_BY" and "Function" in kind and relationship == "WRAPS_EXCEPTION":
+        return (
+            template_id, {**values, "relationship": "RAISES"},
+            "a function has no WRAPS_EXCEPTION edges; RAISES instead",
+        )
+    # A wrap chain from a package root ("urllib3") walks nothing. If the
+    # question also named something specific, start there (3h-25, D74).
+    if template_id == "T3_EXCEPTION_WRAP_CHAIN" and "Module" in kind:
+        specific = [c for c in candidates if "Module" not in c.kind and "Parameter" not in c.kind]
+        if specific:
+            other = specific[0]
+            if "Function" in other.kind:
+                return (
+                    "T8_RELATED_BY", {"entity_id": other.canonical_id, "relationship": "RAISES"},
+                    f"a wrap chain from a module walks nothing; what {other.canonical_id} raises instead",
+                )
+            return (
+                template_id, {**values, "entity_id": other.canonical_id},
+                f"a wrap chain from a module walks nothing; {other.canonical_id} instead",
+            )
     if (
         template_id == "T8_RELATED_BY"
         and entity is not None

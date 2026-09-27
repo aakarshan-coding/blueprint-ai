@@ -160,13 +160,15 @@ def _verbalize_chain(rows: list[dict], *, relationship: str) -> list[GraphFact]:
     return list(edges.values())
 
 
-def _verbalize_parents(rows: list[dict]) -> list[GraphFact]:
-    """T9_PARENTS_OF: one outgoing INHERITS_FROM edge per row."""
+def _verbalize_edges_from(rows: list[dict], *, relationship: str) -> list[GraphFact]:
+    """T9_EDGES_FROM: one outgoing edge of `relationship` per row."""
     return [
         GraphFact(
-            f"{row['entity']} {REL_PHRASES['INHERITS_FROM']} {row['parent']}.",
-            row["chunk_id"], relationship="INHERITS_FROM", source=row.get("source"),
-            subject=row["entity"], object=row["parent"],
+            f"{row['entity']} "
+            f"{_phrase(relationship, row.get('entity_labels') or [], row.get('neighbor_labels') or [])} "
+            f"{row['neighbor']}.",
+            row["chunk_id"], relationship=relationship, source=row.get("source"),
+            subject=row["entity"], object=row["neighbor"],
         )
         for row in rows
     ]
@@ -243,8 +245,8 @@ def verbalize(
     """Convert one run_template() result into readable, cited statements."""
     if template_id == "T1_NEIGHBORS":
         return _verbalize_neighbors(rows, entity_id=entity_id)
-    if template_id == "T9_PARENTS_OF":
-        return _verbalize_parents(rows)
+    if template_id == "T9_EDGES_FROM":
+        return _verbalize_edges_from(rows, relationship=relationship)
     if template_id == "T8_RELATED_BY":
         # T8 rows carry no `relationship` column — the type is fixed by the
         # query — so supply it from the parameter the caller used.

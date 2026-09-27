@@ -52,7 +52,10 @@ documentation and source code themselves — even if it mentions "requests" or \
 "urllib3" by name. A question about integrating requests with another \
 framework (Django, Flask, Celery, ...), or about a library requests/urllib3 \
 don't depend on, is out of scope and should be REFUSE, not VECTOR or GRAPH, \
-regardless of which library names appear in it. Never REFUSE merely because \
+regardless of which library names appear in it. Questions about extending \
+or subclassing the libraries' own classes (a custom adapter, what a \
+BaseAdapter subclass must implement, a Retry subclass) are in scope: they \
+are answered from the base class's own source. Never REFUSE merely because \
 you're unsure how to route a genuinely in-scope question — use a lower \
 confidence score for that instead.
 

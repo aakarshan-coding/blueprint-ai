@@ -17,6 +17,7 @@ on the chunk id; this uses that join in the other direction. Doc chunks do
 not seed: a heading is not a node.
 """
 
+import re
 from dataclasses import dataclass, field
 
 from graphrag.retrieval.cypher_templates import run_template
@@ -68,21 +69,52 @@ def _seed_from_passages(passages: list[dict], *, resolver) -> list[str]:
     return ids
 
 
-def _expand_parents(facts: list[GraphFact], *, neo4j_session) -> tuple[list[GraphFact], int]:
-    """Append the INHERITS_FROM parents of every node the kept facts name."""
+def _nodes_of(facts: list[GraphFact]) -> list[str]:
     ids: list[str] = []
     for fact in facts:
         for node in (fact.subject, fact.object):
             if node and node not in ids:
                 ids.append(node)
+    return ids
+
+
+def _expand(
+    facts: list[GraphFact], *, relationship: str, neo4j_session, from_facts=None
+) -> tuple[list[GraphFact], list[GraphFact]]:
+    """Append one outgoing hop of `relationship` from every node the kept
+    facts name (or only the nodes `from_facts` name). Returns the new list
+    and the facts it added, so a caller can hop again from just those."""
+    ids = _nodes_of(facts if from_facts is None else from_facts)
     if not ids:
-        return facts, 0
+        return facts, []
     rows = run_template(
-        neo4j_session, "T9_PARENTS_OF", {"entity_ids": ids}, known_entity_ids=set(ids)
+        neo4j_session, "T9_EDGES_FROM",
+        {"entity_ids": ids, "relationship": relationship}, known_entity_ids=set(ids),
     )
     stated = {f.statement for f in facts}
-    added = [f for f in verbalize("T9_PARENTS_OF", rows) if f.statement not in stated]
-    return facts + added, len(added)
+    added = [
+        f for f in verbalize("T9_EDGES_FROM", rows, relationship=relationship)
+        if f.statement not in stated
+    ]
+    return facts + added, added
+
+
+# What to fetch after the cap, by the shape of the plan that ran (D71, D73,
+# D74). Each entry is a list of hops; a hop is (relationship, follow), where
+# follow=True means hop again from what the previous hop added, so parents
+# become grandparents ("what is that parent's parent", 3h-24) without
+# walking every ancestor of every node.
+_EXPANSIONS: dict[tuple[str, str | None], list[tuple[str, bool]]] = {
+    # wrap chain: "...and what does that inherit from" -> parents, then theirs
+    ("T3_EXCEPTION_WRAP_CHAIN", None): [("INHERITS_FROM", False), ("INHERITS_FROM", True)],
+    # a module's members: which are warnings, which have two bases
+    ("T8_RELATED_BY", "DEFINED_IN"): [("INHERITS_FROM", False)],
+    # what a function raises: what each of those wraps, and inherits from
+    ("T8_RELATED_BY", "RAISES"): [("WRAPS_EXCEPTION", False), ("INHERITS_FROM", False)],
+    # a call chain: what the callees raise ("what does Retry raise when
+    # attempts run out", 3h-23)
+    ("T5_DELEGATION_CHAIN", None): [("RAISES", False)],
+}
 
 
 def retrieve(
@@ -178,12 +210,21 @@ def retrieve(
     # requests.exceptions are warnings" and "how many have more than one
     # base" are answered by the members' INHERITS_FROM edges, which the
     # members query does not fetch. Bounded by the member count.
-    members_plan = template_id == "T8_RELATED_BY" and result.plan and "'DEFINED_IN'" in result.plan
-    if (template_id == "T3_EXCEPTION_WRAP_CHAIN" or members_plan) and result.graph_facts:
+    relationship = None
+    if template_id == "T8_RELATED_BY" and result.plan:
+        found = re.search(r"'relationship': '(\w+)'", result.plan)
+        relationship = found.group(1) if found else None
+    hops = _EXPANSIONS.get((template_id, relationship if template_id == "T8_RELATED_BY" else None), [])
+    if hops and result.graph_facts:
         try:
-            result.graph_facts, result.expanded = _expand_parents(
-                result.graph_facts, neo4j_session=neo4j_session
-            )
+            last_added: list[GraphFact] | None = None
+            for rel, follow in hops:
+                result.graph_facts, added = _expand(
+                    result.graph_facts, relationship=rel, neo4j_session=neo4j_session,
+                    from_facts=last_added if follow else None,
+                )
+                result.expanded += len(added)
+                last_added = added
         except Exception as e:
             result.graph_error = f"{type(e).__name__}: {e}"
 

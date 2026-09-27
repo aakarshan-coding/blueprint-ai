@@ -340,3 +340,96 @@ def test_repair_plan_leaves_a_sound_plan_alone():
     ):
         out_id, out_values, note = repair_plan(template_id, values, candidates)
         assert (out_id, out_values, note) == (template_id, values, None)
+
+
+def test_repair_plan_starts_a_wrap_chain_from_what_a_function_raises():
+    """A wrap chain anchored on iter_content returned nothing (3h-17, ag-20):
+    WRAPS_EXCEPTION joins exceptions. What the function raises is where
+    that answer starts (D74)."""
+    from graphrag.retrieval.graph_query import Candidate, repair_plan
+    candidates = [Candidate("requests.models.Response.iter_content", kind="Function", degree=12)]
+
+    template_id, values, note = repair_plan(
+        "T3_EXCEPTION_WRAP_CHAIN",
+        {"entity_id": "requests.models.Response.iter_content", "max_hops": 2}, candidates,
+    )
+    assert (template_id, values) == (
+        "T8_RELATED_BY", {"entity_id": "requests.models.Response.iter_content", "relationship": "RAISES"})
+    assert note
+
+    template_id, values, note = repair_plan(
+        "T8_RELATED_BY",
+        {"entity_id": "requests.models.Response.iter_content", "relationship": "WRAPS_EXCEPTION"}, candidates,
+    )
+    assert values["relationship"] == "RAISES" and note
+
+
+def test_repair_plan_moves_a_wrap_chain_off_a_package_root():
+    """Planned T3 on "urllib3" with HTTPAdapter.send also resolved (3h-25)."""
+    from graphrag.retrieval.graph_query import Candidate, repair_plan
+    candidates = [
+        Candidate("urllib3", kind="Module", degree=70),
+        Candidate("requests.adapters.HTTPAdapter.send", kind="Function", degree=30),
+    ]
+    template_id, values, note = repair_plan(
+        "T3_EXCEPTION_WRAP_CHAIN", {"entity_id": "urllib3", "max_hops": 2}, candidates
+    )
+    assert (template_id, values) == (
+        "T8_RELATED_BY", {"entity_id": "requests.adapters.HTTPAdapter.send", "relationship": "RAISES"})
+
+    candidates = [
+        Candidate("urllib3", kind="Module", degree=70),
+        Candidate("urllib3.exceptions.ClosedPoolError", kind="Class/Exception", degree=3),
+    ]
+    template_id, values, note = repair_plan(
+        "T3_EXCEPTION_WRAP_CHAIN", {"entity_id": "urllib3", "max_hops": 2}, candidates
+    )
+    assert (template_id, values) == (
+        "T3_EXCEPTION_WRAP_CHAIN", {"entity_id": "urllib3.exceptions.ClosedPoolError", "max_hops": 2})
+
+
+def test_resolve_mentions_drops_parameter_noise_when_a_class_matches_too():
+    """"Timeout" resolves ambiguously to one class and thirty parameters
+    named timeout; the planner was shown all of them (3h-24, D74)."""
+    class R:
+        def resolve(self, surface, **kw):
+            class Res:
+                canonical_id = None
+                candidates = ("requests.exceptions.Timeout",
+                              "requests.sessions.Session.request.timeout",
+                              "urllib3.util.timeout.Timeout")
+            return Res()
+
+    def describe(ids):
+        return {
+            "requests.exceptions.Timeout": ("Class/Exception", 6),
+            "requests.sessions.Session.request.timeout": ("Parameter", 1),
+            "urllib3.util.timeout.Timeout": ("Class", 9),
+        }
+
+    candidates = resolve_mentions([Mention(surface="Timeout", package="unknown")], resolver=R(), describe=describe)
+
+    assert [c.canonical_id for c in candidates] == [
+        "requests.exceptions.Timeout", "urllib3.util.timeout.Timeout"]
+
+
+def test_resolve_mentions_keeps_parameters_when_nothing_else_matches():
+    class R:
+        def resolve(self, surface, **kw):
+            class Res:
+                canonical_id = None
+                candidates = ("a.f.verify", "a.g.verify")
+            return Res()
+
+    candidates = resolve_mentions(
+        [Mention(surface="verify", package="unknown")], resolver=R(),
+        describe=lambda ids: {i: ("Parameter", 1) for i in ids},
+    )
+    assert len(candidates) == 2
+
+
+def test_mentions_are_voted_by_default():
+    from graphrag.retrieval.graph_query import MENTION_VOTES, extract_mentions
+    import inspect
+    assert MENTION_VOTES == 3
+    assert inspect.signature(extract_mentions).parameters["votes"].default == 3
