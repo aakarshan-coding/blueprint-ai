@@ -2586,6 +2586,62 @@ something a unit test can settle.
 **Measurement.** The whole batch (D66 fixes, D68 overrides, D69 provenance) goes to one
 five-run benchmark, compared against D66's table. Launched only on the user's say-so.
 
+## D70 — Five runs on the D66/D68/D69 batch: aggregation moved, nothing else did
+
+**Status:** measured. Files `benchmark_results_exp4_1..5.json`; compare to `exp3_*` (D66).
+Same 90 questions, same grader, same shared prompt. Baseline code untouched, and its
+pooled score held (42.0 → 42.4; out-of-scope 62 → 62), which is the sanity check that
+the comparison is fair.
+
+| category | hybrid D66 | hybrid now | delta D66 | delta now |
+|---|---|---|---|---|
+| single_hop | 81.3 | 77.3 | +2.7 [-20..20] | +0.0 [-6.7..13.3] |
+| two_hop | 78.7 | 74.6 | +26.7 [20..33] | +21.3 [13.3..26.7] |
+| three_hop | 28.9 | 29.6 | -7.4 [-14.8..0] | -8.1 [-18.5..0] |
+| aggregation | 13.0 | **21.7** | +3.4 [0..4.3] | **+12.1 [8.7..13.0]** |
+| out_of_scope | 90.0 | 90.0 | +28.0 | +28.0 |
+| **pooled** | 48.7 | 49.8 | +6.7 [3.4..11.1] | **+7.3 [5.5..10.0]** |
+
+**What changed, at the question level.** Exactly two hybrid questions moved by three or
+more runs, both aggregation, both from never-right to right in all five runs:
+
+- `ag-10` "Which requests exceptions are subclasses of Timeout?" — used to answer "not
+  enough information" because `ConnectTimeout(Timeout)` never resolved (D66's
+  same-module rung). Now: "ConnectTimeout and ReadTimeout", cited.
+- `ag-01` "How many inherit from RequestException?" — used to say 16 against a cap of 8
+  facts; now says 15 from 18 facts (T8 uncapped, direction-aware count, and the corrected
+  expected answer).
+
+Aggregation is now 21.7 in every one of five runs, up from 13.0 in every one of five. That
+is the one change here that clears the noise floor by itself.
+
+**What did not change.** Single-hop and two-hop means dropped, but no single question in
+either category moved by more than two runs, and the ranges overlap the old ones almost
+completely. That is the noise floor (D60: ~12% of verdicts flip between identical runs),
+not a regression. Three-hop is unchanged. The pooled delta's floor rose from +3.4 to +5.5,
+which is the number worth quoting: hybrid beat baseline in all ten runs across both
+batches, and never by less than +5.5 in this one.
+
+**Provenance (D69) did not show up.** No question's outcome changed for a reason
+traceable to the `(code)` / `(docs)` tags. Two readings: the tags may help only where a
+docs-derived line contradicts a code-derived one, which the benchmark rarely triggers; or
+the model ignores them. Either way, D69 stays because it costs nothing and makes the
+context honest, but it has no measured benefit yet. A targeted test would be the questions
+where the old context held a wrong `(docs)` wrap edge next to a right `(code)` one.
+
+**Override-following (D68)** likewise has no visible benchmark effect: the questions that
+would exercise `Session.send → HTTPAdapter.send` are the three-hop ones, and those are
+still lost for other reasons (D66: the planner picks a hop count the chain outgrows, and
+the passages carry the rest).
+
+**Runtime note.** Run 4 took 71 minutes against 9 for each of the others. No error, no
+retry in the log, normal per-question latencies. One stalled call or a sleeping machine;
+results intact.
+
+**Current claim for the README:** hybrid beats vector-only by +7.3 points pooled
+[+5.5..+10.0] over five runs on 90 questions; +21 on two-hop, +12 on aggregation, +28 on
+out-of-scope; three-hop still 8 points behind.
+
 ---
 
 ## Open questions for the Phase 2 sweep
