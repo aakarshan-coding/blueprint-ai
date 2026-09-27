@@ -14,7 +14,7 @@ from typing import Literal
 
 from graphrag.ontology import RELATIONSHIP_TYPES
 
-ParamKind = Literal["entity_id", "relationship_type", "hop_limit"]
+ParamKind = Literal["entity_id", "entity_ids", "relationship_type", "hop_limit"]
 
 MAX_HOPS = 4
 
@@ -167,6 +167,19 @@ TEMPLATES: dict[str, Template] = {
             "entity. Needs entity_surface and relationship."
         ),
     ),
+    # No description on purpose: not a planner choice. retrieve() runs it
+    # itself after a wrap chain, on the nodes the chain kept (D71). Eleven of
+    # the 27 three-hop questions end "...and what does that inherit from?";
+    # the chain template walks WRAPS_EXCEPTION only, so the last hop, an
+    # INHERITS_FROM edge the graph already holds, was never fetched.
+    "T9_PARENTS_OF": Template(
+        cypher=(
+            "MATCH (a)-[r:INHERITS_FROM]->(b) WHERE a.id IN $entity_ids "
+            "RETURN a.id AS entity, b.id AS parent, r.chunk_id AS chunk_id, "
+            "coalesce(r.source, 'llm') AS source"
+        ),
+        params=(ParamSpec("entity_ids", "entity_ids"),),
+    ),
     "T7_DOCS_FOR_SYMBOL": Template(
         cypher=(
             "MATCH (a {id: $entity_id})-[:DOCUMENTED_IN]->(d) "
@@ -189,6 +202,12 @@ def _validate_param(spec: ParamSpec, value, *, known_entity_ids: set[str]) -> No
                 f"{value!r} is not an entity id resolved from the question — "
                 "the model may not reference an id it invented"
             )
+    elif spec.kind == "entity_ids":
+        if not isinstance(value, list) or not value:
+            raise ValueError("entity_ids must be a non-empty list of entity ids")
+        for item in value:
+            if item not in known_entity_ids:
+                raise ValueError(f"{item!r} is not a known entity id")
     elif spec.kind == "relationship_type":
         if value not in RELATIONSHIP_TYPES:
             raise ValueError(f"{value!r} is not in the ontology's relationship types")

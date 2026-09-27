@@ -2642,6 +2642,49 @@ results intact.
 [+5.5..+10.0] over five runs on 90 questions; +21 on two-hop, +12 on aggregation, +28 on
 out-of-scope; three-hop still 8 points behind.
 
+## D71 — Three-hop: the third hop is a different relationship, not a longer chain
+
+**Status:** applied; 302 tests. Retrieval-side only. Not yet benchmarked.
+
+**What the evidence said.** Of the 27 three-hop questions, 15 planned the wrap-chain
+template and 11 of those were wrong in five of five runs. The answers all stop the same
+way: "the parent class is not specified in the provided context." The questions end
+"...and what does that exception inherit from?" The chain template walks WRAPS_EXCEPTION
+only, so the last hop, an INHERITS_FROM edge, was never fetched. The graph holds every one
+of those edges, parser-extracted (`ConnectionError → RequestException`, `JSONDecodeError
+→ InvalidJSONError → RequestException`, and so on). Hop count was not the problem: the
+same chain at 4 hops returns 72 wrap facts against a cap of 8, and still no inheritance.
+
+**The change.** After a wrap chain is ranked and capped, retrieve() fetches the
+INHERITS_FROM parents of exactly the nodes the kept facts name, through a new template
+(`T9_PARENTS_OF`, a list parameter, never offered to the planner) and appends them,
+tagged `(code)`. After the cap, not before, so the parents cannot crowd out the chain
+they explain. Each fact now carries its subject and object ids for this.
+
+**Measured without the answer model.** Rebuilt each wrap-chain question's facts from its
+recorded plan and checked whether the names the grader listed as missing are present:
+
+| | names present |
+|---|---|
+| before expansion | 6 / 19 |
+| after expansion | 11 / 19 |
+
+The five now present are the base classes (`RequestException`, `InvalidJSONError`,
+`ConnectionError` for the proxy question). Cost: 3 to 10 extra lines per question.
+
+**The eight still missing have other causes**, parked here, not chased:
+- `3h-17`, `3h-24`, `3h-25`: the planner anchored on `builtins.Exception`,
+  `HTTPAdapter.send`, or the package `urllib3`, so the chain returned nothing to expand.
+  A planner problem: the exception the question is about is never named, only described.
+- `3h-03` `ConnectTimeout`, `3h-16` `ChunkedEncodingError`: wrap edges the extractor
+  does not produce (the `ChunkedEncodingError` wrap is raised from a nested function; the
+  `ConnectTimeout` one is the two-function `MaxRetryError` shape from D67).
+- `3h-27` `ValueError`: `InvalidHeader(RequestException, ValueError)` has its second base
+  as a builtin; the INHERITS_FROM edge to `builtins.ValueError` is absent.
+
+**Whether the answer model uses the new lines is the benchmark's question.** Same shape
+as D69: a retrieval gain is necessary, not sufficient.
+
 ---
 
 ## Open questions for the Phase 2 sweep

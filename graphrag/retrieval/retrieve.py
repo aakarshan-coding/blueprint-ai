@@ -46,6 +46,9 @@ class RetrievalResult:
     context: str = ""
     retrieved_ids: set[str] = field(default_factory=set)
     graph_error: str | None = None
+    # How many parent-class facts were added after the cap (D71); 0 when the
+    # plan was not a wrap chain or the kept chain nodes have no parents.
+    expanded: int = 0
 
 
 def _seed_from_passages(passages: list[dict], *, resolver) -> list[str]:
@@ -60,6 +63,23 @@ def _seed_from_passages(passages: list[dict], *, resolver) -> list[str]:
             if canonical_id not in ids:
                 ids.append(canonical_id)
     return ids
+
+
+def _expand_parents(facts: list[GraphFact], *, neo4j_session) -> tuple[list[GraphFact], int]:
+    """Append the INHERITS_FROM parents of every node the kept facts name."""
+    ids: list[str] = []
+    for fact in facts:
+        for node in (fact.subject, fact.object):
+            if node and node not in ids:
+                ids.append(node)
+    if not ids:
+        return facts, 0
+    rows = run_template(
+        neo4j_session, "T9_PARENTS_OF", {"entity_ids": ids}, known_entity_ids=set(ids)
+    )
+    stated = {f.statement for f in facts}
+    added = [f for f in verbalize("T9_PARENTS_OF", rows) if f.statement not in stated]
+    return facts + added, len(added)
 
 
 def retrieve(
@@ -134,6 +154,24 @@ def retrieve(
     # eight and dropped the ValueError ones (D66, 3h-04).
     if template_id != "T8_RELATED_BY":
         result.graph_facts = rank_facts(question, result.graph_facts, model=embedding_model)
+
+    # A wrap chain answers "what does requests raise when urllib3 raises X",
+    # but eleven three-hop questions go one step further: "...and what does
+    # that inherit from?" The chain walks WRAPS_EXCEPTION only, so that last
+    # edge -- which the graph holds, parser-extracted -- was never fetched,
+    # and the model answered "the parent class is not specified" (D70, five
+    # of five runs). So: after the cap, fetch the parents of exactly the
+    # nodes the kept facts name. After the cap, not before, so the parents
+    # cannot crowd out the chain they explain; bounded by the cap, so at
+    # most a few lines. Walking 4 hops instead does not help: it returns 72
+    # wrap facts against a cap of 8, and still no inheritance edge.
+    if template_id == "T3_EXCEPTION_WRAP_CHAIN" and result.graph_facts:
+        try:
+            result.graph_facts, result.expanded = _expand_parents(
+                result.graph_facts, neo4j_session=neo4j_session
+            )
+        except Exception as e:
+            result.graph_error = f"{type(e).__name__}: {e}"
 
     result.context, result.retrieved_ids = assemble_context(
         graph_facts=result.graph_facts, vector_passages=result.passages

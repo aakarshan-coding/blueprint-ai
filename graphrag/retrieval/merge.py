@@ -50,6 +50,10 @@ class GraphFact:
     # parser-proven, "llm" is a model reading prose. Shown on the line as
     # (code) or (docs) so the answer model can tell them apart (D69).
     source: str | None = None
+    # The two node ids the statement joins, so a later step can expand from
+    # exactly the nodes that survived the cap (D71). None for derived facts.
+    subject: str | None = None
+    object: str | None = None
 
 
 _PROVEN_SOURCES = frozenset({"ast", "jedi", "override"})
@@ -107,6 +111,7 @@ def _verbalize_neighbors(rows: list[dict], *, entity_id: str) -> list[GraphFact]
         facts.append(GraphFact(
             f"{subject} {verb} {obj}.", row["chunk_id"],
             relationship=relationship, source=row.get("source"),
+            subject=subject, object=obj,
         ))
     return facts
 
@@ -139,8 +144,21 @@ def _verbalize_chain(rows: list[dict], *, relationship: str) -> list[GraphFact]:
             edges[(source, target, chunk_id)] = GraphFact(
                 f"{source} {REL_PHRASES[hop_relationship]} {target}.", chunk_id,
                 relationship=hop_relationship, source=sources[i],
+                subject=source, object=target,
             )
     return list(edges.values())
+
+
+def _verbalize_parents(rows: list[dict]) -> list[GraphFact]:
+    """T9_PARENTS_OF: one outgoing INHERITS_FROM edge per row."""
+    return [
+        GraphFact(
+            f"{row['entity']} {REL_PHRASES['INHERITS_FROM']} {row['parent']}.",
+            row["chunk_id"], relationship="INHERITS_FROM", source=row.get("source"),
+            subject=row["entity"], object=row["parent"],
+        )
+        for row in rows
+    ]
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
@@ -214,6 +232,8 @@ def verbalize(
     """Convert one run_template() result into readable, cited statements."""
     if template_id == "T1_NEIGHBORS":
         return _verbalize_neighbors(rows, entity_id=entity_id)
+    if template_id == "T9_PARENTS_OF":
+        return _verbalize_parents(rows)
     if template_id == "T8_RELATED_BY":
         # T8 rows carry no `relationship` column — the type is fixed by the
         # query — so supply it from the parameter the caller used.

@@ -509,3 +509,34 @@ def test_rank_facts_puts_proven_lines_before_model_lines_at_equal_relevance():
     kept = rank_facts("What does verify do to certificate checks?", facts, model=_FakeEmbedder(), k=8)
 
     assert [f.chunk_id for f in kept] == ["c2", "c1"]
+
+
+def test_every_cited_fact_names_the_two_nodes_it_joins():
+    """retrieve() expands from exactly the nodes that survived the cap (D71),
+    so each fact must carry its subject and object ids, stated in the
+    direction the edge really runs."""
+    neighbor = verbalize("T1_NEIGHBORS", [
+        {"relationship": "INHERITS_FROM", "neighbor": "requests.adapters.BaseAdapter",
+         "chunk_id": "c1", "outgoing": True},
+    ], entity_id="requests.adapters.HTTPAdapter")
+    assert (neighbor[0].subject, neighbor[0].object) == (
+        "requests.adapters.HTTPAdapter", "requests.adapters.BaseAdapter")
+
+    chain = verbalize("T3_EXCEPTION_WRAP_CHAIN", [
+        {"chain": ["urllib3.exceptions.ProtocolError", "requests.exceptions.ConnectionError"],
+         "chunk_ids": ["c2"], "starts": ["requests.exceptions.ConnectionError"]},
+    ])
+    assert (chain[0].subject, chain[0].object) == (
+        "requests.exceptions.ConnectionError", "urllib3.exceptions.ProtocolError")
+
+
+def test_parents_rows_verbalize_as_inherits_from_with_provenance():
+    facts = verbalize("T9_PARENTS_OF", [
+        {"entity": "requests.exceptions.ConnectionError",
+         "parent": "requests.exceptions.RequestException", "chunk_id": "c3", "source": "ast"},
+    ])
+    assert facts[0].statement == (
+        "requests.exceptions.ConnectionError inherits from requests.exceptions.RequestException.")
+    assert facts[0].relationship == "INHERITS_FROM"
+    assert facts[0].source == "ast"
+    assert facts[0].chunk_id == "c3"

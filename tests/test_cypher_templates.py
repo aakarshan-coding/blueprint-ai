@@ -263,3 +263,31 @@ def test_every_fact_template_returns_the_edges_source():
         query, _ = session.calls[0]
 
         assert "r.source" in query, template_id
+
+
+def test_parents_of_takes_a_list_of_known_ids_and_binds_it():
+    """T9_PARENTS_OF is run by retrieve() on the nodes a wrap chain kept
+    (D71), never by the planner: it is the one template with a list param."""
+    session = _FakeSession()
+    ids = ["requests.sessions.Session", "urllib3.poolmanager.PoolManager"]
+    run_template(session, "T9_PARENTS_OF", {"entity_ids": ids}, known_entity_ids=KNOWN_IDS)
+
+    query, params = session.calls[0]
+    assert params["entity_ids"] == ids
+    assert ":INHERITS_FROM" in query and "r.source" in query
+
+
+def test_parents_of_rejects_an_unknown_id_inside_the_list():
+    session = _FakeSession()
+    with pytest.raises(ValueError):
+        run_template(
+            session, "T9_PARENTS_OF",
+            {"entity_ids": ["requests.sessions.Session", "made.up.Thing"]},
+            known_entity_ids=KNOWN_IDS,
+        )
+    assert session.calls == []
+
+
+def test_parents_of_is_not_offered_to_the_planner():
+    from graphrag.retrieval.cypher_templates import TEMPLATES
+    assert TEMPLATES["T9_PARENTS_OF"].description is None
