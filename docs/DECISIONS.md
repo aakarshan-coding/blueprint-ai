@@ -2892,6 +2892,68 @@ for a failing question and reading it. None needed a model change. The benchmark
 "three-hop is hard for the model" for fifteen decisions; the context said the model
 was never shown the answer.
 
+## D76 — Three-hop, second pass: forward call paths, grounded mentions, class anchors
+
+**Status:** applied; 336 tests. Retrieval-side only. Not yet benchmarked.
+
+**Where three-hop stood after D75:** 14 of 27 still short, 39% graded partial. Rebuilt
+each one's retrieval and grouped the causes. Four fixes, one item left alone.
+
+**1. Call chains are paths, walked forward, from a class's methods.** "Trace requests.get
+down to the urllib3 call" planned the chain template at 3 hops and lost `HTTPAdapter.send`
+and `urlopen` in five of five runs. Three separate reasons: the walk was undirected
+(213 paths at 5 hops against 84 forward, and the cap kept callers-of-callers over the
+route down); the hop limit was 4 and `urlopen` is hop 5; and the facts were single
+edges, so the cap of eight kept whichever edges scored best alone, never a connected
+route. Now: outgoing only, `MAX_HOPS` 5, a Class anchor starts from each method it
+defines (CALLS edges hang off methods; T5 on `Session` walked nothing), and each
+maximal path is one statement: "requests.api.get calls requests.api.request, which
+calls Session.request, which calls Session.send, which calls HTTPAdapter.send, which
+calls HTTPConnectionPool.urlopen." A path is as proven as its least proven hop. Live:
+the route to `urlopen` is the top fact for `3h-02`.
+
+**2. Mentions are grounded in the question.** The extractor is told to copy surfaces
+verbatim and does not always: "a streamed body cut short" came back as
+`ReadTimeoutError`, "rejects a header value" as `HeaderParsingError`, "which requests
+class sends the request" as `Session` and `HTTPAdapter`, "that exception's base class"
+as `Exception`. Each resolved and became the anchor. A surface the question does not
+contain is dropped; one that starts with a capital must appear with that capital; a
+lowercase generic word ("connection", "exception", "adapter") is not an entity. The
+package names stay. With no mention left, seeding from passages takes over, which is
+what found `iter_content` for `3h-16` and `HTTPAdapter` for `3h-03`.
+
+**3. Repairs for class and parameter anchors.** RAISES edges hang off methods, so a
+raises or wrap plan on a plain class ("which PreparedRequest method raises it", "which
+Session method raises it") walked nothing. A new `T10_RAISED_BY_METHODS_OF` (not offered
+to the planner, uncapped like T8, expanded like a raises plan) answers it; `repair_plan`
+routes there. Any non-T1 plan on a Parameter becomes T1. The repair now sees seeded
+candidates' kinds too; a seeded anchor went unrepaired before.
+
+**4. Subclasses are followed by what they wrap**, so "what does requests convert a
+socket timeout to" works from the anchor `Timeout`.
+
+**Measured live, no answer model**, on the 14 still-failing three-hop questions plus the
+chain questions that were passing: grader-flagged names present in the context went
+from 12 of 17 to, after the grounding pass, all but four cases. Newly present:
+`HTTPAdapter.send` and `urlopen` (3h-02), `InvalidJSONError` (3h-21), `InvalidSchema` and
+`get_adapter` (3h-22), `UnrewindableBodyError` (3h-26), `ConnectTimeout` (3h-03),
+`ChunkedEncodingError` (3h-16), `max_retries` (3h-11), `urllib3` (3h-05).
+
+**Left alone, with the reason:**
+- `3h-18` `get_adapter`: the one-hop path `Session.send calls Session.get_adapter` exists
+  and is ranked out by the eight-path cap under the long routes to `urlopen`. A cap
+  change without a measurement is a guess.
+- `3h-27`: after grounding the only mention is `urllib3`, and no code passage seeds. No
+  anchor, nothing to repair.
+- `3h-12` `Response`: what `HTTPAdapter.send` returns. The graph has no return-type edge.
+- `3h-01`, `3h-19` `cert_verify`: where a parameter's value flows. Not modelled.
+- `ag-16`: plans IMPLEMENTS on `BaseAdapter`; the answer (`send`, `close`) is the class's
+  members, and I have no honest rule that maps IMPLEMENTS to DEFINED_IN.
+
+**Cost.** Mention grounding is free. Forward-only paths cut T5's row count roughly in
+half. A raises plan on a class with many methods (HTTPAdapter: 74 lines) is the largest
+context this system now builds.
+
 ---
 
 ## Open questions for the Phase 2 sweep

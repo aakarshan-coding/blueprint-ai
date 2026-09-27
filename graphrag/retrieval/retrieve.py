@@ -114,6 +114,11 @@ _EXPANSIONS: dict[tuple[str, str | None], list[tuple[str, bool]]] = {
     # a call chain: what the callees raise ("what does Retry raise when
     # attempts run out", 3h-23)
     ("T5_DELEGATION_CHAIN", None): [("RAISES", False)],
+    # what a class's methods raise: same as a function's raises (D76)
+    ("T10_RAISED_BY_METHODS_OF", None): [("WRAPS_EXCEPTION", False), ("INHERITS_FROM", False)],
+    # subclasses of X: what each of them wraps ("what does requests convert
+    # a socket timeout to" from the anchor Timeout, 3h-03, D76)
+    ("T8_RELATED_BY", "INHERITS_FROM"): [("WRAPS_EXCEPTION", False)],
 }
 
 
@@ -168,8 +173,12 @@ def retrieve(
             template_id = plan.template_id if plan is not None else None
             if plan is not None:
                 values, known_ids = build_template_values(plan)
+                # The repair needs every candidate's kind, including the
+                # ones seeded from passages: a seeded HTTPAdapter anchoring
+                # a wrap chain was not repaired because its kind was not
+                # among the question's own candidates (3h-03, D76).
                 template_id, values, result.plan_repair = repair_plan(
-                    template_id, values, own_candidates
+                    template_id, values, candidates
                 )
                 if "entity_id" in values:
                     known_ids = {values["entity_id"]}
@@ -193,7 +202,7 @@ def retrieve(
     # filtered to one relationship and its rows *are* the answer: capping it
     # cut "which exceptions derive from RequestException" from fifteen to
     # eight and dropped the ValueError ones (D66, 3h-04).
-    if template_id != "T8_RELATED_BY":
+    if template_id not in ("T8_RELATED_BY", "T10_RAISED_BY_METHODS_OF"):
         result.graph_facts = rank_facts(question, result.graph_facts, model=embedding_model)
 
     # A wrap chain answers "what does requests raise when urllib3 raises X",

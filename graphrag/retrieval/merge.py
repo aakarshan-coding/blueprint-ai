@@ -160,6 +160,40 @@ def _verbalize_chain(rows: list[dict], *, relationship: str) -> list[GraphFact]:
     return list(edges.values())
 
 
+def _verbalize_paths(rows: list[dict], *, relationship: str) -> list[GraphFact]:
+    """One statement per maximal path: "get calls request, which calls
+    Session.request, which calls Session.send."
+
+    Edge-level facts lost the chain (D76): "trace requests.get down to the
+    urllib3 call" returned 84 forward paths' worth of single edges, and the
+    cap of eight kept whichever edges scored best on their own, never a
+    connected route. A path is the unit the question asks about, so it is
+    the unit that is ranked and cited. A path that is a prefix of another
+    returned path is dropped: the longer one says everything it does.
+    """
+    chains = [tuple(row["chain"]) for row in rows]
+    maximal = [
+        row for row, chain in zip(rows, chains)
+        if not any(other != chain and other[:len(chain)] == chain for other in chains)
+    ]
+    facts: dict[str, GraphFact] = {}
+    for row in maximal:
+        chain, chunk_ids = row["chain"], row["chunk_ids"]
+        rels = row.get("rels") or [None] * len(chunk_ids)
+        verbs = [REL_PHRASES[r] if r in REL_PHRASES else REL_PHRASES[relationship] for r in rels]
+        text = f"{chain[0]} {verbs[0]} {chain[1]}"
+        for verb, node in zip(verbs[1:], chain[2:]):
+            text += f", which {verb} {node}"
+        sources = row.get("sources") or []
+        # The path is as proven as its least proven hop.
+        source = "llm" if "llm" in sources else (sources[0] if sources else None)
+        facts.setdefault(text, GraphFact(
+            text + ".", chunk_ids[0], relationship=rels[0] if rels[0] in REL_PHRASES else relationship,
+            source=source, subject=chain[0], object=chain[-1],
+        ))
+    return list(facts.values())
+
+
 def _verbalize_edges_from(rows: list[dict], *, relationship: str) -> list[GraphFact]:
     """T9_EDGES_FROM: one outgoing edge of `relationship` per row."""
     return [
@@ -274,7 +308,9 @@ def verbalize(
     if template_id == "T3_EXCEPTION_WRAP_CHAIN":
         return _verbalize_chain(rows, relationship="WRAPS_EXCEPTION")
     if template_id == "T5_DELEGATION_CHAIN":
-        return _verbalize_chain(rows, relationship="DELEGATES_TO")
+        return _verbalize_paths(rows, relationship="DELEGATES_TO")
+    if template_id == "T10_RAISED_BY_METHODS_OF":
+        return _verbalize_edges_from(rows, relationship="RAISES")
     if template_id == "T6_COUNT_BY_REL":
         return _verbalize_count(rows, relationship=relationship)
     if template_id == "T7_DOCS_FOR_SYMBOL":

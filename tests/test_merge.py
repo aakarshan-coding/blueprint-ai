@@ -206,8 +206,11 @@ def test_delegation_chain_verbalizes_each_hop_with_its_own_relationship():
     facts = verbalize("T5_DELEGATION_CHAIN", rows)
     statements = [f.statement for f in facts]
 
-    assert "requests.api.get calls requests.api.request." in statements
-    assert "requests.api.request delegates to requests.sessions.Session.request." in statements
+    # One statement per maximal path (D76), each hop with its own verb.
+    assert statements == [
+        "requests.api.get calls requests.api.request, "
+        "which delegates to requests.sessions.Session.request."
+    ]
 
 
 def test_delegation_chain_without_rels_column_still_uses_the_template_verb():
@@ -216,6 +219,34 @@ def test_delegation_chain_without_rels_column_still_uses_the_template_verb():
     facts = verbalize("T5_DELEGATION_CHAIN", rows)
 
     assert facts[0].statement == "A delegates to B."
+
+
+def test_a_path_that_is_a_prefix_of_a_longer_path_is_dropped():
+    """Neo4j returns every path length up to max_hops; the 1-hop and 2-hop
+    paths share their first edge. The longer path says everything the
+    shorter one does (D76)."""
+    rows = [
+        {"chain": ["get", "request"], "chunk_ids": ["c1"], "starts": ["get"], "rels": ["CALLS"]},
+        {"chain": ["get", "request", "Session.request"], "chunk_ids": ["c1", "c2"],
+         "starts": ["get", "request"], "rels": ["CALLS", "CALLS"]},
+        {"chain": ["get", "request", "merge_setting"], "chunk_ids": ["c1", "c3"],
+         "starts": ["get", "request"], "rels": ["CALLS", "CALLS"]},
+    ]
+
+    facts = verbalize("T5_DELEGATION_CHAIN", rows)
+
+    assert [f.statement for f in facts] == [
+        "get calls request, which calls Session.request.",
+        "get calls request, which calls merge_setting.",
+    ]
+    assert (facts[0].subject, facts[0].object) == ("get", "Session.request")
+
+
+def test_a_path_is_as_proven_as_its_least_proven_hop():
+    rows = [{"chain": ["a", "b", "c"], "chunk_ids": ["c1", "c2"], "starts": ["a", "b"],
+             "rels": ["CALLS", "DELEGATES_TO"], "sources": ["jedi", "llm"]}]
+    facts = verbalize("T5_DELEGATION_CHAIN", rows)
+    assert facts[0].source == "llm"
 
 
 def test_assemble_context_states_each_relationship_once():

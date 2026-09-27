@@ -433,3 +433,79 @@ def test_mentions_are_voted_by_default():
     import inspect
     assert MENTION_VOTES == 3
     assert inspect.signature(extract_mentions).parameters["votes"].default == 3
+
+
+def test_mentions_the_question_does_not_contain_are_dropped():
+    """The extractor returned `ReadTimeoutError` for "a streamed body cut
+    short" and `HeaderParsingError` for "rejects a header value" (D76). An
+    invented name resolves, becomes the anchor, and the chain walks from
+    the wrong place. Plurals and call parentheses are forgiven."""
+    from graphrag.retrieval.graph_query import mentioned_in
+    q = "If a streamed body is cut short inside iter_content(), which requests exceptions surface?"
+    assert mentioned_in("iter_content", q)
+    assert mentioned_in("iter_content()", q)
+    assert mentioned_in("requests exception", q)
+    assert not mentioned_in("ReadTimeoutError", q)
+    assert not mentioned_in("", q)
+
+
+def test_extract_mentions_grounds_the_voted_result_in_the_question():
+    from graphrag.retrieval.graph_query import Mentions
+
+    class _Parsed:
+        def __init__(self, v): self.output_parsed = v
+
+    class _Responses:
+        def parse(self, **kw):
+            return _Parsed(Mentions(mentions=[
+                Mention(surface="iter_content", package="requests"),
+                Mention(surface="ReadTimeoutError", package="urllib3"),
+            ]))
+
+    class _Client:
+        responses = _Responses()
+
+    mentions = extract_mentions("What does iter_content raise?", client=_Client(), votes=1)
+    assert [m.surface for m in mentions] == ["iter_content"]
+
+
+def test_repair_plan_sends_a_raises_or_wrap_plan_on_a_plain_class_to_its_methods():
+    """"Which Session method raises it" planned RAISES on the class Session:
+    zero edges, since RAISES hangs off methods (3h-22, 3h-21; D76)."""
+    from graphrag.retrieval.graph_query import Candidate, repair_plan
+    candidates = [Candidate("requests.sessions.Session", kind="Class", degree=40)]
+
+    for template_id, values in (
+        ("T8_RELATED_BY", {"entity_id": "requests.sessions.Session", "relationship": "RAISES"}),
+        ("T3_EXCEPTION_WRAP_CHAIN", {"entity_id": "requests.sessions.Session", "max_hops": 2}),
+    ):
+        out_id, out_values, note = repair_plan(template_id, values, candidates)
+        assert (out_id, out_values) == ("T10_RAISED_BY_METHODS_OF", {"entity_id": "requests.sessions.Session"})
+        assert note
+
+    # An exception class is a fine wrap-chain anchor and is left alone.
+    exc = [Candidate("requests.exceptions.Timeout", kind="Class/Exception", degree=6)]
+    out = repair_plan("T3_EXCEPTION_WRAP_CHAIN", {"entity_id": "requests.exceptions.Timeout", "max_hops": 2}, exc)
+    assert out[2] is None
+
+
+def test_a_capitalised_surface_must_match_case_and_generic_words_are_not_mentions():
+    from graphrag.retrieval.graph_query import mentioned_in
+    q = "what does requests convert it to, and what is that exception's base class? The connection is reused."
+    assert not mentioned_in("Exception", q), "lowercase 'exception' names no class"
+    assert mentioned_in("Exception", "Does Exception have a base class?")
+    assert not mentioned_in("connection", q), "a generic word is not an entity"
+    assert not mentioned_in("exception", q)
+    assert mentioned_in("requests", q)
+
+
+def test_repair_plan_sends_any_other_template_on_a_parameter_to_its_neighbourhood():
+    from graphrag.retrieval.graph_query import Candidate, repair_plan
+    candidates = [Candidate("urllib3.connectionpool.HTTPConnectionPool.urlopen.retries", kind="Parameter", degree=2)]
+    out_id, out_values, note = repair_plan(
+        "T3_EXCEPTION_WRAP_CHAIN",
+        {"entity_id": "urllib3.connectionpool.HTTPConnectionPool.urlopen.retries", "max_hops": 2}, candidates,
+    )
+    assert (out_id, out_values) == (
+        "T1_NEIGHBORS", {"entity_id": "urllib3.connectionpool.HTTPConnectionPool.urlopen.retries"})
+    assert note

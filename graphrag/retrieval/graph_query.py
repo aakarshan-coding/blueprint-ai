@@ -108,7 +108,48 @@ def extract_mentions(
         ask, trials=votes,
         key=lambda m: tuple(sorted((x.surface, x.package) for x in m.mentions)),
     )
-    return list(result.mentions)
+    return [m for m in result.mentions if mentioned_in(m.surface, question)]
+
+
+def mentioned_in(surface: str, question: str) -> bool:
+    """Whether the question actually contains the surface.
+
+    The prompt says "write each surface exactly as it appears in the
+    question", and the model does not always obey: "a streamed body cut
+    short" came back as `ReadTimeoutError`, "rejects a header value" as
+    `HeaderParsingError`, and "which requests class sends the request" as
+    `Session` and `HTTPAdapter` (D76, live). Each invented name resolved
+    and became the anchor, and the chain walked from the wrong place. A
+    name the question does not contain is not a mention of it. Plurals and
+    call parentheses are forgiven.
+    """
+    raw = surface.strip().removesuffix("()")
+    if not raw:
+        return False
+    # A code name that starts with a capital ("Exception", "Session") must
+    # appear with that capital: "that exception's base class" names no
+    # class, but the extractor returned `Exception`, which resolved to
+    # builtins.Exception and anchored a plan that walked nothing (3h-16).
+    if raw[0].isupper():
+        return any(form in question for form in (raw, raw.removesuffix("s"), raw.removesuffix("es")))
+    s = raw.lower()
+    if s in GENERIC_WORDS:
+        return False
+    q = question.lower()
+    return s in q or s.removesuffix("s") in q or s.removesuffix("es") in q
+
+
+# Lowercase words the extractor returns as "mentions" that name no entity;
+# "connection" resolved to the module urllib3.connection four times over
+# and anchored a call chain from it (3h-12, D76). A real lowercase entity
+# is a function or parameter ("iter_content", "verify") and is kept.
+GENERIC_WORDS = frozenset({
+    "exception", "exceptions", "error", "errors", "function", "functions", "method",
+    "methods", "class", "classes", "module", "modules", "library", "libraries",
+    "parameter", "parameters", "adapter", "adapters", "connection", "connections",
+    "response", "body", "header", "headers", "url", "urls",
+    "session", "sessions", "socket", "redirect", "redirects", "retries", "retry",
+})
 
 
 # --- between the stages: mentions -> real candidates -------------------------
@@ -345,6 +386,26 @@ def repair_plan(
     # exception replaces it") it returns nothing: WRAPS_EXCEPTION joins two
     # exceptions. What the function raises is the start of that answer;
     # retrieve() then fetches what each raised exception wraps (D74).
+    # A Parameter has no call, wrap or raise edges; T1_NEIGHBORS is the one
+    # template that returns anything for it (the prompt says so, and the
+    # model still planned a wrap chain from `urlopen.retries`, 3h-11).
+    if "Parameter" in kind and template_id != "T1_NEIGHBORS":
+        return (
+            "T1_NEIGHBORS", {"entity_id": entity},
+            "a Parameter has only DEFINED_IN and CONTROLS edges; its neighbourhood instead",
+        )
+    plain_class = "Class" in kind and "Exception" not in kind
+    # RAISES edges hang off methods. Anchored on a plain class ("which
+    # PreparedRequest method raises it", "which Session method raises it")
+    # a raises or wrap plan walked nothing (D76).
+    if plain_class and (
+        template_id == "T3_EXCEPTION_WRAP_CHAIN"
+        or (template_id == "T8_RELATED_BY" and relationship == "RAISES")
+    ):
+        return (
+            "T10_RAISED_BY_METHODS_OF", {"entity_id": entity},
+            "RAISES edges hang off methods; what this class's methods raise",
+        )
     if template_id == "T3_EXCEPTION_WRAP_CHAIN" and "Function" in kind:
         return (
             "T8_RELATED_BY", {"entity_id": entity, "relationship": "RAISES"},
@@ -365,6 +426,11 @@ def repair_plan(
                 return (
                     "T8_RELATED_BY", {"entity_id": other.canonical_id, "relationship": "RAISES"},
                     f"a wrap chain from a module walks nothing; what {other.canonical_id} raises instead",
+                )
+            if "Class" in other.kind and "Exception" not in other.kind:
+                return (
+                    "T10_RAISED_BY_METHODS_OF", {"entity_id": other.canonical_id},
+                    f"a wrap chain from a module walks nothing; what {other.canonical_id}'s methods raise instead",
                 )
             return (
                 template_id, {**values, "entity_id": other.canonical_id},

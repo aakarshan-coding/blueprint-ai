@@ -16,7 +16,7 @@ from graphrag.ontology import RELATIONSHIP_TYPES
 
 ParamKind = Literal["entity_id", "entity_ids", "relationship_type", "hop_limit"]
 
-MAX_HOPS = 4
+MAX_HOPS = 5
 
 
 @dataclass(frozen=True)
@@ -99,7 +99,7 @@ TEMPLATES: dict[str, Template] = {
             "What an exception ultimately wraps, following WRAPS_EXCEPTION "
             "transitively in either direction. Use for 'what does requests "
             "raise when urllib3 raises X' and for tracing an exception back to "
-            "its underlying cause. Needs entity_surface and max_hops (1-4; use "
+            "its underlying cause. Needs entity_surface and max_hops (1-5; use "
             "2 or 3 unless the question asks for something shallower or deeper)."
         ),
     ),
@@ -110,13 +110,25 @@ TEMPLATES: dict[str, Template] = {
         # real chain get -> request -> Session.request -> Session.send ->
         # adapter.send -> conn.urlopen. `rels` names each hop's type so the
         # verbalizer can say "calls" or "delegates to" rather than guess.
+        # Outgoing only (D76): "what does X hand off to" is a forward walk.
+        # Undirected, the walk from requests.api.get at 5 hops returned 213
+        # paths against 84 forward, and the cap kept callers-of-callers over
+        # the chain to urlopen. A Class anchor starts from each of its
+        # methods, since CALLS edges hang off methods, not the class: "what
+        # does Session's send() ultimately call" planned T5 on Session and
+        # walked nothing. LIMIT bounds the fan-out at depth 5.
         cypher=(
-            "MATCH p = (a {id: $entity_id})-[:DELEGATES_TO|CALLS*1..__max_hops__]-(b) "
+            "MATCH (a {id: $entity_id}) "
+            "OPTIONAL MATCH (m)-[:DEFINED_IN]->(a) WHERE a:Class "
+            "WITH a, collect(m) AS members "
+            "UNWIND members + [a] AS s "
+            "MATCH p = (s)-[:DELEGATES_TO|CALLS*1..__max_hops__]->(b) "
             "RETURN [n IN nodes(p) | n.id] AS chain, "
             "[r IN relationships(p) | r.chunk_id] AS chunk_ids, "
             "[r IN relationships(p) | startNode(r).id] AS starts, "
             "[r IN relationships(p) | type(r)] AS rels, "
-            "[r IN relationships(p) | coalesce(r.source, 'llm')] AS sources"
+            "[r IN relationships(p) | coalesce(r.source, 'llm')] AS sources "
+            "LIMIT 500"
         ),
         params=(
             ParamSpec("entity_id", "entity_id"),
@@ -126,8 +138,9 @@ TEMPLATES: dict[str, Template] = {
             "What one function or class ultimately calls or delegates work "
             "to, following CALLS and DELEGATES_TO transitively. Use for "
             "'what does requests.get hand off to' or 'what does Session.send "
-            "call underneath'. Needs entity_surface and max_hops (1-4; use 2 "
-            "or 3 for a hand-off chain, since each hop is one call)."
+            "call underneath'. Needs entity_surface and max_hops (1-5; use 4 "
+            "or 5 to trace a hand-off all the way down, since each hop is "
+            "one call: requests.get reaches urllib3's urlopen at hop 5)."
         ),
     ),
     "T6_COUNT_BY_REL": Template(
@@ -188,6 +201,20 @@ TEMPLATES: dict[str, Template] = {
             ParamSpec("entity_ids", "entity_ids"),
             ParamSpec("relationship", "relationship_type"),
         ),
+    ),
+    # No description on purpose: reached by repair_plan when a raises or wrap
+    # plan is anchored on a plain class (D76). RAISES edges hang off methods;
+    # "which Session method raises InvalidSchema" planned RAISES on the class
+    # Session and got nothing. Rows are the answer, like T8: not capped.
+    "T10_RAISED_BY_METHODS_OF": Template(
+        cypher=(
+            "MATCH (m)-[:DEFINED_IN]->(c {id: $entity_id}) "
+            "MATCH (m)-[r:RAISES]->(e) "
+            "RETURN m.id AS entity, e.id AS neighbor, r.chunk_id AS chunk_id, "
+            "coalesce(r.source, 'llm') AS source, "
+            "labels(m) AS entity_labels, labels(e) AS neighbor_labels"
+        ),
+        params=(ParamSpec("entity_id", "entity_id"),),
     ),
     "T7_DOCS_FOR_SYMBOL": Template(
         cypher=(

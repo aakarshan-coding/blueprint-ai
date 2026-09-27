@@ -295,3 +295,31 @@ def test_edges_from_rejects_an_unknown_id_inside_the_list():
 def test_edges_from_is_not_offered_to_the_planner():
     from graphrag.retrieval.cypher_templates import TEMPLATES
     assert TEMPLATES["T9_EDGES_FROM"].description is None
+
+
+def test_delegation_chain_walks_forward_only_and_starts_from_a_classs_methods():
+    """"What does requests.get hand off to" is a forward walk; undirected it
+    drowned the chain to urlopen in callers-of-callers. CALLS edges hang off
+    methods, so a Class anchor starts from each method it defines (D76)."""
+    session = _FakeSession()
+    run_template(
+        session, "T5_DELEGATION_CHAIN",
+        {"entity_id": "requests.sessions.Session", "max_hops": 5},
+        known_entity_ids=KNOWN_IDS,
+    )
+    query, _ = session.calls[0]
+
+    assert "*1..5]->(b)" in query, "directed, and five hops allowed"
+    assert "DEFINED_IN" in query and "a:Class" in query
+    assert "LIMIT" in query
+
+
+def test_raised_by_methods_of_is_not_offered_to_the_planner_and_binds_the_class():
+    from graphrag.retrieval.cypher_templates import TEMPLATES
+    assert TEMPLATES["T10_RAISED_BY_METHODS_OF"].description is None
+    session = _FakeSession()
+    run_template(session, "T10_RAISED_BY_METHODS_OF", {"entity_id": "requests.sessions.Session"},
+                 known_entity_ids=KNOWN_IDS)
+    query, params = session.calls[0]
+    assert ":RAISES" in query and ":DEFINED_IN" in query
+    assert params["entity_id"] == "requests.sessions.Session"

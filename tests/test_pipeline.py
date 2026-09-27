@@ -10,7 +10,9 @@ def _answer(**overrides):
         openai_client=FakeOpenAI(), resolver=FakeResolver(), embedding_model=FakeEmbed(),
     )
     kwargs.update(overrides)
-    return answer_hybrid("q", **kwargs)
+    # Mentions the question does not contain are dropped (D76), so the fake
+    # question names the surface the fake client returns.
+    return answer_hybrid("What does Session do?", **kwargs)
 
 
 def test_empty_graph_result_still_gets_vector_passages():

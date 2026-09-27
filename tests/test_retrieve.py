@@ -14,13 +14,19 @@ from tests.fakes import (
 )
 
 
+_QUESTION = ("What do Session, requests, requests.exceptions and ProxyError do "
+             "on a proxy failure, or nothing?")
+
+
 def _retrieve(**overrides):
     kwargs = dict(
         conn=FakeConn([PASSAGE_ROW]), neo4j_session=FakeSession([T1_ROW]),
         openai_client=FakeOpenAI(), resolver=FakeResolver(), embedding_model=FakeEmbed(),
     )
     kwargs.update(overrides)
-    return retrieve("q", **kwargs)
+    # Mentions the question does not contain are dropped (D76), so the fake
+    # question names every surface the fakes use.
+    return retrieve(_QUESTION, **kwargs)
 
 
 def test_refusal_returns_no_context_and_no_calls_beyond_the_router():
@@ -380,3 +386,68 @@ def test_a_call_chain_fetches_what_the_callees_raise():
 
     statements = [f.statement for f in result.graph_facts]
     assert "urllib3.util.retry.Retry.from_int raises urllib3.exceptions.MaxRetryError." in statements
+
+
+def test_a_raised_by_methods_plan_is_uncapped_and_expands_wraps_and_parents():
+    rows = [
+        {"entity": f"requests.sessions.Session.m{i}", "neighbor": f"requests.exceptions.E{i}",
+         "chunk_id": f"c{i}", "source": "ast"}
+        for i in range(10)
+    ]
+    session = _ChainThenParents(rows, wraps={"requests.exceptions.E0": ["urllib3.exceptions.X"]},
+                                parents={"requests.exceptions.E0": ["requests.exceptions.RequestException"]})
+    client = FakeOpenAI(
+        mentions=[{"surface": "Session", "package": "requests"}],
+        plan={"template_id": "T8_RELATED_BY", "entity_id": "requests.sessions.Session",
+              "relationship": "RAISES"},
+    )
+    session_desc = FakeSession(rows, descriptions={"requests.sessions.Session": (["Class"], 40)})
+    session._descriptions = session_desc._descriptions
+
+    result = _retrieve(neo4j_session=session, openai_client=client)
+
+    assert result.plan.startswith("T10_RAISED_BY_METHODS_OF")
+    raised = [f for f in result.graph_facts if f.relationship == "RAISES"]
+    assert len(raised) == 10, "rows are the answer: not capped"
+    statements = [f.statement for f in result.graph_facts]
+    assert "requests.exceptions.E0 wraps urllib3.exceptions.X." in statements
+    assert "requests.exceptions.E0 inherits from requests.exceptions.RequestException." in statements
+
+
+def test_subclasses_are_followed_by_what_they_wrap():
+    """From the anchor Timeout: ConnectTimeout and ReadTimeout inherit from
+    it, and each wraps a urllib3 error; that is "what does requests convert
+    a socket timeout to" (3h-03, D76)."""
+    rows = [{"relationship": "INHERITS_FROM", "neighbor": "requests.exceptions.ConnectTimeout",
+             "chunk_id": "c1", "outgoing": False}]
+    session = _ChainThenParents(rows, wraps={
+        "requests.exceptions.ConnectTimeout": ["urllib3.exceptions.ConnectTimeoutError"]})
+    client = FakeOpenAI(plan={
+        "template_id": "T8_RELATED_BY", "entity_id": "requests.sessions.Session",
+        "relationship": "INHERITS_FROM",
+    })
+
+    result = _retrieve(neo4j_session=session, openai_client=client)
+
+    statements = [f.statement for f in result.graph_facts]
+    assert "requests.exceptions.ConnectTimeout wraps urllib3.exceptions.ConnectTimeoutError." in statements
+
+
+def test_repair_sees_the_kind_of_a_candidate_seeded_from_passages():
+    """When nothing in the question resolves, the anchor comes from the
+    passages. Its kind must reach repair_plan too: a seeded HTTPAdapter
+    anchoring a wrap chain went unrepaired (3h-03, D76)."""
+    resolver = FakeResolver({"HTTPAdapter": "requests.adapters.HTTPAdapter"})
+    session = _ChainThenParents([], raises={})
+    session._descriptions = {"requests.adapters.HTTPAdapter": (["Class"], 30)}
+    client = FakeOpenAI(
+        mentions=[{"surface": "nothing", "package": "unknown"}],
+        plan={"template_id": "T3_EXCEPTION_WRAP_CHAIN",
+              "entity_id": "requests.adapters.HTTPAdapter", "max_hops": 2},
+    )
+    row = ("c7", "requests", "src/requests/adapters.py", "HTTPAdapter", "code", "...", 0.1)
+
+    result = _retrieve(conn=FakeConn([row]), neo4j_session=session, resolver=resolver, openai_client=client)
+
+    assert result.seeded_from_passages is True
+    assert result.plan.startswith("T10_RAISED_BY_METHODS_OF")
