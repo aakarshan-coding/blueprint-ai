@@ -49,6 +49,11 @@ class CallEdge:
     target_id: str
     chunk_id: str
     method: str = "jedi"
+    # Which of the calling function's own parameters are handed to this
+    # call, as (parameter name, keyword name or None, positional index or
+    # None). `self.cert_verify(conn, request.url, verify, cert)` passes
+    # `verify` at position 2 and `cert` at position 3 (D83).
+    passes: tuple[tuple[str, str | None, int | None], ...] = ()
 
 
 def build_project(src_root: Path | str, *, others: list[Path | str]) -> jedi.Project:
@@ -125,6 +130,8 @@ def resolve_calls(
         source_id = f"{dotted_module}.{name}"
         chunk_id = make_chunk_id(repo, path, start, end)
         seen: set[str] = set()
+        own_params = {a.arg for a in node.args.posonlyargs + node.args.args + node.args.kwonlyargs}
+        own_params.discard("self"); own_params.discard("cls")
 
         for call in ast.walk(node):
             if not isinstance(call, ast.Call):
@@ -142,12 +149,20 @@ def resolve_calls(
                 continue
             seen.add(target)
 
+            passes = []
+            for i, arg in enumerate(call.args):
+                if isinstance(arg, ast.Name) and arg.id in own_params:
+                    passes.append((arg.id, None, i))
+            for kw in call.keywords:
+                if kw.arg and isinstance(kw.value, ast.Name) and kw.value.id in own_params:
+                    passes.append((kw.value.id, kw.arg, None))
             edges.append(
                 CallEdge(
                     source_id=source_id,
                     surface=ast.unparse(call.func),
                     target_id=target,
                     chunk_id=chunk_id,
+                    passes=tuple(passes),
                 )
             )
 

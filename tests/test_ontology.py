@@ -11,8 +11,8 @@ def test_llm_extract_relationship_literal_matches_the_ontology():
     assert set(get_args(RelationshipType)) == LLM_RELATIONSHIPS
 
 
-def test_ontology_has_fourteen_relationship_types():
-    assert len(RELATIONSHIP_TYPES) == 14
+def test_ontology_has_sixteen_relationship_types():
+    assert len(RELATIONSHIP_TYPES) == 16
 
 
 def test_every_relationship_type_has_a_meaning():

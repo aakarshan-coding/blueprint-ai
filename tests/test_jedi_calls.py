@@ -211,3 +211,31 @@ def test_reapply_deletes_jedi_and_override_call_edges_before_rewriting():
     from graphrag.ingest import run_ingestion
     src = inspect.getsource(run_ingestion.run_full_ingestion)
     assert "r.source IN ['jedi', 'override'] DELETE r" in src
+
+
+def test_a_call_records_which_of_the_callers_parameters_it_passes(tmp_path):
+    """`self.cert_verify(conn, request.url, verify, cert)` passes the caller's
+    `verify` at position 2 and `cert` at 3; `f(x, timeout=timeout)` passes
+    `timeout` by keyword (D83)."""
+    (tmp_path / "pkg").mkdir(exist_ok=True)
+    (tmp_path / "pkg" / "__init__.py").write_text("")
+    (tmp_path / "pkg" / "p.py").write_text(textwrap.dedent("""
+        def cert_verify(conn, url, verify, cert):
+            pass
+
+        def send(request, verify=True, cert=None, timeout=None):
+            conn = object()
+            cert_verify(conn, request.url, verify, cert)
+            helper(1, timeout=timeout)
+
+        def helper(x, timeout=None):
+            pass
+    """))
+    project = build_project(tmp_path, others=[])
+    edges = resolve_calls(
+        (tmp_path / "pkg" / "p.py").read_text(), repo="pkg", path=str(tmp_path / "pkg" / "p.py"),
+        dotted_module="pkg.p", project=project, packages=("pkg",),
+    )
+    by_target = {e.target_id: e.passes for e in edges if e.source_id == "pkg.p.send"}
+    assert by_target["pkg.p.cert_verify"] == (("verify", None, 2), ("cert", None, 3))
+    assert by_target["pkg.p.helper"] == (("timeout", "timeout", None),)

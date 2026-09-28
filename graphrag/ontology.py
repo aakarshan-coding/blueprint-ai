@@ -12,6 +12,9 @@ ENTITY_TYPES = frozenset({
 
 AST_RELATIONSHIPS = frozenset({
     "DEFINED_IN", "INHERITS_FROM", "CALLS", "IMPORTS", "RAISES", "HAS_PARAMETER",
+    # D83: what a function's return value is, and where a parameter's value
+    # goes. Two question shapes had no edge to answer them (D78, D82).
+    "RETURNS", "PASSES_TO",
 })
 
 LLM_RELATIONSHIPS = frozenset({
@@ -45,6 +48,12 @@ RELATIONSHIP_MEANINGS = {
     "IMPORTS": "this module imports that name.",
     "RAISES": "this function can throw that exception.",
     "HAS_PARAMETER": "this function accepts that parameter.",
+    "RETURNS": "this function's return value is an instance of that class.",
+    "PASSES_TO": (
+        "this parameter's value is passed as an argument to that function, or "
+        "to that named parameter of it. It says where the value goes next, "
+        "one call at a time."
+    ),
     "DOCUMENTED_IN": "that documentation section describes this thing.",
     "EXPLAINS": "that documentation section explains this concept.",
     "IMPLEMENTS": "this code realises that concept or behaviour.",

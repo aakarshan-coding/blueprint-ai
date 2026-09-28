@@ -17,6 +17,7 @@ _ROLE_IMPLIES_TYPE = {
     "RAISES": "Exception",         # you can only raise an exception
     "WRAPS_EXCEPTION": "Exception",  # both ends of a wrap are exceptions
     "CALLS": "Function",           # see the caveat below
+    "RETURNS": "Class",            # a return type is a class
 }
 
 

@@ -611,3 +611,44 @@ def test_an_empty_plan_on_a_class_falls_back_to_its_members():
     assert "'DEFINED_IN'" in result.plan and "returned nothing" in result.plan_repair
     assert any("BaseAdapter.send is a method of requests.adapters.BaseAdapter" in f.statement
                for f in result.graph_facts)
+
+
+def test_a_parameters_neighbourhood_is_followed_by_where_every_same_named_parameter_goes():
+    """"Which function applies verify": the anchor resolves to the documented
+    `Session.request.verify`, and cert_verify is reached from
+    `HTTPAdapter.send.verify`. The flow is followed from every parameter
+    named verify, then one hop further (D83)."""
+    rows = [{"relationship": "DEFINED_IN", "neighbor": "requests.sessions.Session.request",
+             "chunk_id": "c1", "outgoing": True, "entity_labels": ["Parameter"], "neighbor_labels": ["Function"]}]
+    flow_rows = [
+        {"entity": "requests.adapters.HTTPAdapter.send.verify",
+         "neighbor": "requests.adapters.HTTPAdapter.cert_verify.verify", "chunk_id": "f1", "source": "jedi"},
+        {"entity": "requests.sessions.Session.request.verify",
+         "neighbor": "requests.sessions.Session.merge_environment_settings.verify", "chunk_id": "f2", "source": "jedi"},
+    ]
+
+    class _WithFlow(_ChainThenParents):
+        def run(self, query, **params):
+            if "$name" in query:
+                self.expansion_queries.append((":T12", params["name"]))
+
+                class R:
+                    def data(self_inner):
+                        return flow_rows
+
+                return R()
+            return super().run(query, **params)
+
+    session = _WithFlow(rows)
+    session._edges[":PASSES_TO"] = {
+        "requests.adapters.HTTPAdapter.cert_verify.verify": ["urllib3.util.ssl_.resolve_cert_reqs.candidate"]}
+    session._descriptions = {"requests.sessions.Session.request.verify": (["Parameter"], 12)}
+    resolver = FakeResolver({"Session": "requests.sessions.Session.request.verify"})
+    client = FakeOpenAI(plan={"template_id": "T1_NEIGHBORS", "entity_id": "requests.sessions.Session.request.verify"})
+
+    result = _retrieve(neo4j_session=session, resolver=resolver, openai_client=client)
+
+    statements = [f.statement for f in result.graph_facts]
+    assert (":T12", "verify") in session.expansion_queries
+    assert "requests.adapters.HTTPAdapter.send.verify is passed to requests.adapters.HTTPAdapter.cert_verify.verify." in statements
+    assert "requests.adapters.HTTPAdapter.cert_verify.verify is passed to urllib3.util.ssl_.resolve_cert_reqs.candidate." in statements

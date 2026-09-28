@@ -407,3 +407,28 @@ def test_a_bare_reraise_produces_no_wrapping_edge():
     )
 
     assert edges == []
+
+
+def test_extract_returns_reads_the_annotation_and_ignores_typing_scaffolding():
+    """766 of 781 corpus functions declare a return type (D83). `Optional[X]`
+    names X; `"Y"` in quotes names Y; `tuple[str, int]` names nothing."""
+    import textwrap
+    from graphrag.ingest.ast_extract import extract_returns
+    src = textwrap.dedent("""
+        import typing
+        from typing import Optional
+
+        class Response: ...
+
+        def build(self) -> Response: ...
+        def maybe(self) -> Optional[Response]: ...
+        def quoted(self) -> "urllib3.response.HTTPResponse": ...
+        def plain(self) -> tuple[str, int]: ...
+        def none(self) -> None: ...
+        def untyped(self): ...
+    """)
+    edges = {e.source_id: e.type_surfaces for e in extract_returns(src, repo="r", path="m.py", dotted_module="pkg.m")}
+    assert edges["pkg.m.build"] == ["Response"]
+    assert edges["pkg.m.maybe"] == ["Response"]
+    assert edges["pkg.m.quoted"] == ["urllib3.response.HTTPResponse"]
+    assert "pkg.m.plain" not in edges and "pkg.m.none" not in edges and "pkg.m.untyped" not in edges

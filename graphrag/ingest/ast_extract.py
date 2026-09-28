@@ -240,6 +240,72 @@ def extract_raises(
 
 
 @dataclass(frozen=True)
+class ReturnsEdge:
+    """A function's declared return type(s), by surface name -- not yet
+    resolved. 766 of the 781 functions in this corpus carry a return
+    annotation (D83), so annotations are the evidence; nothing is inferred."""
+
+    source_id: str
+    type_surfaces: list[str]
+    chunk_id: str
+
+
+# Names that appear in annotations but are typing scaffolding, not classes.
+_TYPING_WORDS = frozenset({
+    "Optional", "Union", "List", "Dict", "Tuple", "Set", "Iterator", "Iterable",
+    "Generator", "Any", "Callable", "Type", "Sequence", "Mapping", "None",
+    "list", "dict", "tuple", "set", "typing", "t", "bool", "int", "str", "bytes",
+    "float", "object", "Literal", "Awaitable", "Coroutine", "AsyncIterator",
+})
+
+
+def _annotation_surfaces(annotation: ast.expr) -> list[str]:
+    """The class names an annotation names: `Optional[Response]` -> Response,
+    `"HTTPResponse"` -> HTTPResponse, `tuple[str, int]` -> nothing."""
+    if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
+        try:
+            annotation = ast.parse(annotation.value, mode="eval").body
+        except SyntaxError:
+            return []
+    surfaces = []
+    for node in ast.walk(annotation):
+        if isinstance(node, ast.Name):
+            surface = node.id
+        elif isinstance(node, ast.Attribute):
+            surface = ast.unparse(node)
+        else:
+            continue
+        leaf = surface.split(".")[-1]
+        if leaf in _TYPING_WORDS or surface.split(".")[0] in ("t", "typing"):
+            continue
+        if surface not in surfaces:
+            surfaces.append(surface)
+    # ast.walk visits an Attribute, then its inner Attribute, then its Name:
+    # `urllib3.response.HTTPResponse` yields three surfaces. Keep only the
+    # outermost: a surface that is a dotted prefix of another is dropped.
+    return [s for s in surfaces if not any(o != s and o.startswith(s + ".") for o in surfaces)]
+
+
+def extract_returns(
+    text: str, *, repo: str, path: str, dotted_module: str
+) -> list[ReturnsEdge]:
+    """Every function's declared return type, from its annotation."""
+    tree = ast.parse(text)
+    edges = []
+    for name, node, start, end in iter_symbols(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or node.returns is None:
+            continue
+        surfaces = _annotation_surfaces(node.returns)
+        if not surfaces:
+            continue
+        edges.append(ReturnsEdge(
+            source_id=f"{dotted_module}.{name}", type_surfaces=surfaces,
+            chunk_id=make_chunk_id(repo, path, start, end),
+        ))
+    return edges
+
+
+@dataclass(frozen=True)
 class Parameter:
     name: str
     has_default: bool

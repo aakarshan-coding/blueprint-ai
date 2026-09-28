@@ -9,12 +9,15 @@ validation itself is generic, so a new template can't accidentally skip a
 check that an older one remembered to do.
 """
 
+import re
 from dataclasses import dataclass
 from typing import Literal
 
 from graphrag.ontology import PACKAGES, RELATIONSHIP_TYPES
 
-ParamKind = Literal["entity_id", "entity_ids", "relationship_type", "hop_limit", "package"]
+ParamKind = Literal["entity_id", "entity_ids", "relationship_type", "hop_limit", "package", "identifier"]
+
+_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 MAX_HOPS = 5
 
@@ -175,7 +178,8 @@ TEMPLATES: dict[str, Template] = {
             "Everything connected to one entity by a single named relationship "
             "type. Use for 'which classes inherit from X', 'what does X call', "
             "'what does module X define' (DEFINED_IN), 'what parameters does X "
-            "accept' (DEFINED_IN), and for COUNTING those — 'how many exceptions inherit from "
+            "accept' (DEFINED_IN), 'what does X return' (RETURNS), 'where does "
+            "parameter X go' (PASSES_TO, on the parameter), and for COUNTING those — 'how many exceptions inherit from "
             "RequestException' is answered by counting what this returns. "
             "Prefer this over T6_COUNT_BY_REL whenever the question names an "
             "entity. Needs entity_surface and relationship."
@@ -242,6 +246,22 @@ TEMPLATES: dict[str, Template] = {
             "relationship, no entity."
         ),
     ),
+    # Not offered to the planner: retrieve() runs it for a Parameter anchor
+    # (D83). A bare parameter name resolves to one documented parameter
+    # (`Session.request.verify`), and "which function applies verify" is
+    # answered three functions away, from `HTTPAdapter.send.verify`. The
+    # question is about the name, so the flow is followed from every
+    # parameter so named. The name is the leaf of a resolved id, validated
+    # as an identifier, never model text.
+    "T12_FLOW_OF_PARAMETER_NAME": Template(
+        cypher=(
+            "MATCH (a:Parameter)-[r:PASSES_TO]->(b) WHERE a.id ENDS WITH '.' + $name "
+            "RETURN a.id AS entity, b.id AS neighbor, r.chunk_id AS chunk_id, "
+            "coalesce(r.source, 'llm') AS source, "
+            "labels(a) AS entity_labels, labels(b) AS neighbor_labels ORDER BY a.id"
+        ),
+        params=(ParamSpec("name", "identifier"),),
+    ),
     "T7_DOCS_FOR_SYMBOL": Template(
         cypher=(
             "MATCH (a {id: $entity_id})-[:DOCUMENTED_IN]->(d) "
@@ -270,6 +290,9 @@ def _validate_param(spec: ParamSpec, value, *, known_entity_ids: set[str]) -> No
         for item in value:
             if item not in known_entity_ids:
                 raise ValueError(f"{item!r} is not a known entity id")
+    elif spec.kind == "identifier":
+        if not isinstance(value, str) or not _IDENTIFIER.match(value):
+            raise ValueError(f"{value!r} is not a bare identifier")
     elif spec.kind == "package":
         if value not in PACKAGES:
             raise ValueError(f"{value!r} is not a corpus package ({', '.join(PACKAGES)})")

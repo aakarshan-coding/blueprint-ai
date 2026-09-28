@@ -132,3 +132,11 @@ def test_reapply_deletes_placeholder_edges_that_now_have_a_cited_twin():
     from graphrag.ingest import run_ingestion
     src = inspect.getsource(run_ingestion.run_full_ingestion)
     assert "old.chunk_id = 'ast'" in src and "DELETE old" in src
+
+
+def test_ingestion_writes_returns_and_passes_to_edges_and_converges():
+    import inspect
+    from graphrag.ingest import run_ingestion
+    src = inspect.getsource(run_ingestion.run_full_ingestion)
+    assert 'relationship="RETURNS"' in src and "r.source = 'ast' DELETE r" in src
+    assert 'relationship="PASSES_TO"' in src and "PASSES_TO]->() WHERE r.source = 'jedi' DELETE r" in src

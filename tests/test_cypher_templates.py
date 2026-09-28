@@ -342,3 +342,12 @@ def test_edges_in_package_scopes_by_a_validated_package_and_relationship():
             session, "T11_EDGES_IN_PACKAGE", {"package": "django", "relationship": "WRAPS_EXCEPTION"},
             known_entity_ids=KNOWN_IDS,
         )
+
+
+def test_flow_of_parameter_name_takes_a_bare_identifier_only():
+    session = _FakeSession()
+    run_template(session, "T12_FLOW_OF_PARAMETER_NAME", {"name": "verify"}, known_entity_ids=set())
+    query, params = session.calls[0]
+    assert ":PASSES_TO" in query and params["name"] == "verify"
+    with pytest.raises(ValueError):
+        run_template(session, "T12_FLOW_OF_PARAMETER_NAME", {"name": "x OR 1=1"}, known_entity_ids=set())

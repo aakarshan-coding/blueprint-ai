@@ -20,6 +20,7 @@ from graphrag.ingest.ast_extract import (
     extract_inherits_from,
     extract_parameters,
     extract_raises,
+    extract_returns,
     module_dotted_name,
 )
 from graphrag.ingest.chunk import (
@@ -114,7 +115,7 @@ def run_ast_pass() -> tuple[
     import_aliases: dict[str, dict[str, str]] = {}
     edges = {
         "inherits_from": [], "raises": [], "parameters": [], "calls": [],
-        "exception_wrapping": [], "jedi_calls": [],
+        "exception_wrapping": [], "jedi_calls": [], "returns": [],
     }
 
     # One jedi project per repo, the other repo importable from it — jedi
@@ -155,6 +156,9 @@ def run_ast_pass() -> tuple[
                 text, repo=repo, path=str(p), dotted_module=dotted
             )
             edges["raises"] += extract_raises(
+                text, repo=repo, path=str(p), dotted_module=dotted
+            )
+            edges["returns"] += extract_returns(
                 text, repo=repo, path=str(p), dotted_module=dotted
             )
             param_edges = extract_parameters(text, dotted_module=dotted)
@@ -459,6 +463,26 @@ def run_full_ingestion(
             )
             stats["ast_edges_written"] += 1
 
+    # RETURNS from annotations (D83): the surface is a class name written in
+    # the module or imported by name, the resolver's home ground. Deleted
+    # and rewritten so a re-apply converges.
+    print("Writing RETURNS edges...")
+    neo4j_session.run("MATCH ()-[r:RETURNS]->() WHERE r.source = 'ast' DELETE r")
+    for edge in edges.get("returns", []):
+        module_context = module_of(edge.source_id, node_types)
+        for surface in edge.type_surfaces:
+            r = resolver.resolve(surface, module_context=module_context)
+            if r.canonical_id is None:
+                stats["ast_edges_unresolved"] += 1
+                continue
+            type_if_external(r.canonical_id, "RETURNS")
+            merge_edge(
+                neo4j_session, source_id=edge.source_id, relationship="RETURNS",
+                target_id=r.canonical_id, chunk_id=edge.chunk_id, confidence=1.0,
+                source="ast",
+            )
+            stats["ast_edges_written"] += 1
+
     # CALLS come from jedi, not the resolver (D58). Measured on every call
     # site first: where the two disagreed, jedi added 229 correct edges and
     # the resolver's 169 that jedi lacked were mostly builtins fuzzy-matched
@@ -471,6 +495,14 @@ def run_full_ingestion(
     # the write) and makes a re-apply converge: an edge jedi no longer
     # produces must not survive from an earlier pass (D80).
     neo4j_session.run("MATCH ()-[r:CALLS]->() WHERE r.source IN ['jedi', 'override'] DELETE r")
+    neo4j_session.run("MATCH ()-[r:PASSES_TO]->() WHERE r.source = 'jedi' DELETE r")
+    # Where a parameter's value goes (D83): `verify` in HTTPAdapter.send is
+    # passed at position 2 of self.cert_verify(...), whose third own
+    # parameter is `verify`, so HTTPAdapter.send.verify PASSES_TO
+    # HTTPAdapter.cert_verify.verify. When the callee's parameter cannot be
+    # named, the edge points at the callee itself.
+    callee_params = {e.source_id: [p.name for p in e.parameters] for e in edges["parameters"]}
+    param_ids = {parameter_id(f, p) for f, ps in callee_params.items() for p in ps}
     print("Writing jedi CALLS edges...")
     for edge in edges["jedi_calls"]:
         # jedi sees definitions iter_symbols does not — functions under
@@ -487,6 +519,20 @@ def run_full_ingestion(
             source=edge.method, surface=edge.surface,
         )
         stats["ast_edges_written"] += 1
+        for pname, keyword, index in getattr(edge, "passes", ()):
+            source_param = parameter_id(edge.source_id, pname)
+            if source_param not in param_ids:
+                continue
+            names = callee_params.get(edge.target_id, [])
+            callee_name = keyword if keyword else (names[index] if index is not None and index < len(names) else None)
+            target = parameter_id(edge.target_id, callee_name) if callee_name else None
+            if target not in param_ids:
+                target = edge.target_id
+            merge_edge(
+                neo4j_session, source_id=source_param, relationship="PASSES_TO",
+                target_id=target, chunk_id=edge.chunk_id, confidence=1.0, source="jedi",
+            )
+            stats["ast_edges_written"] += 1
 
     # A call to a base-class method also reaches each override (D68):
     # jedi's static answer plus the runtime possibilities the inheritance

@@ -3200,6 +3200,45 @@ query over parameters by name has no template and is left.
 **A cosmetic wart:** short names collide in the summary ("JSONDecodeError:
 JSONDecodeError" is requests' class inheriting from `requests.compat.JSONDecodeError`).
 
+## D83 — Two new edge types: RETURNS and PASSES_TO
+
+**Status:** applied; 362 tests; ontology now sixteen relationship types; graph re-applied.
+Live-checked, not benchmarked. The oracle cannot score these (it records calls, raises
+and wraps), so the measurement is the benchmark.
+
+**Why.** Three three-hop questions asked things no edge could answer: what a function
+returns, and where a parameter's value goes ("which function applies verify"; "what value
+does verify=False set, which method sets it, where does verify enter"). D78 listed them
+as "the graph lacks the edge type".
+
+**RETURNS**, from annotations only. 766 of the 781 functions in the corpus declare a
+return type, so annotations are the evidence and nothing is inferred. `Optional[X]` names
+X, a quoted `"Y"` names Y, typing scaffolding and builtins name nothing, and the resolver
+turns the surface into an id or drops it. 126 edges, all parser-tagged:
+`HTTPAdapter.send returns an instance of requests.models.Response`,
+`HTTPConnectionPool.urlopen returns an instance of urllib3.response.BaseHTTPResponse`.
+Followed after a call chain, alongside what the callees raise.
+
+**PASSES_TO**, from jedi's resolved calls plus the AST. For each call jedi pins, the
+caller's own parameters that appear as arguments are recorded, positional or keyword;
+the callee's parameter is named when it can be (position → the callee's parameter list,
+keyword → itself), else the edge lands on the callee. 473 edges, 373 to a named
+parameter: `HTTPAdapter.send.verify is passed to HTTPAdapter.cert_verify.verify`. Both
+writers delete and rewrite their edges so a re-apply converges.
+
+**The retrieval side needed one more idea.** A bare "verify" resolves, by the documented-
+parameter rung, to exactly `Session.request.verify`, and from there the value goes into
+a settings dict and is invisible to static flow. `cert_verify` is reached from
+`HTTPAdapter.send.verify`, three functions away. The question is about the name, so a
+Parameter anchor now also follows the flow of every parameter so named
+(`T12_FLOW_OF_PARAMETER_NAME`, not planner-visible, the name validated as an identifier
+and taken from a resolved id), then one hop further. Live: both verify questions hold
+`cert_verify`, and the return-type question holds `Response`.
+
+**What this does not model.** Flow through a dict or `**kwargs` (`send_kwargs`), and
+flow through attributes (`self.verify`). Those are the gaps the two verify questions still
+have between `Session.request` and `HTTPAdapter.send`; the answer model has both ends.
+
 ---
 
 ## Open questions for the Phase 2 sweep

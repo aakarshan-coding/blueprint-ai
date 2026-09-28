@@ -79,12 +79,16 @@ def _nodes_of(facts: list[GraphFact]) -> list[str]:
 
 
 def _expand(
-    facts: list[GraphFact], *, relationship: str, neo4j_session, from_facts=None
+    facts: list[GraphFact], *, relationship: str, neo4j_session, from_facts=None, extra_ids=()
 ) -> tuple[list[GraphFact], list[GraphFact]]:
     """Append one outgoing hop of `relationship` from every node the kept
-    facts name (or only the nodes `from_facts` name). Returns the new list
-    and the facts it added, so a caller can hop again from just those."""
+    facts name (or only the nodes `from_facts` name), plus `extra_ids`.
+    Returns the new list and the facts it added, so a caller can hop again
+    from just those."""
     ids = _nodes_of(facts if from_facts is None else from_facts)
+    for extra in extra_ids:
+        if extra not in ids:
+            ids.append(extra)
     if not ids:
         return facts, []
     rows = run_template(
@@ -115,7 +119,12 @@ _EXPANSIONS: dict[tuple[str, str | None], list[tuple[str, bool]]] = {
     ("T8_RELATED_BY", "RAISES"): [("WRAPS_EXCEPTION", False), ("INHERITS_FROM", False), ("INHERITS_FROM", True)],
     # a call chain: what the callees raise ("what does Retry raise when
     # attempts run out", 3h-23)
-    ("T5_DELEGATION_CHAIN", None): [("RAISES", False)],
+    ("T5_DELEGATION_CHAIN", None): [("RAISES", False), ("RETURNS", False)],
+    # where a parameter's value goes, and where it goes from there (D83)
+    ("T8_RELATED_BY", "PASSES_TO"): [("PASSES_TO", False)],
+    # (after T12 has followed every same-named parameter one hop; this is
+    # the second hop, from wherever those went)
+    ("T1_NEIGHBORS", "Parameter"): [("PASSES_TO", False)],
     # what a class's methods raise: same as a function's raises (D76)
     ("T10_RAISED_BY_METHODS_OF", None): [("WRAPS_EXCEPTION", False), ("INHERITS_FROM", False), ("INHERITS_FROM", True)],
     # subclasses of X: what each of them wraps ("what does requests convert
@@ -301,17 +310,47 @@ def retrieve(
     # base" are answered by the members' INHERITS_FROM edges, which the
     # members query does not fetch. Bounded by the member count.
     relationship = None
+    same_named: list[str] = []
     if template_id == "T8_RELATED_BY" and result.plan:
         found = re.search(r"'relationship': '(\w+)'", result.plan)
         relationship = found.group(1) if found else None
-    hops = _EXPANSIONS.get((template_id, relationship if template_id == "T8_RELATED_BY" else None), [])
+    key_relationship = relationship if template_id == "T8_RELATED_BY" else None
+    if template_id == "T1_NEIGHBORS" and result.plan:
+        # A parameter's neighbourhood is followed by where its value goes:
+        # "which function applies verify" is two PASSES_TO hops from the
+        # parameter (D83).
+        anchor = re.search(r"'entity_id': '([^']+)'", result.plan)
+        kinds = {c.canonical_id: c.kind for c in result.candidates}
+        if anchor and "Parameter" in kinds.get(anchor.group(1), ""):
+            key_relationship = "Parameter"
+            # A bare parameter name ("verify") resolves to every parameter
+            # so named, and the planner picks one. The question is about
+            # the name: where does verify go, anywhere. The flow hop starts
+            # from every same-named parameter the question resolved to,
+            # not only the chosen anchor (D83).
+            leaf = anchor.group(1).split(".")[-1]
+            try:
+                rows = run_template(
+                    neo4j_session, "T12_FLOW_OF_PARAMETER_NAME", {"name": leaf}, known_entity_ids=set()
+                )
+                stated = {f.statement for f in result.graph_facts}
+                flow = [f for f in verbalize("T12_FLOW_OF_PARAMETER_NAME", rows) if f.statement not in stated]
+                result.graph_facts.extend(flow)
+                result.expanded += len(flow)
+                same_named = _nodes_of(flow)
+            except Exception as e:
+                result.graph_error = f"{type(e).__name__}: {e}"
+    hops = _EXPANSIONS.get((template_id, key_relationship), [])
     if hops and result.graph_facts:
         try:
             last_added: list[GraphFact] | None = None
             for rel, follow in hops:
                 result.graph_facts, added = _expand(
                     result.graph_facts, relationship=rel, neo4j_session=neo4j_session,
-                    from_facts=last_added if follow else None,
+                    from_facts=(
+                        last_added if follow
+                        else ([f for f in result.graph_facts if f.subject in same_named] if same_named else None)
+                    ),
                 )
                 result.expanded += len(added)
                 last_added = added
