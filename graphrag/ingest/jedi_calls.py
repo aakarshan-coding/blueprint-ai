@@ -67,18 +67,28 @@ _CALLABLE_KINDS = ("function", "class")
 
 
 def _definitions(script: jedi.Script, func: ast.expr) -> set[str]:
-    """Every callable jedi infers a call's target expression to evaluate to.
+    """The callables a call's target names: by `goto` first, `infer` second.
 
     The cursor goes on the last character of the target -- the `m` of `x.m`,
-    the `A` of a bare `A`. `infer`, not `goto`: goto answers "where is this
-    name bound", which for `target = f if flag else A; target()` is the two
-    `target = ...` lines -- one name, so the ambiguity disappears and a local
-    variable gets recorded as a call target. infer answers "what does it
-    evaluate to", which is f and A, two callables, correctly ambiguous.
-    Only functions and classes count as callables to anchor an edge to.
+    the `A` of a bare `A`. goto answers "where is this name defined"; for
+    `Retry.from_int(n)` that is the classmethod, which is the edge wanted.
+    infer answers "what does it evaluate to", and for that call it is
+    `builtins.classmethod.__get__`, so the graph had no edge to `from_int`
+    at all (D80). infer alone was chosen in D58 because goto, for
+    `target = f if flag else A; target()`, lands on the `target = ...`
+    statement -- one name, ambiguity gone, a local variable as a target.
+    Both are right about something: goto's answer is used only when it is a
+    function or class; when it is a statement, a parameter or nothing,
+    infer's answer is used, which for that branch-bound variable is f and
+    A, two callables, correctly ambiguous and skipped by the caller.
     """
+    line, col = func.end_lineno, func.end_col_offset - 1
     try:
-        values = script.infer(func.end_lineno, func.end_col_offset - 1)
+        defined = script.goto(line, col)
+        names = {d.full_name for d in defined if d.full_name and d.type in _CALLABLE_KINDS}
+        if names:
+            return names
+        values = script.infer(line, col)
     except Exception:
         # jedi raises on a few syntactic corners it can't place a cursor in;
         # an unresolvable call is a missing edge, never a crash.

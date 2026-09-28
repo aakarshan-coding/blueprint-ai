@@ -466,6 +466,11 @@ def run_full_ingestion(
     # here is already a canonical id inside the corpus, so nothing resolves
     # and nothing is external; the chunk_id is the caller's real one, so the
     # edge is citable where the resolver-era "ast" placeholder was not.
+    # This writer is the only source of jedi and override CALLS edges, so
+    # deleting them first and rewriting is the D64 rule (same evidence as
+    # the write) and makes a re-apply converge: an edge jedi no longer
+    # produces must not survive from an earlier pass (D80).
+    neo4j_session.run("MATCH ()-[r:CALLS]->() WHERE r.source IN ['jedi', 'override'] DELETE r")
     print("Writing jedi CALLS edges...")
     for edge in edges["jedi_calls"]:
         # jedi sees definitions iter_symbols does not — functions under

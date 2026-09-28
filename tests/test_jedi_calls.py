@@ -180,3 +180,34 @@ def test_the_original_edge_is_not_repeated():
     extra = expand_overrides([CALL], subclasses=SUBCLASSES, node_universe=UNIVERSE)
 
     assert CALL.target_id not in {e.target_id for e in extra}
+
+
+def test_a_classmethod_call_resolves_to_the_classmethod_not_its_return_type(tmp_path):
+    """`Retry.from_int(n)` evaluates to a Retry, so `infer` returned the
+    class (in fact `classmethod.__get__`) and the graph had no edge to
+    `from_int` (D80). `goto` names the classmethod."""
+    (tmp_path / "pkg").mkdir(exist_ok=True)
+    (tmp_path / "pkg" / "__init__.py").write_text("")
+    (tmp_path / "pkg" / "r.py").write_text(textwrap.dedent("""
+        class Retry:
+            @classmethod
+            def from_int(cls, n):
+                return cls()
+
+        def build(n):
+            return Retry.from_int(n)
+    """))
+    project = build_project(tmp_path, others=[])
+    edges = resolve_calls(
+        (tmp_path / "pkg" / "r.py").read_text(), repo="pkg", path=str(tmp_path / "pkg" / "r.py"),
+        dotted_module="pkg.r", project=project, packages=("pkg",),
+    )
+    assert ("pkg.r.build", "Retry.from_int", "pkg.r.Retry.from_int") in {
+        (e.source_id, e.surface, e.target_id) for e in edges}
+
+
+def test_reapply_deletes_jedi_and_override_call_edges_before_rewriting():
+    import inspect
+    from graphrag.ingest import run_ingestion
+    src = inspect.getsource(run_ingestion.run_full_ingestion)
+    assert "r.source IN ['jedi', 'override'] DELETE r" in src

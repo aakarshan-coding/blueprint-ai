@@ -3101,6 +3101,40 @@ for a later calibration pass with human labels.
 **Current claim for the README:** hybrid beats vector-only by +35.1 points pooled
 [+31.1..+38.9] over five runs on 90 questions, under a grader audited for leniency.
 
+## D80 — jedi: goto first, infer second
+
+**Status:** applied; graph re-applied; oracle re-scored on the saved trace. 346 tests at
+the time of the change.
+
+**The issue, plainly.** `Retry.from_int(max_retries)` evaluates to a Retry object. jedi's
+`infer` answers "what does this evaluate to" and returned `builtins.classmethod.__get__`,
+outside the corpus, so the graph had no edge from `HTTPAdapter.__init__` to `from_int` at
+all. `goto` answers "where is this name defined" and returns the classmethod. D58 chose
+`infer` because `goto` on `target = f if flag else A; target()` lands on the assignment
+statement, one name, ambiguity gone, a local variable recorded as a call target.
+
+**The rule now.** `goto` first; its answer is used only when it is a function or class.
+When it is a statement, a parameter or nothing, `infer` is used, which for the
+branch-bound variable gives f and A, two callables, correctly ambiguous and skipped.
+Verified on both shapes before changing the code.
+
+**Re-apply now converges.** The writer is the only source of jedi and override CALLS
+edges, so it deletes them and rewrites (the D64 rule: same evidence as the write). An
+edge jedi no longer produces cannot survive from an earlier pass.
+
+**Oracle, same trace, before → after:**
+
+| | edges in graph | confirmed | recall |
+|---|---|---|---|
+| jedi | 679 → 683 | 320 → 321 | 80.6% → 80.9% |
+| all CALLS | 775 → 778 | 329 → 330 | 82.9% → 83.1% |
+
+Four edges gained, one of them confirmed at runtime, the `from_int` edge among the four.
+The oracle says this is a marginal change to the graph as a whole and a specific fix for
+classmethod calls. The 29 self-loop CALLS edges (`super().__init__` through the override
+expansion) remain in the graph and are dropped at read time (D78); removing them at
+write time is a separate small change.
+
 ---
 
 ## Open questions for the Phase 2 sweep

@@ -2,18 +2,14 @@
  "calls": {
   "jedi": {
    "observed": 397,
-   "in_graph": 679,
-   "confirmed": 320,
-   "recall": 0.806,
-   "observed_precision": 0.471,
+   "in_graph": 683,
+   "confirmed": 321,
+   "recall": 0.809,
+   "observed_precision": 0.47,
    "missing_from_graph": [
     [
      "requests.adapters.HTTPAdapter.__init__",
      "requests.adapters.BaseAdapter"
-    ],
-    [
-     "requests.adapters.HTTPAdapter.__init__",
-     "urllib3.util.retry.Retry.from_int"
     ],
     [
      "requests.adapters.HTTPAdapter.get_connection_with_tls_context",
@@ -24,12 +20,20 @@
      "urllib3.poolmanager.ProxyManager.connection_from_host"
     ],
     [
+     "requests.adapters.HTTPAdapter.get_connection_with_tls_context",
+     "urllib3.util.url.parse_url"
+    ],
+    [
      "requests.adapters.HTTPAdapter.proxy_manager_for",
      "urllib3.contrib.socks.SOCKSProxyManager"
     ],
     [
      "requests.adapters.HTTPAdapter.send",
      "requests.exceptions.RequestException"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.send",
+     "urllib3.util.timeout.Timeout"
     ],
     [
      "requests.auth.HTTPDigestAuth.handle_401",
@@ -70,6 +74,10 @@
     [
      "requests.models.PreparedRequest.prepare_url",
      "requests.exceptions.RequestException"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_url",
+     "urllib3.util.url.parse_url"
     ],
     [
      "requests.models.RequestEncodingMixin._encode_files",
@@ -132,6 +140,10 @@
      "requests.exceptions.RequestException"
     ],
     [
+     "requests.utils.prepend_scheme_if_needed",
+     "urllib3.util.url.parse_url"
+    ],
+    [
      "requests.utils.proxy_bypass",
      "requests.utils.proxy_bypass_registry"
     ],
@@ -174,10 +186,6 @@
     [
      "urllib3.connectionpool.HTTPConnectionPool.__init__",
      "urllib3.connectionpool.ConnectionPool"
-    ],
-    [
-     "urllib3.connectionpool.HTTPConnectionPool.__init__",
-     "urllib3.util.timeout.Timeout.from_float"
     ],
     [
      "urllib3.connectionpool.HTTPConnectionPool._get_conn",
@@ -268,10 +276,6 @@
      "urllib3.exceptions.PoolError"
     ],
     [
-     "urllib3.filepost.iter_field_objects",
-     "urllib3.fields.RequestField.from_tuples"
-    ],
-    [
      "urllib3.poolmanager.PoolManager.__init__",
      "urllib3._request_methods.RequestMethods"
     ],
@@ -300,16 +304,8 @@
      "urllib3.util.retry.Retry"
     ],
     [
-     "urllib3.util.timeout.Timeout.__init__",
-     "urllib3.util.timeout.Timeout._validate_timeout"
-    ],
-    [
      "urllib3.util.wait.wait_for_read",
      "urllib3.util.wait.select_wait_for_socket"
-    ],
-    [
-     "urllib3.util.wait.wait_for_read",
-     "urllib3.util.wait.wait_for_socket"
     ],
     [
      "urllib3.util.wait.wait_for_socket",
@@ -340,10 +336,6 @@
     [
      "requests.adapters.HTTPAdapter.get_connection",
      "urllib3.poolmanager.PoolManager.connection_from_url"
-    ],
-    [
-     "requests.adapters.HTTPAdapter.get_connection",
-     "urllib3.util.url.parse_url"
     ],
     [
      "requests.adapters.HTTPAdapter.get_connection_with_tls_context",
@@ -548,6 +540,10 @@
     [
      "requests.utils.rewind_body",
      "requests.exceptions.UnrewindableBodyError"
+    ],
+    [
+     "requests.utils.should_bypass_proxies",
+     "requests.utils.set_environ"
     ],
     [
      "requests.utils.unquote_unreserved",
@@ -774,6 +770,10 @@
      "urllib3.exceptions.EmptyPoolError"
     ],
     [
+     "urllib3.connectionpool.HTTPConnectionPool._get_timeout",
+     "urllib3.util.timeout.Timeout.from_float"
+    ],
+    [
      "urllib3.connectionpool.HTTPConnectionPool._make_request",
      "urllib3.connection._wrap_proxy_error"
     ],
@@ -848,6 +848,10 @@
     [
      "urllib3.connectionpool.HTTPConnectionPool.urlopen",
      "urllib3.response.BaseHTTPResponse.get_redirect_location"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.util.retry.Retry.from_int"
     ],
     [
      "urllib3.connectionpool.HTTPConnectionPool.urlopen",
@@ -1122,6 +1126,10 @@
      "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.close"
     ],
     [
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.read",
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper._error_catcher"
+    ],
+    [
      "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.read_chunked",
      "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.read"
     ],
@@ -1154,16 +1162,8 @@
      "urllib3.util.ssl_.is_ipaddress"
     ],
     [
-     "urllib3.contrib.pyopenssl.PyOpenSSLContext.wrap_socket",
-     "urllib3.util.wait.wait_for_read"
-    ],
-    [
      "urllib3.contrib.pyopenssl.WrappedSocket._decref_socketios",
      "urllib3.contrib.pyopenssl.WrappedSocket.close"
-    ],
-    [
-     "urllib3.contrib.pyopenssl.WrappedSocket._send_until_done",
-     "urllib3.util.wait.wait_for_write"
     ],
     [
      "urllib3.contrib.pyopenssl.WrappedSocket.close",
@@ -1182,16 +1182,8 @@
      "urllib3.contrib.pyopenssl.WrappedSocket.recv"
     ],
     [
-     "urllib3.contrib.pyopenssl.WrappedSocket.recv",
-     "urllib3.util.wait.wait_for_read"
-    ],
-    [
      "urllib3.contrib.pyopenssl.WrappedSocket.recv_into",
      "urllib3.contrib.pyopenssl.WrappedSocket.recv_into"
-    ],
-    [
-     "urllib3.contrib.pyopenssl.WrappedSocket.recv_into",
-     "urllib3.util.wait.wait_for_read"
     ],
     [
      "urllib3.contrib.pyopenssl.WrappedSocket.sendall",
@@ -1244,10 +1236,6 @@
     [
      "urllib3.fields.format_header_param_html5",
      "urllib3.fields.format_multipart_header_param"
-    ],
-    [
-     "urllib3.http2.connection.HTTP2Connection.__init__",
-     "urllib3.connection.HTTPSConnection.__init__"
     ],
     [
      "urllib3.http2.connection.HTTP2Connection.__init__",
@@ -1330,6 +1318,10 @@
      "urllib3._request_methods.RequestMethods.__init__"
     ],
     [
+     "urllib3.poolmanager.PoolManager.__init__",
+     "urllib3.util.retry.Retry.from_int"
+    ],
+    [
      "urllib3.poolmanager.PoolManager._proxy_requires_url_absolute_form",
      "urllib3.util.proxy.connection_requires_http_tunnel"
     ],
@@ -1376,6 +1368,10 @@
     [
      "urllib3.poolmanager.PoolManager.urlopen",
      "urllib3.response.BaseHTTPResponse.get_redirect_location"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.urlopen",
+     "urllib3.util.retry.Retry.from_int"
     ],
     [
      "urllib3.poolmanager.PoolManager.urlopen",
@@ -1486,6 +1482,10 @@
      "urllib3.exceptions.IncompleteRead"
     ],
     [
+     "urllib3.response.HTTPResponse._raw_read",
+     "urllib3.response.HTTPResponse._error_catcher"
+    ],
+    [
      "urllib3.response.HTTPResponse._update_chunk_length",
      "urllib3.exceptions.InvalidChunkLength"
     ],
@@ -1552,6 +1552,10 @@
     [
      "urllib3.response.HTTPResponse.read_chunked",
      "urllib3.response.BaseHTTPResponse._flush_decoder"
+    ],
+    [
+     "urllib3.response.HTTPResponse.read_chunked",
+     "urllib3.response.HTTPResponse._error_catcher"
     ],
     [
      "urllib3.response.HTTPResponse.read_chunked",
@@ -1752,15 +1756,19 @@
     [
      "urllib3.util.url.parse_url",
      "urllib3.util.url.Url"
+    ],
+    [
+     "urllib3.util.wait.wait_for_write",
+     "urllib3.util.wait.wait_for_socket"
     ]
    ]
   },
   "override": {
    "observed": 397,
-   "in_graph": 96,
+   "in_graph": 95,
    "confirmed": 9,
    "recall": 0.023,
-   "observed_precision": 0.094,
+   "observed_precision": 0.095,
    "missing_from_graph": [
     [
      "requests.adapters.HTTPAdapter.__init__",
@@ -3493,10 +3501,6 @@
      "urllib3.exceptions.RequestError.__init__"
     ],
     [
-     "urllib3.http2.connection.HTTP2Connection.__init__",
-     "urllib3.http2.connection.HTTP2Connection.__init__"
-    ],
-    [
      "urllib3.http2.connection.HTTP2Connection.close",
      "urllib3.http2.connection.HTTP2Connection.close"
     ],
@@ -3668,22 +3672,22 @@
   },
   "all": {
    "observed": 397,
-   "in_graph": 775,
-   "confirmed": 329,
-   "recall": 0.829,
-   "observed_precision": 0.425,
+   "in_graph": 778,
+   "confirmed": 330,
+   "recall": 0.831,
+   "observed_precision": 0.424,
    "missing_from_graph": [
     [
      "requests.adapters.HTTPAdapter.__init__",
      "requests.adapters.BaseAdapter"
     ],
     [
-     "requests.adapters.HTTPAdapter.__init__",
-     "urllib3.util.retry.Retry.from_int"
+     "requests.adapters.HTTPAdapter.get_connection_with_tls_context",
+     "requests.exceptions.RequestException"
     ],
     [
      "requests.adapters.HTTPAdapter.get_connection_with_tls_context",
-     "requests.exceptions.RequestException"
+     "urllib3.util.url.parse_url"
     ],
     [
      "requests.adapters.HTTPAdapter.proxy_manager_for",
@@ -3692,6 +3696,10 @@
     [
      "requests.adapters.HTTPAdapter.send",
      "requests.exceptions.RequestException"
+    ],
+    [
+     "requests.adapters.HTTPAdapter.send",
+     "urllib3.util.timeout.Timeout"
     ],
     [
      "requests.auth.HTTPDigestAuth.handle_401",
@@ -3732,6 +3740,10 @@
     [
      "requests.models.PreparedRequest.prepare_url",
      "requests.exceptions.RequestException"
+    ],
+    [
+     "requests.models.PreparedRequest.prepare_url",
+     "urllib3.util.url.parse_url"
     ],
     [
      "requests.models.RequestEncodingMixin._encode_files",
@@ -3786,6 +3798,10 @@
      "requests.exceptions.RequestException"
     ],
     [
+     "requests.utils.prepend_scheme_if_needed",
+     "urllib3.util.url.parse_url"
+    ],
+    [
      "requests.utils.proxy_bypass",
      "requests.utils.proxy_bypass_registry"
     ],
@@ -3820,10 +3836,6 @@
     [
      "urllib3.connectionpool.HTTPConnectionPool.__init__",
      "urllib3.connectionpool.ConnectionPool"
-    ],
-    [
-     "urllib3.connectionpool.HTTPConnectionPool.__init__",
-     "urllib3.util.timeout.Timeout.from_float"
     ],
     [
      "urllib3.connectionpool.HTTPConnectionPool._get_conn",
@@ -3902,10 +3914,6 @@
      "urllib3.exceptions.PoolError"
     ],
     [
-     "urllib3.filepost.iter_field_objects",
-     "urllib3.fields.RequestField.from_tuples"
-    ],
-    [
      "urllib3.poolmanager.PoolManager.__init__",
      "urllib3._request_methods.RequestMethods"
     ],
@@ -3930,16 +3938,8 @@
      "urllib3.util.retry.Retry"
     ],
     [
-     "urllib3.util.timeout.Timeout.__init__",
-     "urllib3.util.timeout.Timeout._validate_timeout"
-    ],
-    [
      "urllib3.util.wait.wait_for_read",
      "urllib3.util.wait.select_wait_for_socket"
-    ],
-    [
-     "urllib3.util.wait.wait_for_read",
-     "urllib3.util.wait.wait_for_socket"
     ],
     [
      "urllib3.util.wait.wait_for_socket",
@@ -3974,10 +3974,6 @@
     [
      "requests.adapters.HTTPAdapter.get_connection",
      "urllib3.poolmanager.PoolManager.connection_from_url"
-    ],
-    [
-     "requests.adapters.HTTPAdapter.get_connection",
-     "urllib3.util.url.parse_url"
     ],
     [
      "requests.adapters.HTTPAdapter.get_connection_with_tls_context",
@@ -4186,6 +4182,10 @@
     [
      "requests.utils.rewind_body",
      "requests.exceptions.UnrewindableBodyError"
+    ],
+    [
+     "requests.utils.should_bypass_proxies",
+     "requests.utils.set_environ"
     ],
     [
      "requests.utils.unquote_unreserved",
@@ -4484,6 +4484,10 @@
      "urllib3.exceptions.EmptyPoolError"
     ],
     [
+     "urllib3.connectionpool.HTTPConnectionPool._get_timeout",
+     "urllib3.util.timeout.Timeout.from_float"
+    ],
+    [
      "urllib3.connectionpool.HTTPConnectionPool._make_request",
      "urllib3.connection._wrap_proxy_error"
     ],
@@ -4570,6 +4574,10 @@
     [
      "urllib3.connectionpool.HTTPConnectionPool.urlopen",
      "urllib3.response.BaseHTTPResponse.get_redirect_location"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "urllib3.util.retry.Retry.from_int"
     ],
     [
      "urllib3.connectionpool.HTTPConnectionPool.urlopen",
@@ -4876,6 +4884,10 @@
      "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.close"
     ],
     [
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.read",
+     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper._error_catcher"
+    ],
+    [
      "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.read_chunked",
      "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.read"
     ],
@@ -4908,16 +4920,8 @@
      "urllib3.util.ssl_.is_ipaddress"
     ],
     [
-     "urllib3.contrib.pyopenssl.PyOpenSSLContext.wrap_socket",
-     "urllib3.util.wait.wait_for_read"
-    ],
-    [
      "urllib3.contrib.pyopenssl.WrappedSocket._decref_socketios",
      "urllib3.contrib.pyopenssl.WrappedSocket.close"
-    ],
-    [
-     "urllib3.contrib.pyopenssl.WrappedSocket._send_until_done",
-     "urllib3.util.wait.wait_for_write"
     ],
     [
      "urllib3.contrib.pyopenssl.WrappedSocket.close",
@@ -4936,16 +4940,8 @@
      "urllib3.contrib.pyopenssl.WrappedSocket.recv"
     ],
     [
-     "urllib3.contrib.pyopenssl.WrappedSocket.recv",
-     "urllib3.util.wait.wait_for_read"
-    ],
-    [
      "urllib3.contrib.pyopenssl.WrappedSocket.recv_into",
      "urllib3.contrib.pyopenssl.WrappedSocket.recv_into"
-    ],
-    [
-     "urllib3.contrib.pyopenssl.WrappedSocket.recv_into",
-     "urllib3.util.wait.wait_for_read"
     ],
     [
      "urllib3.contrib.pyopenssl.WrappedSocket.sendall",
@@ -5050,14 +5046,6 @@
     [
      "urllib3.fields.format_header_param_html5",
      "urllib3.fields.format_multipart_header_param"
-    ],
-    [
-     "urllib3.http2.connection.HTTP2Connection.__init__",
-     "urllib3.connection.HTTPSConnection.__init__"
-    ],
-    [
-     "urllib3.http2.connection.HTTP2Connection.__init__",
-     "urllib3.http2.connection.HTTP2Connection.__init__"
     ],
     [
      "urllib3.http2.connection.HTTP2Connection.__init__",
@@ -5180,6 +5168,10 @@
      "urllib3.poolmanager.ProxyManager.__init__"
     ],
     [
+     "urllib3.poolmanager.PoolManager.__init__",
+     "urllib3.util.retry.Retry.from_int"
+    ],
+    [
      "urllib3.poolmanager.PoolManager._proxy_requires_url_absolute_form",
      "urllib3.util.proxy.connection_requires_http_tunnel"
     ],
@@ -5250,6 +5242,10 @@
     [
      "urllib3.poolmanager.PoolManager.urlopen",
      "urllib3.response.HTTPResponse.drain_conn"
+    ],
+    [
+     "urllib3.poolmanager.PoolManager.urlopen",
+     "urllib3.util.retry.Retry.from_int"
     ],
     [
      "urllib3.poolmanager.PoolManager.urlopen",
@@ -5432,6 +5428,10 @@
      "urllib3.exceptions.IncompleteRead"
     ],
     [
+     "urllib3.response.HTTPResponse._raw_read",
+     "urllib3.response.HTTPResponse._error_catcher"
+    ],
+    [
      "urllib3.response.HTTPResponse._update_chunk_length",
      "urllib3.exceptions.InvalidChunkLength"
     ],
@@ -5502,6 +5502,10 @@
     [
      "urllib3.response.HTTPResponse.read_chunked",
      "urllib3.response.BaseHTTPResponse._flush_decoder"
+    ],
+    [
+     "urllib3.response.HTTPResponse.read_chunked",
+     "urllib3.response.HTTPResponse._error_catcher"
     ],
     [
      "urllib3.response.HTTPResponse.read_chunked",
@@ -5730,6 +5734,10 @@
     [
      "urllib3.util.url.parse_url",
      "urllib3.util.url.Url"
+    ],
+    [
+     "urllib3.util.wait.wait_for_write",
+     "urllib3.util.wait.wait_for_socket"
     ]
    ]
   }
