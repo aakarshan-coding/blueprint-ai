@@ -523,3 +523,44 @@ def test_the_plan_model_offers_the_package_template_with_a_package_enum():
     import pytest
     with pytest.raises(Exception):
         model(template_id="T11_EDGES_IN_PACKAGE", package="django", relationship="WRAPS_EXCEPTION")
+
+
+def test_dotted_names_in_the_question_are_mentions_regardless_of_the_model():
+    """"Session.request" came back as "Session" plus "request" on some calls
+    and "requests.api" as "request" on others, three votes notwithstanding
+    (D82). A dotted name is read off the question text."""
+    from graphrag.retrieval.graph_query import dotted_names_in
+    assert dotted_names_in("What parameters does Session.request accept?") == ["Session.request"]
+    assert dotted_names_in("How many helpers does requests.api define, e.g. get()?") == ["requests.api"]
+    assert dotted_names_in("Which classes in requests.exceptions are warnings?") == ["requests.exceptions"]
+    assert dotted_names_in("What does Response.iter_content() raise?") == ["Response.iter_content"]
+    assert dotted_names_in("Does requests follow redirects?") == []
+
+
+def test_extract_mentions_adds_dotted_names_the_model_missed():
+    from graphrag.retrieval.graph_query import Mentions
+
+    class _Parsed:
+        def __init__(self, v): self.output_parsed = v
+
+    class _Responses:
+        def parse(self, **kw):
+            return _Parsed(Mentions(mentions=[Mention(surface="Session", package="requests")]))
+
+    class _Client:
+        responses = _Responses()
+
+    mentions = extract_mentions("What parameters does Session.request accept?", client=_Client(), votes=1)
+    assert [m.surface for m in mentions] == ["Session", "Session.request"]
+
+
+def test_repair_plan_scopes_a_count_to_the_most_specific_module_named():
+    from graphrag.retrieval.graph_query import Candidate, repair_plan
+    candidates = [Candidate("requests", kind="Module", degree=65),
+                  Candidate("requests.exceptions", kind="Module", degree=40)]
+    template_id, values, note = repair_plan("T6_COUNT_BY_REL", {"relationship": "INHERITS_FROM"}, candidates)
+    assert (template_id, values) == ("T8_RELATED_BY", {"entity_id": "requests.exceptions", "relationship": "DEFINED_IN"})
+
+    # A module plus a specific entity: the count is left to the model's choice.
+    candidates.append(Candidate("requests.exceptions.Timeout", kind="Class", degree=6))
+    assert repair_plan("T6_COUNT_BY_REL", {"relationship": "INHERITS_FROM"}, candidates)[2] is None

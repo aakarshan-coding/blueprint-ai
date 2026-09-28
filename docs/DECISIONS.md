@@ -3159,6 +3159,47 @@ write time is a separate small change.
 `ag-11` and `ag-13` ("request" extracted instead of "requests.api"; a seeded
 `RequestsWarning` chosen over the module). That is D82's subject.
 
+## D82 — Anchor stability: dotted names read off the question, fall back on empty, summarise the members
+
+**Status:** applied; 357 tests. Retrieval-side only. Live-checked twice per question, not
+benchmarked.
+
+**The problem.** Six counting questions flipped between runs (D78) because the mention
+stage handed the planner a different anchor each time: "Session.request" came back as
+"Session" plus "request" on some calls, "requests.api" as "request" on others, three
+votes notwithstanding; a seeded `RequestsWarning` was chosen over the module the
+question named; a corpus-wide count was planned when two modules resolved.
+
+**Three deterministic changes, no new model calls:**
+
+1. *Dotted names in the question are mentions.* A regex reads `Session.request`,
+   `requests.api`, `Response.iter_content` off the text and adds them to the model's
+   list. Reading a dotted name is not a judgement call.
+2. *Run, then fall back.* When the planned query returns nothing and the question named
+   a module, run that module's members (most specific module first); when it names a
+   class and the plan was not its members, run the class's members. The D77 rule: act on
+   what the graph just proved, not on a label. "Which methods must a BaseAdapter subclass
+   implement" planned IMPLEMENTS, got nothing, and now falls back to `__init__, close,
+   send`.
+3. *Summarise members plus parents.* Sixty lines with "how many warning classes" or "how
+   many have more than one base" on top is a count the model kept getting wrong. Two
+   derived lines state the grouping, computed from facts already in the context:
+   "Members by base class: ConnectionError: ConnectTimeout, ProxyError, SSLError;
+   DeprecationWarning: FileModeWarning; ...; Warning: RequestsWarning" and "9 members
+   have more than one base class: ConnectTimeout, ContentDecodingError, ...". The
+   second line is the exact answer to `ag-19`.
+
+Also: a corpus-wide count with only modules as candidates now scopes to the most
+specific one.
+
+**Live, two calls each:** `ag-04`, `ag-06`, `ag-11`, `ag-13`, `ag-19` planned identically
+on both calls, which they did not before. `ag-16` reaches its answer by the fallback.
+`ag-12` ("which functions name a data parameter") still anchors on one parameter; a
+query over parameters by name has no template and is left.
+
+**A cosmetic wart:** short names collide in the summary ("JSONDecodeError:
+JSONDecodeError" is requests' class inheriting from `requests.compat.JSONDecodeError`).
+
 ---
 
 ## Open questions for the Phase 2 sweep

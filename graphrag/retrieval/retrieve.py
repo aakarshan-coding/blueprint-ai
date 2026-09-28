@@ -124,6 +124,39 @@ _EXPANSIONS: dict[tuple[str, str | None], list[tuple[str, bool]]] = {
 }
 
 
+def summarize_members(facts: list[GraphFact]) -> list[GraphFact]:
+    """Derived lines over a members-plus-parents context: members by base,
+    and members with more than one base."""
+    members = [f.subject for f in facts if f.relationship == "DEFINED_IN" and f.chunk_id and f.subject]
+    parents: dict[str, list[str]] = {}
+    for f in facts:
+        if f.relationship == "INHERITS_FROM" and f.subject in members and f.object:
+            parents.setdefault(f.subject, []).append(f.object)
+    if not parents:
+        return []
+
+    def short(i: str) -> str:
+        return i.split(".")[-1]
+
+    by_base: dict[str, list[str]] = {}
+    for member, bases in parents.items():
+        for base in bases:
+            by_base.setdefault(base, []).append(short(member))
+    grouped = "; ".join(
+        f"{short(base)}: {', '.join(sorted(names))}"
+        for base, names in sorted(by_base.items(), key=lambda kv: short(kv[0]))
+    )
+    lines = [GraphFact(f"Members by base class: {grouped}.", None)]
+    multi = sorted(short(m) for m, bases in parents.items() if len(set(bases)) > 1)
+    if multi:
+        lines.append(GraphFact(
+            f"{len(multi)} members have more than one base class: {', '.join(multi)}.", None,
+        ))
+    else:
+        lines.append(GraphFact("No member has more than one base class.", None))
+    return lines
+
+
 def retrieve(
     question: str,
     *,
@@ -202,6 +235,38 @@ def retrieve(
                     rows = run_template(
                         neo4j_session, template_id, values, known_entity_ids=known_ids
                     )
+                # The plan the model chose can be a reasonable guess that the
+                # graph has nothing for: DEFINED_IN on a seeded class, a
+                # neighbourhood of one parameter. When the question named a
+                # module, the module's members are the other reasonable plan,
+                # and the graph has already said the first one was empty
+                # (D82). Run, then fall back: the rule D77 set.
+                modules = [c for c in candidates if "Module" in c.kind and "." in c.canonical_id]
+                module = max(modules, key=lambda c: len(c.canonical_id)) if modules else None
+                already_members = (
+                    template_id == "T8_RELATED_BY" and values.get("relationship") == "DEFINED_IN"
+                    and module is not None and values.get("entity_id") == module.canonical_id
+                )
+                fallback_to = None
+                if not rows and module is not None and not already_members:
+                    fallback_to = module.canonical_id
+                elif (
+                    not rows and "Class" in anchor_kind
+                    and values.get("relationship") != "DEFINED_IN"
+                ):
+                    # "Which methods must a BaseAdapter subclass implement"
+                    # planned IMPLEMENTS on the class: nothing. The class's
+                    # own members are the other reasonable plan (D82).
+                    fallback_to = values.get("entity_id")
+                if fallback_to:
+                    template_id = "T8_RELATED_BY"
+                    values = {"entity_id": fallback_to, "relationship": "DEFINED_IN"}
+                    known_ids = {fallback_to}
+                    result.plan = f"{template_id}({values})"
+                    result.plan_repair = f"the plan returned nothing; the members of {fallback_to} instead"
+                    rows = run_template(
+                        neo4j_session, template_id, values, known_entity_ids=known_ids
+                    )
                 result.graph_facts = verbalize(
                     template_id, rows,
                     entity_id=values.get("entity_id"),
@@ -252,6 +317,15 @@ def retrieve(
                 last_added = added
         except Exception as e:
             result.graph_error = f"{type(e).__name__}: {e}"
+
+    # A members plan followed by parents can hand the model sixty lines and
+    # a question that is a count over them ("how many warning classes",
+    # "how many have more than one base"). Two derived lines say what the
+    # lines add up to (D82): members grouped by base, and members with more
+    # than one base. Computed from facts already in the context, cited by
+    # them; no new evidence.
+    if template_id == "T8_RELATED_BY" and relationship == "DEFINED_IN" and result.expanded:
+        result.graph_facts.extend(summarize_members(result.graph_facts))
 
     result.context, result.retrieved_ids = assemble_context(
         graph_facts=result.graph_facts, vector_passages=result.passages

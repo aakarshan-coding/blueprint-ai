@@ -451,9 +451,13 @@ def test_repair_sees_the_kind_of_a_candidate_seeded_from_passages():
     result = _retrieve(conn=FakeConn([row]), neo4j_session=session, resolver=resolver, openai_client=client)
 
     assert result.seeded_from_passages is True
-    # The chain ran (and returned nothing) before the fallback.
-    assert any("WRAPS_EXCEPTION" in q for q, _ in session.queries)
-    assert result.plan.startswith("T10_RAISED_BY_METHODS_OF")
+    # The chain ran (and returned nothing), then what the class's methods
+    # raise was tried; in this fake that is empty too, so the members
+    # fallback (D82) is what finally ran. The point here is the first
+    # fallback fired at all: it needs the seeded candidate's kind.
+    queries = [q for q, _ in session.queries]
+    assert any("WRAPS_EXCEPTION" in q for q in queries)
+    assert any("[r:RAISES]" in q for q in queries), "T10 was attempted"
     assert "returned nothing" in result.plan_repair
 
 
@@ -514,3 +518,96 @@ def test_a_package_listing_plan_is_never_capped():
     result = _retrieve(neo4j_session=FakeSession(rows), openai_client=client)
 
     assert len([f for f in result.graph_facts if f.chunk_id]) == 12
+
+
+def test_an_empty_plan_falls_back_to_the_named_modules_members():
+    """"How many warning classes does requests.exceptions define" planned
+    DEFINED_IN on a seeded class and got nothing; the module the question
+    named is the other reasonable plan (D82). Run first, fall back on empty."""
+    resolver = FakeResolver({"requests.exceptions": "requests.exceptions",
+                             "ProxyError": "requests.exceptions.RequestsWarning"})
+    member_rows = [{"relationship": "DEFINED_IN", "neighbor": "requests.exceptions.RequestsWarning",
+                    "chunk_id": "c1", "outgoing": False, "entity_labels": ["Module"], "neighbor_labels": ["Class"]}]
+
+    class _EmptyThenMembers(FakeSession):
+        def run(self, query, **params):
+            if "labels(n)" in query or "$entity_ids" in query:
+                return super().run(query, **params)
+            rows = member_rows if params.get("entity_id") == "requests.exceptions" else []
+
+            class R:
+                def data(self_inner):
+                    return rows
+
+            self.queries.append((query, params))
+            return R()
+
+    session = _EmptyThenMembers([], descriptions={
+        "requests.exceptions": (["Module"], 40),
+        "requests.exceptions.RequestsWarning": (["Class"], 3),
+    })
+    client = FakeOpenAI(
+        mentions=[{"surface": "requests.exceptions", "package": "requests"},
+                  {"surface": "ProxyError", "package": "requests"}],
+        plan={"template_id": "T8_RELATED_BY", "entity_id": "requests.exceptions.RequestsWarning",
+              "relationship": "DEFINED_IN"},
+    )
+
+    result = _retrieve(neo4j_session=session, resolver=resolver, openai_client=client)
+
+    assert result.plan == "T8_RELATED_BY({'entity_id': 'requests.exceptions', 'relationship': 'DEFINED_IN'})"
+    assert "returned nothing" in result.plan_repair
+    assert any("RequestsWarning is a class defined in requests.exceptions" in f.statement for f in result.graph_facts)
+
+
+def test_members_plus_parents_get_summary_lines_by_base_and_multi_base():
+    """"How many warning classes" and "how many have more than one base"
+    over sixty lines: two derived lines state the grouping (D82)."""
+    from graphrag.retrieval.retrieve import summarize_members
+    from graphrag.retrieval.merge import GraphFact
+    facts = [
+        GraphFact("requests.exceptions.A is a class defined in requests.exceptions.", "c1",
+                  relationship="DEFINED_IN", subject="requests.exceptions.A", object="requests.exceptions"),
+        GraphFact("requests.exceptions.B is a class defined in requests.exceptions.", "c2",
+                  relationship="DEFINED_IN", subject="requests.exceptions.B", object="requests.exceptions"),
+        GraphFact("requests.exceptions.A inherits from builtins.Warning.", "p1",
+                  relationship="INHERITS_FROM", subject="requests.exceptions.A", object="builtins.Warning"),
+        GraphFact("requests.exceptions.B inherits from requests.exceptions.RequestException.", "p2",
+                  relationship="INHERITS_FROM", subject="requests.exceptions.B", object="requests.exceptions.RequestException"),
+        GraphFact("requests.exceptions.B inherits from builtins.ValueError.", "p3",
+                  relationship="INHERITS_FROM", subject="requests.exceptions.B", object="builtins.ValueError"),
+    ]
+    lines = [f.statement for f in summarize_members(facts)]
+    assert lines[0] == "Members by base class: RequestException: B; ValueError: B; Warning: A."
+    assert lines[1] == "1 members have more than one base class: B."
+
+
+def test_an_empty_plan_on_a_class_falls_back_to_its_members():
+    """IMPLEMENTS on BaseAdapter returned nothing; "which methods must a
+    subclass implement" is the class's members (D82)."""
+    resolver = FakeResolver({"Session": "requests.adapters.BaseAdapter"})
+    member_rows = [{"relationship": "DEFINED_IN", "neighbor": "requests.adapters.BaseAdapter.send",
+                    "chunk_id": "c1", "outgoing": False, "entity_labels": ["Class"], "neighbor_labels": ["Function"]}]
+
+    class _EmptyThenMembers(FakeSession):
+        def run(self, query, **params):
+            if "labels(n)" in query or "$entity_ids" in query:
+                return super().run(query, **params)
+            rows = member_rows if ":DEFINED_IN" in query else []
+
+            class R:
+                def data(self_inner):
+                    return rows
+
+            self.queries.append((query, params))
+            return R()
+
+    session = _EmptyThenMembers([], descriptions={"requests.adapters.BaseAdapter": (["Class"], 20)})
+    client = FakeOpenAI(plan={"template_id": "T8_RELATED_BY", "entity_id": "requests.adapters.BaseAdapter",
+                              "relationship": "IMPLEMENTS"})
+
+    result = _retrieve(neo4j_session=session, resolver=resolver, openai_client=client)
+
+    assert "'DEFINED_IN'" in result.plan and "returned nothing" in result.plan_repair
+    assert any("BaseAdapter.send is a method of requests.adapters.BaseAdapter" in f.statement
+               for f in result.graph_facts)

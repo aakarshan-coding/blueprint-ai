@@ -26,6 +26,7 @@ never writes Cypher. Resolution stays a controlled step we own; what changed
 is that it happens before the model chooses, not after.
 """
 
+import re
 from dataclasses import dataclass
 from typing import Annotated, Callable, Literal, Union
 
@@ -109,7 +110,36 @@ def extract_mentions(
         ask, trials=votes,
         key=lambda m: tuple(sorted((x.surface, x.package) for x in m.mentions)),
     )
-    return [m for m in result.mentions if mentioned_in(m.surface, question)]
+    mentions = [m for m in result.mentions if mentioned_in(m.surface, question)]
+    have = {m.surface for m in mentions}
+    for surface in dotted_names_in(question):
+        if surface not in have:
+            mentions.append(Mention(surface=surface, package="unknown"))
+            have.add(surface)
+    return mentions
+
+
+_DOTTED = re.compile(r"(?<![\w.])([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)(?:\(\))?(?![\w.])")
+
+
+def dotted_names_in(question: str) -> list[str]:
+    """Every dotted code name written in the question, as written.
+
+    The model was asked to copy surfaces verbatim and, with three votes,
+    still returned "Session" and "request" for "Session.request" on some
+    calls and "request" alone for "requests.api" on others (D81, live). A
+    dotted name in the question is not a judgement call; it is read off the
+    text. The model's mentions still carry the package qualifier; these
+    carry none.
+    """
+    names = []
+    for m in _DOTTED.finditer(question):
+        surface = m.group(1)
+        if len(surface) < 5 or surface.lower() in ("e.g", "i.e"):
+            continue
+        if surface not in names:
+            names.append(surface)
+    return names
 
 
 def mentioned_in(surface: str, question: str) -> bool:
@@ -448,11 +478,16 @@ def repair_plan(
         )
     if template_id == "T6_COUNT_BY_REL":
         modules = [c for c in candidates if "Module" in c.kind]
-        if len(modules) == 1:
+        others = [c for c in candidates if "Module" not in c.kind]
+        # "How many classes in requests.exceptions have more than one base"
+        # resolves both `requests` and `requests.exceptions`; the most
+        # specific module is the one the question is about (D82).
+        if modules and (len(modules) == 1 or not others):
+            module = max(modules, key=lambda c: len(c.canonical_id))
             return (
                 "T8_RELATED_BY",
-                {"entity_id": modules[0].canonical_id, "relationship": "DEFINED_IN"},
-                f"the question names one module; its members, not a corpus-wide {relationship} count",
+                {"entity_id": module.canonical_id, "relationship": "DEFINED_IN"},
+                f"the question names a module; its members, not a corpus-wide {relationship} count",
             )
     return template_id, values, None
 
