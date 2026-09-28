@@ -19,7 +19,7 @@
   category: single_hop
   question: "Does requests verify SSL certificates by default?"
   expects: "Yes — SSL verification is on by default"
-  must_contain_any: ["verify", "verifies", "verified", "verification"]
+  must_contain_any: ["yes", "enabled", "on by default", "verifies SSL certificates by default", "verify=True"]
   source: "docs/user/advanced.rst, SSL Cert Verification"
 
 - id: sh-02
@@ -38,7 +38,7 @@
   category: single_hop
   question: "Does requests follow redirects automatically?"
   expects: "Yes, for all verbs except HEAD by default"
-  must_contain_any: ["redirect", "redirects", "redirection", "redirected"]
+  must_contain_any: ["yes", "except HEAD", "allow_redirects", "follows redirects by default", "followed by default"]
   source: "docs/user/quickstart.rst, Redirection and History"
 
 - id: sh-05
@@ -58,14 +58,14 @@
   category: single_hop
   question: "How do I stream a large response instead of loading it all at once?"
   expects: "Pass stream=True"
-  must_contain_any: ["stream", "streaming", "streamed"]
+  must_contain_any: ["stream=True", "iter_content", "iter_lines"]
   source: "docs/user/advanced.rst, Body Content Workflow / Streaming Requests"
 
 - id: sh-08
   category: single_hop
   question: "How do I use a proxy with requests?"
   expects: "Pass a proxies dict"
-  must_contain_any: ["proxies", "proxy"]
+  must_contain: ["proxies"]
   source: "docs/user/advanced.rst, Proxies"
 
 - id: sh-09
@@ -79,7 +79,7 @@
   category: single_hop
   question: "How do I supply a client-side certificate?"
   expects: "Pass the cert parameter, as a path or a (cert, key) tuple"
-  must_contain_any: ["cert", "certificate", "certificates"]
+  must_contain: ["cert"]
   source: "docs/user/advanced.rst, Client Side Certificates"
 
 - id: sh-11
@@ -98,7 +98,7 @@
   category: single_hop
   question: "What does requests use for basic authentication?"
   expects: "HTTPBasicAuth, or a (user, pass) tuple passed to auth"
-  must_contain_any: ["HTTPBasicAuth", "auth", "authentication"]
+  must_contain_any: ["HTTPBasicAuth", "auth"]
   source: "docs/user/authentication.rst, Basic Authentication"
 
 - id: sh-14
@@ -207,7 +207,8 @@
   category: two_hop
   question: "What is the base class of all requests exceptions, and what does it inherit from?"
   expects: "RequestException, which inherits from IOError"
-  must_contain: ["RequestException", "IOError"]
+  must_contain: ["RequestException"]
+  must_contain_any: ["IOError", "OSError"]
   source: "requests/exceptions.py"
 
 - id: th-14
@@ -243,7 +244,7 @@
 
 - id: 3h-03
   category: three_hop
-  question: "When a connection times out at the socket level, what does urllib3 raise, what does requests convert it to, and what base class does that inherit from?"
+  question: "When establishing a connection times out at the socket level, what does urllib3 raise, what does requests convert it to, and what base class does that inherit from?"
   expects: "ConnectTimeoutError -> ConnectTimeout -> inherits ConnectionError and Timeout"
   must_contain: ["ConnectTimeoutError", "ConnectTimeout"]
   source: "requests/adapters.py + exceptions.py"
@@ -252,7 +253,7 @@
   category: three_hop
   question: "Which requests exceptions ultimately derive from IOError through RequestException, and which of those also derive from ValueError?"
   expects: "All requests exceptions derive from RequestException->IOError; MissingSchema, InvalidSchema, InvalidURL, InvalidHeader also derive from ValueError"
-  must_contain: ["RequestException", "ValueError"]
+  must_contain: ["MissingSchema", "InvalidSchema", "InvalidURL"]
   source: "requests/exceptions.py"
 
 - id: 3h-05

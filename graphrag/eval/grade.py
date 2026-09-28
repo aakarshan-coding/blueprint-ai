@@ -54,10 +54,19 @@ class Grade(BaseModel):
     reason: str
 
 
+# An answer that opens with a refusal marker and then answers anyway
+# ("The context does not provide this. However, based on general knowledge:
+# ...") is not a refusal. The baseline did this on three out-of-scope
+# questions and was credited for declining (D79).
+_ANSWERED_ANYWAY = ("however", "```", "general knowledge", "that said", "here is how", "here's how")
+
+
 def looks_like_refusal(answer: str) -> bool:
     """Whether an answer declines to answer, rather than asserting a fact."""
     lowered = answer.lower()
-    return any(marker in lowered for marker in _REFUSAL_MARKERS)
+    if not any(marker in lowered for marker in _REFUSAL_MARKERS):
+        return False
+    return not any(tail in lowered for tail in _ANSWERED_ANYWAY)
 
 
 def grade_out_of_scope(answer: str) -> Grade:
@@ -97,6 +106,16 @@ def _states(answer: str, term: str) -> bool:
     dotted path (`requests.exceptions.ReadTimeout`) and punctuation
     (`` `ReadTimeout`, ``) still count while a longer name does not.
     """
+    if term[:1].isupper():
+        # A class name must appear as a class name. Case-folded, "Timeout"
+        # was satisfied by "a read timeout", "Response" by
+        # "urllib3.response", "Retry" by "retry logic" (D79).
+        pattern = rf"(?<![A-Za-z0-9_]){re.escape(term)}(?![A-Za-z0-9_])"
+        return re.search(pattern, answer) is not None
+    if term.isdigit():
+        # A count, not a version: "Python 3" must not satisfy "3".
+        pattern = rf"(?<!python )(?<![A-Za-z0-9_./]){re.escape(term)}(?![A-Za-z0-9_./])"
+        return re.search(pattern, answer.lower()) is not None
     pattern = rf"(?<![A-Za-z0-9_]){re.escape(term.lower())}(?![A-Za-z0-9_])"
     return re.search(pattern, answer.lower()) is not None
 
@@ -108,19 +127,21 @@ _NEGATORS = (
 
 
 def _negated_near(answer: str, term: str) -> bool:
-    """Whether the sentence containing `term` also negates it.
+    """Whether every sentence containing `term` also negates it.
 
     Bare substring matching would credit "requests does not raise
-    ConnectTimeout" for containing ConnectTimeout. Checking only the
-    sentence the term appears in keeps an unrelated negation elsewhere in
-    the answer from discarding a genuine mention.
+    ConnectTimeout" for containing ConnectTimeout. But an answer often
+    asserts a fact and then hedges about something else in a later
+    sentence that repeats the name: "it inherits from InvalidJSONError.
+    The base class of InvalidJSONError is not specified." The first rule
+    ("any sentence negated") discounted the assertion on four questions,
+    for both systems (D79). A term counts if any sentence asserts it.
     """
     lowered = answer.lower()
-    for sentence in lowered.replace("\n", ". ").split("."):
-        if term.lower() in sentence:
-            if any(neg in sentence for neg in _NEGATORS):
-                return True
-    return False
+    sentences = [s for s in lowered.replace("\n", ". ").split(".") if term.lower() in s]
+    if not sentences:
+        return False
+    return all(any(neg in s for neg in _NEGATORS) for s in sentences)
 
 
 def grade_mechanically(
@@ -138,27 +159,30 @@ def grade_mechanically(
     `must_contain` requires every term; `must_contain_any` requires at least
     one, for questions with several equally valid answers.
     """
-    if must_contain_any:
-        hit = [
-            t for t in must_contain_any
-            if _states(answer, t) and not _negated_near(answer, t)
-        ]
-        if hit:
-            return Grade(verdict="correct", reason=f"States {hit[0]}.")
-        return Grade(
-            verdict="incorrect",
-            reason=f"States none of: {', '.join(must_contain_any)}.",
-        )
-
+    # Both lists apply when both are given: "RequestException, which
+    # inherits from IOError (or OSError)" is must_contain plus
+    # must_contain_any. The old code returned on the any-list alone and
+    # never checked the required terms (D79, 3h-14).
     required = must_contain or []
     missing = [
         t for t in required
         if not _states(answer, t) or _negated_near(answer, t)
     ]
-    if not missing:
-        return Grade(verdict="correct", reason="States every required term.")
-    if len(missing) < len(required):
-        return Grade(
-            verdict="partial", reason=f"Missing: {', '.join(missing)}."
-        )
-    return Grade(verdict="incorrect", reason=f"Missing: {', '.join(missing)}.")
+    any_hit = [
+        t for t in (must_contain_any or [])
+        if _states(answer, t) and not _negated_near(answer, t)
+    ]
+    any_missing = bool(must_contain_any) and not any_hit
+
+    if not missing and not any_missing:
+        reason = f"States {any_hit[0]}." if any_hit and not required else "States every required term."
+        return Grade(verdict="correct", reason=reason)
+    parts = list(missing)
+    if any_missing:
+        parts.append("one of " + "/".join(must_contain_any))
+    stated_some = (len(missing) < len(required)) or (required and not missing) or bool(any_hit)
+    if stated_some:
+        return Grade(verdict="partial", reason=f"Missing: {', '.join(parts)}.")
+    if must_contain_any and not required:
+        return Grade(verdict="incorrect", reason=f"States none of: {', '.join(must_contain_any)}.")
+    return Grade(verdict="incorrect", reason=f"Missing: {', '.join(parts)}.")

@@ -3037,6 +3037,70 @@ the planner.
 [+27.8..+37.8] over five runs on 90 questions; +36 on two-hop, +31 on three-hop, +50 on
 aggregation, +32 on out-of-scope; single-hop +7 within noise.
 
+## D79 — The grader audited: six leniencies, all but one favouring the baseline
+
+**Status:** applied; 344 tests. Grader and question set changed; the two most recent
+five-run batches re-scored offline from their recorded answers (files
+`benchmark_results_exp5_regraded_*.json`, `benchmark_results_exp6_regraded_*.json`).
+No model call was needed: 80 of 90 questions are graded mechanically.
+
+**Why.** The user asked whether the misses could be the grader's. Audited all 70 required-
+term lists, the refusal check and the ten judge-graded questions against the five D78
+runs and the source. The reference facts check out (RequestException's base, the nine
+raises of `HTTPAdapter.send`, the three warnings, the nine multi-base classes, what
+`prepare_url` raises). The problems were leniencies, not wrong answers.
+
+**Found and fixed:**
+
+1. *Seven questions could be passed by echoing the question.* Graded each question's own
+   text as an answer: six single-hop questions and `3h-04` came back "correct" ("Does
+   requests verify SSL certificates by default?" was satisfied by the word "verify").
+   Replaced with discriminating terms: the parameter (`proxies`, `cert`, `stream=True`),
+   the class (`HTTPBasicAuth`), or the yes. `3h-04` now requires the three ValueError
+   subclasses. A test now pins that no question in the set passes its own grader.
+2. *Case-folded matching let class names match prose.* "Timeout" was satisfied by "a
+   read timeout" (baseline, `3h-24`, five of five runs), "Response" by
+   `urllib3.response`, "Retry" by "retry logic". Capitalised terms now match case.
+3. *The negation rule discounted a term hedged in any later sentence.* "It inherits from
+   InvalidJSONError. The base of InvalidJSONError is not specified." lost the term. A term
+   now counts if any sentence asserts it.
+4. *Refusal detection credited "the context does not say, however here is an answer"*
+   with a code block, as declining. Baseline, three out-of-scope questions. A marker
+   followed by "however", a code fence or "general knowledge" is not a refusal.
+5. *Both lists were not enforced together.* `3h-14` carried `must_contain` and
+   `must_contain_any`; the grader returned on the any-list and never checked the required
+   terms. Fixed; `th-13` now accepts OSError alongside IOError the same way.
+6. *A bare digit matched a version number.* "3" would have been satisfied by "Python 3".
+   Nothing in the runs tripped it; closed anyway.
+
+**One question reworded:** `3h-03` said "a connection times out at the socket level",
+which a read timeout also is; now "establishing a connection times out".
+
+**Effect on the D78 batch, re-scored** (same answers, corrected grader):
+
+| category | hybrid before → after | baseline before → after | delta after |
+|---|---|---|---|
+| single_hop | 81.3 → 82.7 | 74.7 → 76.0 | +6.7 |
+| two_hop | 90.6 → 90.6 | 54.7 → 54.7 | +36.0 |
+| three_hop | 66.7 → 66.7 | 35.5 → 31.8 | +34.9 |
+| aggregation | 58.3 → 58.3 | 8.7 → 8.7 | +49.6 |
+| out_of_scope | 96.0 → 96.0 | 64.0 → 52.0 | +44.0 |
+| **pooled** | 74.2 → **74.5** | 41.5 → **39.3** | **+35.1 [31.1..38.9]** |
+
+Every change but the negation fix made the grader stricter, and the strictness landed
+on the baseline: it had been passing by echo, by prose matches and by refusing-then-
+answering. Hybrid's score barely moved. The audit's question, "are the misses the
+grader's?", has its answer: no; the grader was, if anything, flattering the comparison
+system.
+
+**Not changed.** The ten judge-graded questions. The judge marks "partial" for correct
+extra detail, against its own rubric, on two of them, but it does so identically for both
+systems, so it depresses single-hop absolute scores without biasing the comparison. Left
+for a later calibration pass with human labels.
+
+**Current claim for the README:** hybrid beats vector-only by +35.1 points pooled
+[+31.1..+38.9] over five runs on 90 questions, under a grader audited for leniency.
+
 ---
 
 ## Open questions for the Phase 2 sweep

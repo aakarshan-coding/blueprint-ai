@@ -108,9 +108,14 @@ def test_any_of_accepts_one_acceptable_answer():
     assert g.verdict == "correct"
 
 
-def test_term_matching_ignores_case():
-    g = grade_mechanically("it raises connecttimeout", must_contain=["ConnectTimeout"])
-    assert g.verdict == "correct"
+def test_a_capitalised_term_must_match_case_but_a_lowercase_one_need_not():
+    """Case-folded, "Timeout" was satisfied by "a read timeout" and "Retry" by
+    "retry logic" (D79). A class name must appear as a class name; a
+    parameter or plain word ("verify", "yes") may appear in any case."""
+    assert grade_mechanically("it raises connecttimeout", must_contain=["ConnectTimeout"]).verdict == "incorrect"
+    assert grade_mechanically("it raises ConnectTimeout", must_contain=["ConnectTimeout"]).verdict == "correct"
+    assert grade_mechanically("after a read timeout", must_contain=["Timeout"]).verdict == "incorrect"
+    assert grade_mechanically("Pass VERIFY=False", must_contain=["verify"]).verdict == "correct"
 
 
 def test_a_negated_claim_is_not_credited():
@@ -161,3 +166,53 @@ def test_a_dotted_path_still_matches_its_leaf_term():
         "It raises requests.exceptions.ReadTimeout.", must_contain=["ReadTimeout"]
     )
     assert g.verdict == "correct"
+
+
+def test_a_term_asserted_in_one_sentence_and_hedged_in_another_is_credited():
+    """"It inherits from InvalidJSONError. The base of InvalidJSONError is not
+    specified." asserts the term; the hedge is about something else (D79)."""
+    g = grade_mechanically(
+        "It inherits from InvalidJSONError [c1]. The base class of InvalidJSONError is not specified.",
+        must_contain=["InvalidJSONError"],
+    )
+    assert g.verdict == "correct"
+
+
+def test_a_count_is_not_satisfied_by_a_version_number():
+    assert grade_mechanically("This applies to Python 3 only.", must_contain_any=["3", "three"]).verdict == "incorrect"
+    assert grade_mechanically("There are 3 warning classes.", must_contain_any=["3", "three"]).verdict == "correct"
+
+
+def test_required_terms_and_any_of_terms_are_both_enforced():
+    """th-13: RequestException is required, and one of IOError / OSError."""
+    kw = dict(must_contain=["RequestException"], must_contain_any=["IOError", "OSError"])
+    assert grade_mechanically("RequestException inherits from OSError.", **kw).verdict == "correct"
+    assert grade_mechanically("RequestException is the base.", **kw).verdict == "partial"
+    assert grade_mechanically("It inherits from OSError.", **kw).verdict == "partial"
+    assert grade_mechanically("No idea.", **kw).verdict == "incorrect"
+
+
+def test_a_refusal_that_answers_anyway_is_not_a_refusal():
+    """The baseline wrote "the context does not provide this. However, based
+    on general knowledge: ..." plus a code block, and was credited with
+    declining on three out-of-scope questions (D79)."""
+    assert not looks_like_refusal(
+        "The context does not provide an example. However, here is one:\n```python\nimport requests\n```")
+    assert looks_like_refusal("The context does not provide information about Django integration.")
+
+
+def test_no_benchmark_question_can_be_passed_by_echoing_itself():
+    """Seven questions could be answered correctly by repeating the question
+    (D79). The term lists must discriminate; this pins that for every
+    mechanically graded question, present and future."""
+    import yaml
+    from pathlib import Path
+    questions = yaml.safe_load(Path("graphrag/eval/benchmark_questions.yaml").read_text(encoding="utf-8"))
+    questions = questions["questions"] if isinstance(questions, dict) else questions
+    echoable = [
+        q["id"] for q in questions
+        if (q.get("must_contain") or q.get("must_contain_any"))
+        and grade_mechanically(q["question"], must_contain=q.get("must_contain"),
+                               must_contain_any=q.get("must_contain_any")).verdict == "correct"
+    ]
+    assert echoable == []
