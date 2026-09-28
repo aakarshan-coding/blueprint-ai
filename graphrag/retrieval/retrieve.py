@@ -218,7 +218,7 @@ def retrieve(
     # filtered to one relationship and its rows *are* the answer: capping it
     # cut "which exceptions derive from RequestException" from fifteen to
     # eight and dropped the ValueError ones (D66, 3h-04).
-    if template_id not in ("T8_RELATED_BY", "T10_RAISED_BY_METHODS_OF"):
+    if template_id not in ("T8_RELATED_BY", "T10_RAISED_BY_METHODS_OF", "T11_EDGES_IN_PACKAGE"):
         result.graph_facts = rank_facts(question, result.graph_facts, model=embedding_model)
 
     # A wrap chain answers "what does requests raise when urllib3 raises X",

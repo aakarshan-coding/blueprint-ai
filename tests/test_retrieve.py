@@ -500,3 +500,17 @@ def test_a_raises_plan_fetches_grandparents_too():
 
     statements = [f.statement for f in result.graph_facts]
     assert "requests.exceptions.InvalidJSONError inherits from requests.exceptions.RequestException." in statements
+
+
+def test_a_package_listing_plan_is_never_capped():
+    rows = [
+        {"entity": f"requests.exceptions.E{i}", "neighbor": f"urllib3.exceptions.U{i}", "chunk_id": f"c{i}", "source": "ast"}
+        for i in range(12)
+    ]
+    client = FakeOpenAI(plan={
+        "template_id": "T11_EDGES_IN_PACKAGE", "package": "requests", "relationship": "WRAPS_EXCEPTION",
+    })
+
+    result = _retrieve(neo4j_session=FakeSession(rows), openai_client=client)
+
+    assert len([f for f in result.graph_facts if f.chunk_id]) == 12

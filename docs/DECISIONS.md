@@ -3135,6 +3135,30 @@ classmethod calls. The 29 self-loop CALLS edges (`super().__init__` through the 
 expansion) remain in the graph and are dropped at read time (D78); removing them at
 write time is a separate small change.
 
+## D81 — Counting: one derived line per kind, and a listing over a package
+
+**Status:** applied; 351 tests. Retrieval-side only. Live-checked, not benchmarked.
+
+**Two shapes of counting question were losing with the facts in hand.**
+
+1. "How many helper functions does requests.api define, not counting request()" was
+   handed eight member lines and miscounted in three of five runs (D78). The count line
+   said "8 things"; the model still had to read eight lines and subtract. Now a members
+   plan adds one derived line per kind of member, naming them: "8 functions are defined
+   in requests.api: delete, get, head, options, patch, post, put, request." Subtracting
+   one is a read. "18 submodules are defined in requests: ..." answers "how many modules"
+   the same way. Derived lines cite nothing; the member lines they summarise do.
+2. "List all requests exceptions that wrap a urllib3 exception" names no entity to start
+   from, so every plan was a guess at one. A new planner-visible template,
+   `T11_EDGES_IN_PACKAGE`, lists every edge of one type whose source is in one package;
+   the package is a validated enum of the two corpus packages, never free text. Not
+   capped: its rows are the answer. Live: `ag-02` and `ag-08` plan it and the context
+   holds every required name.
+
+**Seen in the same live check, not fixed here:** the anchor still varies between calls on
+`ag-11` and `ag-13` ("request" extracted instead of "requests.api"; a seeded
+`RequestsWarning` chosen over the module). That is D82's subject.
+
 ---
 
 ## Open questions for the Phase 2 sweep

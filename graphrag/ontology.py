@@ -27,6 +27,10 @@ RELATIONSHIP_TYPES = AST_RELATIONSHIPS | LLM_RELATIONSHIPS
 # Session.request" was read as "Session.request is the function that applies
 # verify" five runs out of five (D60) because nothing said DEFINED_IN is about
 # location, not behaviour. These are the single source for that legend.
+# The two packages the corpus holds. A template that scopes a query to a
+# package validates against this, never against free text (D80).
+PACKAGES = ("requests", "urllib3")
+
 RELATIONSHIP_MEANINGS = {
     "DEFINED_IN": (
         "where the thing's source code lives: a parameter in its function, a "

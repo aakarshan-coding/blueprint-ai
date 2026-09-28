@@ -200,6 +200,39 @@ def _verbalize_paths(rows: list[dict], *, relationship: str) -> list[GraphFact]:
     return list(facts.values())
 
 
+_KIND_NOUNS = (("Parameter", "parameters"), ("Module", "submodules"),
+               ("Function", "functions"), ("Class", "classes"))
+
+
+def _listing_lines(rows: list[dict], *, entity_id: str, phrase: str) -> list[GraphFact]:
+    """One derived line per kind of incoming neighbour, naming them all:
+    "8 functions defined in requests.api: delete, get, head, ...".
+
+    "How many helper functions does requests.api define, not counting
+    request()" was handed eight lines and said the wrong number in three of
+    five runs (D78). Counting eight lines is harder than reading "8
+    functions: ... request ..." and subtracting one; the same line answers
+    "which are warnings" once the parents follow. Derived lines cite
+    nothing; the member lines they summarise do.
+    """
+    groups: dict[str, list[str]] = {}
+    for row in rows:
+        if row.get("outgoing", True):
+            continue
+        labels = row.get("neighbor_labels") or []
+        noun = next((n for label, n in _KIND_NOUNS if label in labels), None)
+        if noun is None:
+            continue
+        groups.setdefault(noun, []).append(row["neighbor"].split(".")[-1])
+    lines = []
+    for noun, names in groups.items():
+        names = sorted(set(names))
+        lines.append(GraphFact(
+            f"{len(names)} {noun} {_plural(phrase)} {entity_id}: {', '.join(names)}.", None,
+        ))
+    return lines
+
+
 def _verbalize_edges_from(rows: list[dict], *, relationship: str) -> list[GraphFact]:
     """T9_EDGES_FROM: one outgoing edge of `relationship` per row."""
     return [
@@ -310,6 +343,7 @@ def verbalize(
                 f"{entity_id} {phrase} {outgoing} thing{'s' if outgoing != 1 else ''}.",
                 None, relationship=relationship,
             ))
+        facts.extend(_listing_lines(rows, entity_id=entity_id, phrase=phrase))
         return facts
     if template_id == "T3_EXCEPTION_WRAP_CHAIN":
         return _verbalize_chain(rows, relationship="WRAPS_EXCEPTION")
@@ -317,6 +351,8 @@ def verbalize(
         return _verbalize_paths(rows, relationship="DELEGATES_TO")
     if template_id == "T10_RAISED_BY_METHODS_OF":
         return _verbalize_edges_from(rows, relationship="RAISES")
+    if template_id == "T11_EDGES_IN_PACKAGE":
+        return _verbalize_edges_from(rows, relationship=relationship)
     if template_id == "T6_COUNT_BY_REL":
         return _verbalize_count(rows, relationship=relationship)
     if template_id == "T7_DOCS_FOR_SYMBOL":

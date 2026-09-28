@@ -39,7 +39,8 @@ def test_every_offered_template_is_described_to_the_model():
 
 
 def test_every_offered_template_has_parameters_a_plan_can_fill():
-    fillable = {"entity_id", "relationship", "max_hops"}
+    # Every kind _plan_model_for knows how to turn into a schema field.
+    fillable = {"entity_id", "relationship", "max_hops", "package"}
     unfillable = {
         name for name, t in PLANNABLE.items()
         if {spec.name for spec in t.params} - fillable
@@ -511,3 +512,14 @@ def test_repair_plan_sends_any_other_template_on_a_parameter_to_its_neighbourhoo
     assert (out_id, out_values) == (
         "T1_NEIGHBORS", {"entity_id": "urllib3.connectionpool.HTTPConnectionPool.urlopen.retries"})
     assert note
+
+
+def test_the_plan_model_offers_the_package_template_with_a_package_enum():
+    from graphrag.retrieval.graph_query import _plan_model_for
+    model = _plan_model_for("T11_EDGES_IN_PACKAGE", [])
+    assert model is not None, "needs no entity, so it is offered even with no candidates"
+    plan = model(template_id="T11_EDGES_IN_PACKAGE", package="requests", relationship="WRAPS_EXCEPTION")
+    assert plan.package == "requests"
+    import pytest
+    with pytest.raises(Exception):
+        model(template_id="T11_EDGES_IN_PACKAGE", package="django", relationship="WRAPS_EXCEPTION")

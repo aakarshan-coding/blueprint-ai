@@ -34,6 +34,7 @@ from pydantic import BaseModel, ConfigDict, Field, create_model
 from graphrag.ingest.resolve import Resolver
 from graphrag.ontology import RELATIONSHIP_TYPES
 from graphrag.retrieval.consistency import VOTES, majority_vote
+from graphrag.ontology import PACKAGES
 from graphrag.retrieval.cypher_templates import MAX_HOPS, TEMPLATES
 
 MODEL = "gpt-4o-mini"
@@ -258,6 +259,8 @@ def _plan_model_for(template_id: str, entity_ids: list[str]) -> type[BaseModel] 
             fields["relationship"] = (Literal[_RELATIONSHIPS], ...)
         elif spec.kind == "hop_limit":
             fields["max_hops"] = (Literal[_HOPS], ...)
+        elif spec.kind == "package":
+            fields["package"] = (Literal[PACKAGES], ...)
     return create_model(
         f"Plan_{template_id}", __config__=ConfigDict(extra="forbid"), **fields
     )

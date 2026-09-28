@@ -323,3 +323,22 @@ def test_raised_by_methods_of_is_not_offered_to_the_planner_and_binds_the_class(
     query, params = session.calls[0]
     assert ":RAISES" in query and ":DEFINED_IN" in query
     assert params["entity_id"] == "requests.sessions.Session"
+
+
+def test_edges_in_package_scopes_by_a_validated_package_and_relationship():
+    """"List all requests exceptions that wrap a urllib3 exception" has no
+    anchor entity; it is a listing over one package (D80)."""
+    session = _FakeSession()
+    run_template(
+        session, "T11_EDGES_IN_PACKAGE", {"package": "requests", "relationship": "WRAPS_EXCEPTION"},
+        known_entity_ids=KNOWN_IDS,
+    )
+    query, params = session.calls[0]
+    assert ":WRAPS_EXCEPTION" in query and "STARTS WITH $package" in query
+    assert params["package"] == "requests"
+
+    with pytest.raises(ValueError):
+        run_template(
+            session, "T11_EDGES_IN_PACKAGE", {"package": "django", "relationship": "WRAPS_EXCEPTION"},
+            known_entity_ids=KNOWN_IDS,
+        )

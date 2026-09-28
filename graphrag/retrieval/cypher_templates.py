@@ -12,9 +12,9 @@ check that an older one remembered to do.
 from dataclasses import dataclass
 from typing import Literal
 
-from graphrag.ontology import RELATIONSHIP_TYPES
+from graphrag.ontology import PACKAGES, RELATIONSHIP_TYPES
 
-ParamKind = Literal["entity_id", "entity_ids", "relationship_type", "hop_limit"]
+ParamKind = Literal["entity_id", "entity_ids", "relationship_type", "hop_limit", "package"]
 
 MAX_HOPS = 5
 
@@ -216,6 +216,32 @@ TEMPLATES: dict[str, Template] = {
         ),
         params=(ParamSpec("entity_id", "entity_id"),),
     ),
+    "T11_EDGES_IN_PACKAGE": Template(
+        # Every edge of one type whose source lives in one package. "List all
+        # requests exceptions that wrap a urllib3 exception" has no anchor
+        # entity: it is a listing over the package (D80). Rows are the
+        # answer, like T8: not capped. LIMIT bounds a CALLS-sized listing.
+        cypher=(
+            "MATCH (a)-[r:__relationship__]->(b) WHERE a.id STARTS WITH $package + '.' "
+            "RETURN a.id AS entity, b.id AS neighbor, r.chunk_id AS chunk_id, "
+            "coalesce(r.source, 'llm') AS source, "
+            "labels(a) AS entity_labels, labels(b) AS neighbor_labels "
+            "ORDER BY a.id LIMIT 100"
+        ),
+        params=(
+            ParamSpec("package", "package"),
+            ParamSpec("relationship", "relationship_type"),
+        ),
+        description=(
+            "Every edge of one relationship type whose source is anywhere in "
+            "one package (requests or urllib3), listed. Use for 'list all "
+            "requests exceptions that wrap a urllib3 exception' "
+            "(WRAPS_EXCEPTION, requests) or 'which requests classes inherit "
+            "from a builtin' (INHERITS_FROM, requests), when the question "
+            "names no single entity to start from. Needs package and "
+            "relationship, no entity."
+        ),
+    ),
     "T7_DOCS_FOR_SYMBOL": Template(
         cypher=(
             "MATCH (a {id: $entity_id})-[:DOCUMENTED_IN]->(d) "
@@ -244,6 +270,9 @@ def _validate_param(spec: ParamSpec, value, *, known_entity_ids: set[str]) -> No
         for item in value:
             if item not in known_entity_ids:
                 raise ValueError(f"{item!r} is not a known entity id")
+    elif spec.kind == "package":
+        if value not in PACKAGES:
+            raise ValueError(f"{value!r} is not a corpus package ({', '.join(PACKAGES)})")
     elif spec.kind == "relationship_type":
         if value not in RELATIONSHIP_TYPES:
             raise ValueError(f"{value!r} is not in the ontology's relationship types")

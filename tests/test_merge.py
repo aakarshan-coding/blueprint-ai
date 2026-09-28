@@ -635,3 +635,31 @@ def test_a_path_that_revisits_a_node_is_dropped():
     ]
     facts = verbalize("T5_DELEGATION_CHAIN", rows)
     assert [f.statement for f in facts] == ["A.__init__ calls Retry."]
+
+
+def test_a_members_plan_adds_one_listing_line_per_kind():
+    """"How many helper functions does requests.api define, not counting
+    request()" was handed eight lines and miscounted (D78). One derived
+    line names them all, so the subtraction is a read, not a count (D80)."""
+    rows = [
+        {"relationship": "DEFINED_IN", "neighbor": f"requests.api.{n}", "chunk_id": f"c{i}", "outgoing": False,
+         "entity_labels": ["Module"], "neighbor_labels": ["Function"]}
+        for i, n in enumerate(["get", "post", "request"])
+    ] + [
+        {"relationship": "DEFINED_IN", "neighbor": "requests.api.Helper", "chunk_id": "c9", "outgoing": False,
+         "entity_labels": ["Module"], "neighbor_labels": ["Class"]},
+    ]
+    facts = verbalize("T8_RELATED_BY", rows, entity_id="requests.api", relationship="DEFINED_IN")
+    statements = [f.statement for f in facts]
+    assert "3 functions are defined in requests.api: get, post, request." in statements
+    assert "1 classes are defined in requests.api: Helper." in statements
+    derived = [f for f in facts if f.chunk_id is None]
+    assert all(f.chunk_id is None for f in derived)
+
+
+def test_package_listing_rows_verbalize_with_the_relationships_verb():
+    facts = verbalize("T11_EDGES_IN_PACKAGE", [
+        {"entity": "requests.exceptions.ConnectionError", "neighbor": "urllib3.exceptions.ProtocolError",
+         "chunk_id": "c1", "source": "ast"},
+    ], relationship="WRAPS_EXCEPTION")
+    assert facts[0].statement == "requests.exceptions.ConnectionError wraps urllib3.exceptions.ProtocolError."
