@@ -3277,6 +3277,62 @@ question is still unanswered, now with a wrong anchor instead of none. Kept, bec
 a question whose nearest code chunk is the right one it would work, and it costs one
 local search; the miss is the vector ranking's, not the seeding's.
 
+## D85 — Five runs on D80–D84: aggregation 58 → 72, pooled 74.5 → 76.9
+
+**Status:** measured. Files `benchmark_results_exp7_1..5.json`; compare to
+`exp6_regraded_*` (D79 grader on the D78 runs). Same questions, grader and shared prompt.
+Baseline held (39.3 → 39.8).
+
+**One run was re-done.** Run 3 hit an API outage: eight questions on each system failed
+with a connection error and were scored incorrect. That produced an aggregation score of
+47.8 for that run and five questions that "flipped" while being right every other time.
+Run 3 was re-run on the same code (the damaged file is kept out of the set); the table
+is the five clean runs.
+
+| category | hybrid before | hybrid now | delta now |
+|---|---|---|---|
+| single_hop | 82.7 | 78.7 | +2.7 [-20..13.4] |
+| two_hop | 90.6 | 89.3 | +33.4 [33.3..33.4] |
+| three_hop | 66.7 | 65.2 | +31.9 [26.0..37.1] |
+| aggregation | 58.3 | **72.2** | **+63.5 [60.9..69.6]** |
+| out_of_scope | 96.0 | 98.0 | +48.0 |
+| **pooled** | 74.5 | **76.9** | **+37.1 [33.4..38.9]** |
+
+Aggregation is in the 60–70 band that was the target, and above it in every run (69.6 to
+78.3). Three-hop is flat. Single-hop's dip is the judge marking correct extra detail
+"partial" on vector-routed questions (D79), identically for both systems.
+
+**Six questions up, each to a named fix:** `ag-02` (package listing, D81), `ag-04` and
+`ag-11` (dotted-name mentions, D82), `ag-12` (parameters by name, D84), `3h-13`
+(grandparents after a raises plan, D78), `3h-23` (goto-first jedi, D80).
+
+**Two down, both planner drift.** `3h-04` ("which exceptions ultimately derive from
+IOError through RequestException, and which of those from ValueError") was planned as T8
+INHERITS_FROM on RequestException five of five before and as a wrap chain from it five
+of five now, on identical candidates. `3h-11` went from the neighbourhood of `Retry` to
+its members. Tested live: trimming the T8 description back to its D73 wording changes
+neither choice. The cause is the small planner model's sensitivity to a longer template
+list (eight offered now, six then), not one description. Two responses: D86 adds a
+deterministic hop that makes the wrap-chain anchor also yield its subclasses; and
+planner voting (retired in D60 at 1.7 points for three times the calls, when the list
+was shorter) is worth re-measuring now.
+
+**Current claim for the README:** hybrid beats vector-only by +37.1 points pooled
+[+33.4..+38.9] over five runs on 90 questions; +33 on two-hop, +32 on three-hop, +64 on
+aggregation, +48 on out-of-scope; single-hop +3 within noise.
+
+## D86 — After a wrap chain, the anchor's subclasses too
+
+**Status:** applied; 370 tests. Not measured.
+
+A base class is a common wrong-template anchor: "which exceptions ultimately derive from
+RequestException" reads to the planner like a chain to trace, and the wrap chain from
+`RequestException` says nothing about what derives from it (D85). `T9_EDGES_TO`, the
+mirror of the outgoing expansion template, fetches incoming edges; after a wrap chain,
+one incoming INHERITS_FROM hop runs from the anchor alone (not from every node the chain
+touched, which would be noise). Fifteen extra lines on that question; none on a chain
+anchored at a leaf exception.
+
 ---
 
 ## Open questions for the Phase 2 sweep
