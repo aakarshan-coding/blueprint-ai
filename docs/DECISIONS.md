@@ -3388,6 +3388,20 @@ should ever be read.
 +36.9 pooled over five runs on 90 questions; by partial-credit score, 85.7 vs 52.6,
 +33.1 [+31.7..+34.8].
 
+## Open items (to address, not yet decided)
+
+- **Judge reason contradicts its structured list (D87).** On `sh-15` the judge's free text
+  says a key fact is not stated while its `missing` list is empty. Only the list is scored,
+  so the grade is unaffected, but a judge that contradicts itself is not calibrated.
+  To do: make the judge output the key facts with a per-fact stated/not-stated flag and
+  a quote from the answer for each stated one, so the reason and the verdict cannot
+  diverge; then hand-label the ten judge questions once and measure agreement.
+- **Planner drift with a longer template list (D85).** Two questions changed template on
+  identical candidates when the list grew from six to eight. To measure: planner voting
+  (three calls, majority), retired in D60 when the list was shorter.
+- **The two API keys pasted into chat** have not been rotated.
+- **`3h-27`** has no anchor the graph can find (D84); the vector ranking's miss.
+
 ---
 
 ## Open questions for the Phase 2 sweep
