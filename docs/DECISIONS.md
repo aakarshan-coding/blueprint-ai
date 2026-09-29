@@ -3402,6 +3402,36 @@ should ever be read.
 - **The two API keys pasted into chat** have not been rotated.
 - **`3h-27`** has no anchor the graph can find (D84); the vector ranking's miss.
 
+## D88 — The question set grows from 90 to 220
+
+**Status:** applied; 375 tests, including the guard that no question passes its own grader.
+Not yet measured; the 90-question tables (D85, D87) remain the last measurement.
+
+**Why.** The user wanted 40 to 50 questions per category so the table reflects the
+system's competence rather than a small sample's. Before: 15 / 15 / 27 / 23 / 10. Now:
+45 / 45 / 45 / 45 / 40 (single-hop, two-hop, three-hop, aggregation, out-of-scope).
+
+**How the references were made.** Not from memory. A fresh parse of both packages,
+independent of the ingestion code (its own `ast` walk in a throwaway script), produced
+the class hierarchies, wrap pairs, raised exceptions per function, signatures, return
+annotations and per-module member lists. Every generated question asserts its fact
+against that data before it is written; every count is computed, not typed (38 classes
+in `urllib3.exceptions`, 16 direct subclasses of `HTTPError`, 7 warnings, 14 parameters
+on `urlopen`, 44 functions in `requests.utils`). Docs-answered questions cite the
+section their line comes from. The D79 rules hold: no term the question contains,
+capitalised names match case, counts as digits and words.
+
+**What the new questions add.** The old set was requests-heavy and exception-heavy. The
+additions are mostly urllib3 (its exception tree, pools, `Retry`, `Timeout`, `Url`,
+response decoding), plus return types (`RETURNS`), constructor parameters, module
+contents, mixins (`RequestMethods`, `SessionRedirectMixin`, `AuthBase`), and standard
+library bases (`io.IOBase`, `http.client.IncompleteRead`). Out-of-scope grows from 10 to
+40 across other HTTP libraries, frameworks, other languages, infrastructure and
+non-technical questions.
+
+**Cost.** Five runs on 220 questions is roughly two hours. The D85 code is what will be
+measured, plus D86 (unmeasured).
+
 ---
 
 ## Open questions for the Phase 2 sweep

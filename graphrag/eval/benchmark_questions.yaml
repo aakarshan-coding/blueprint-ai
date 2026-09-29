@@ -646,3 +646,886 @@
   expects: "InvalidProxyURL"
   must_contain: ["InvalidProxyURL"]
   source: "exceptions.py: class InvalidProxyURL(InvalidURL)"
+
+# ---- D88: 130 questions added, references from an independent parse of both packages ----
+
+- id: sh-16
+  category: single_hop
+  question: "Which Response method raises an HTTPError for a 4xx or 5xx status?"
+  expects: "raise_for_status()"
+  must_contain: ["raise_for_status"]
+  source: "requests/models.py Response.raise_for_status; docs/user/quickstart.rst Errors and Exceptions"
+
+- id: sh-17
+  category: single_hop
+  question: "Which Response property lists the redirect responses that led to the final one?"
+  expects: "history"
+  must_contain: ["history"]
+  source: "docs/user/quickstart.rst Redirection and History"
+
+- id: sh-18
+  category: single_hop
+  question: "What urllib3 class manages a collection of connection pools?"
+  expects: "PoolManager"
+  must_contain: ["PoolManager"]
+  source: "urllib3/poolmanager.py"
+
+- id: sh-19
+  category: single_hop
+  question: "Which urllib3 class configures how a failed request is retried?"
+  expects: "Retry (urllib3.util.retry)"
+  must_contain: ["Retry"]
+  source: "urllib3/util/retry.py"
+
+- id: sh-20
+  category: single_hop
+  question: "Which urllib3 class represents connect and read timeouts as one object?"
+  expects: "Timeout (urllib3.util.timeout)"
+  must_contain: ["Timeout"]
+  source: "urllib3/util/timeout.py"
+
+- id: sh-21
+  category: single_hop
+  question: "Which requests class must a custom authentication handler subclass?"
+  expects: "AuthBase"
+  must_contain: ["AuthBase"]
+  source: "requests/auth.py; docs/user/advanced.rst Custom Authentication"
+
+- id: sh-22
+  category: single_hop
+  question: "Which requests class implements HTTP digest authentication?"
+  expects: "HTTPDigestAuth"
+  must_contain: ["HTTPDigestAuth"]
+  source: "requests/auth.py; docs/user/authentication.rst"
+
+- id: sh-23
+  category: single_hop
+  question: "What exception does Response.json() raise when the body is not valid JSON?"
+  expects: "requests.exceptions.JSONDecodeError"
+  must_contain_any: ["JSONDecodeError", "RequestsJSONDecodeError"]
+  source: "requests/models.py Response.json"
+
+- id: sh-24
+  category: single_hop
+  question: "Which Session method attaches a transport adapter to a URL prefix?"
+  expects: "Session.mount"
+  must_contain: ["mount"]
+  source: "requests/sessions.py Session.mount; docs/user/advanced.rst Transport Adapters"
+
+- id: sh-25
+  category: single_hop
+  question: "In urllib3, which keyword argument to request() carries form data or multipart uploads?"
+  expects: "fields"
+  must_contain: ["fields"]
+  source: "urllib3/_request_methods.py RequestMethods.request; docs/user-guide.rst Form Data"
+
+- id: sh-26
+  category: single_hop
+  question: "Which PoolManager constructor argument sets how many pools it keeps?"
+  expects: "num_pools"
+  must_contain: ["num_pools"]
+  source: "urllib3/poolmanager.py PoolManager.__init__"
+
+- id: sh-27
+  category: single_hop
+  question: "Which urllib3 request argument stops the whole body being read up front, so it can be streamed?"
+  expects: "preload_content=False"
+  must_contain: ["preload_content"]
+  source: "docs/user-guide.rst; docs/advanced-usage.rst Streaming and I/O"
+
+- id: sh-28
+  category: single_hop
+  question: "Which HTTPResponse method returns a streamed connection to its pool once the data is read?"
+  expects: "release_conn()"
+  must_contain: ["release_conn"]
+  source: "docs/advanced-usage.rst Streaming and I/O"
+
+- id: sh-29
+  category: single_hop
+  question: "Which requests exception is raised when too many redirects are followed?"
+  expects: "TooManyRedirects"
+  must_contain: ["TooManyRedirects"]
+  source: "requests/sessions.py SessionRedirectMixin.resolve_redirects"
+
+- id: sh-30
+  category: single_hop
+  question: "Which requests exception is raised when a URL has no scheme?"
+  expects: "MissingSchema"
+  must_contain: ["MissingSchema"]
+  source: "requests/models.py PreparedRequest.prepare_url"
+
+- id: sh-31
+  category: single_hop
+  question: "Which urllib3 exception is raised when a URL cannot be parsed?"
+  expects: "LocationParseError"
+  must_contain: ["LocationParseError"]
+  source: "urllib3/util/url.py parse_url"
+
+- id: sh-32
+  category: single_hop
+  question: "What does urllib3 raise when a request's retries are exhausted?"
+  expects: "MaxRetryError"
+  must_contain: ["MaxRetryError"]
+  source: "urllib3/util/retry.py Retry.increment"
+
+- id: sh-33
+  category: single_hop
+  question: "Which urllib3 exception signals that a proxy URL's scheme is not recognised?"
+  expects: "ProxySchemeUnknown"
+  must_contain: ["ProxySchemeUnknown"]
+  source: "urllib3/poolmanager.py ProxyManager.__init__"
+
+- id: sh-34
+  category: single_hop
+  question: "Which class does requests use for response headers so that lookups ignore case?"
+  expects: "CaseInsensitiveDict"
+  must_contain: ["CaseInsensitiveDict"]
+  source: "requests/structures.py"
+
+- id: sh-35
+  category: single_hop
+  question: "Which requests class stores the cookies a Session keeps between requests?"
+  expects: "RequestsCookieJar"
+  must_contain: ["RequestsCookieJar"]
+  source: "requests/cookies.py"
+
+- id: sh-36
+  category: single_hop
+  question: "What does Session.prepare_request return?"
+  expects: "a PreparedRequest"
+  must_contain: ["PreparedRequest"]
+  source: "requests/sessions.py Session.prepare_request"
+
+- id: sh-37
+  category: single_hop
+  question: "What type does urllib3's parse_url return?"
+  expects: "Url (a named tuple)"
+  must_contain: ["Url"]
+  source: "urllib3/util/url.py parse_url"
+
+- id: sh-38
+  category: single_hop
+  question: "What does PoolManager.connection_from_host return?"
+  expects: "an HTTPConnectionPool"
+  must_contain: ["HTTPConnectionPool"]
+  source: "urllib3/poolmanager.py PoolManager.connection_from_host"
+
+- id: sh-39
+  category: single_hop
+  question: "Which urllib3 function builds a multipart/form-data body from a set of fields?"
+  expects: "encode_multipart_formdata"
+  must_contain: ["encode_multipart_formdata"]
+  source: "urllib3/filepost.py"
+
+- id: sh-40
+  category: single_hop
+  question: "Which urllib3 helper builds common request headers such as basic auth and a user agent?"
+  expects: "make_headers"
+  must_contain: ["make_headers"]
+  source: "urllib3/util/request.py make_headers"
+
+- id: sh-41
+  category: single_hop
+  question: "Which Retry option lists the HTTP status codes that should trigger a retry?"
+  expects: "status_forcelist"
+  must_contain: ["status_forcelist"]
+  source: "urllib3/util/retry.py Retry.__init__; docs/user/advanced.rst Example: Automatic Retries"
+
+- id: sh-42
+  category: single_hop
+  question: "Which Retry option controls the growing delay between retry attempts?"
+  expects: "backoff_factor"
+  must_contain: ["backoff_factor"]
+  source: "urllib3/util/retry.py Retry.__init__"
+
+- id: sh-43
+  category: single_hop
+  question: "Which urllib3 class tunnels requests through an HTTP proxy?"
+  expects: "ProxyManager"
+  must_contain: ["ProxyManager"]
+  source: "urllib3/poolmanager.py; docs/advanced-usage.rst Proxies"
+
+- id: sh-44
+  category: single_hop
+  question: "Which urllib3 exception is raised when a connection is requested from a pool that has been closed?"
+  expects: "ClosedPoolError"
+  must_contain: ["ClosedPoolError"]
+  source: "urllib3/connectionpool.py HTTPConnectionPool._get_conn"
+
+- id: sh-45
+  category: single_hop
+  question: "In a urllib3 pool, which argument sets the maximum number of connections kept?"
+  expects: "maxsize"
+  must_contain: ["maxsize"]
+  source: "urllib3/connectionpool.py HTTPConnectionPool.__init__; docs/advanced-usage.rst Customizing Pool Behavior"
+
+- id: th-16
+  category: two_hop
+  question: "Which urllib3 exception does HTTPConnection._new_conn raise when the socket times out while connecting, and what does it inherit from?"
+  expects: "ConnectTimeoutError, which inherits from TimeoutError"
+  must_contain: ["ConnectTimeoutError", "TimeoutError"]
+  source: "urllib3/connection.py + exceptions.py"
+
+- id: th-17
+  category: two_hop
+  question: "Which urllib3 exception is raised when DNS resolution fails, and what is its parent class?"
+  expects: "NameResolutionError -> NewConnectionError"
+  must_contain: ["NameResolutionError", "NewConnectionError"]
+  source: "urllib3/connection.py _new_conn + exceptions.py"
+
+- id: th-18
+  category: two_hop
+  question: "Which urllib3 exception does HTTPResponse raise when a read times out, and which two classes does it inherit from?"
+  expects: "ReadTimeoutError, from TimeoutError and RequestError"
+  must_contain: ["ReadTimeoutError", "TimeoutError", "RequestError"]
+  source: "urllib3/response.py _error_catcher + exceptions.py"
+
+- id: th-19
+  category: two_hop
+  question: "Which exception does Retry.increment raise when retries run out, and what does it inherit from?"
+  expects: "MaxRetryError -> RequestError"
+  must_contain: ["MaxRetryError", "RequestError"]
+  source: "urllib3/util/retry.py + exceptions.py"
+
+- id: th-20
+  category: two_hop
+  question: "Which requests exception does Session.get_adapter raise, and what does that exception inherit from besides RequestException?"
+  expects: "InvalidSchema; also ValueError"
+  must_contain: ["InvalidSchema", "ValueError"]
+  source: "requests/sessions.py + exceptions.py"
+
+- id: th-21
+  category: two_hop
+  question: "What does urllib3's PoolError inherit from, and what does that base inherit from?"
+  expects: "HTTPError, which inherits from Exception"
+  must_contain: ["HTTPError", "Exception"]
+  source: "urllib3/exceptions.py"
+
+- id: th-22
+  category: two_hop
+  question: "Which urllib3 exception is raised for a URL scheme it does not know, and what is its parent class?"
+  expects: "URLSchemeUnknown -> LocationValueError"
+  must_contain: ["URLSchemeUnknown", "LocationValueError"]
+  source: "urllib3/poolmanager.py connection_from_context + exceptions.py"
+
+- id: th-23
+  category: two_hop
+  question: "What does PoolManager inherit from, and what does HTTPConnectionPool.urlopen return?"
+  expects: "RequestMethods; a BaseHTTPResponse"
+  must_contain: ["RequestMethods", "BaseHTTPResponse"]
+  source: "urllib3/poolmanager.py + connectionpool.py"
+
+- id: th-24
+  category: two_hop
+  question: "Which class does HTTPSConnectionPool inherit from, and which class does that inherit from in turn?"
+  expects: "HTTPConnectionPool -> ConnectionPool (and RequestMethods)"
+  must_contain: ["HTTPConnectionPool", "ConnectionPool"]
+  source: "urllib3/connectionpool.py"
+
+- id: th-25
+  category: two_hop
+  question: "What does HTTPAdapter.get_connection_with_tls_context return, and which requests exception does it raise for a malformed proxy URL?"
+  expects: "an HTTPConnectionPool; InvalidProxyURL"
+  must_contain: ["HTTPConnectionPool", "InvalidProxyURL"]
+  source: "requests/adapters.py"
+
+- id: th-26
+  category: two_hop
+  question: "Which requests exception does PreparedRequest.prepare_body raise when the json body cannot be serialised, and what does it inherit from?"
+  expects: "InvalidJSONError -> RequestException"
+  must_contain: ["InvalidJSONError", "RequestException"]
+  source: "requests/models.py + exceptions.py"
+
+- id: th-27
+  category: two_hop
+  question: "Which urllib3 exception does BaseHTTPResponse._decode raise when decoding the body fails, and what does requests convert it to in iter_content?"
+  expects: "DecodeError -> ContentDecodingError"
+  must_contain: ["DecodeError", "ContentDecodingError"]
+  source: "urllib3/response.py + requests/models.py"
+
+- id: th-28
+  category: two_hop
+  question: "Which exception does urllib3 raise when a response header cannot be parsed, and what does it inherit from?"
+  expects: "HeaderParsingError -> HTTPError"
+  must_contain: ["HeaderParsingError", "HTTPError"]
+  source: "urllib3/util/response.py + exceptions.py"
+
+- id: th-29
+  category: two_hop
+  question: "What class does Retry.from_int return, and which HTTPAdapter method calls it?"
+  expects: "Retry; HTTPAdapter.__init__"
+  must_contain: ["Retry", "__init__"]
+  source: "urllib3/util/retry.py + requests/adapters.py"
+
+- id: th-30
+  category: two_hop
+  question: "Which requests exception does rewind_body raise, and what does it inherit from?"
+  expects: "UnrewindableBodyError -> RequestException"
+  must_contain: ["UnrewindableBodyError", "RequestException"]
+  source: "requests/utils.py + exceptions.py"
+
+- id: th-31
+  category: two_hop
+  question: "Which urllib3 exception replaces queue.Empty in HTTPConnectionPool._get_conn, and what is its parent class?"
+  expects: "EmptyPoolError -> PoolError"
+  must_contain: ["EmptyPoolError", "PoolError"]
+  source: "urllib3/connectionpool.py + exceptions.py"
+
+- id: th-32
+  category: two_hop
+  question: "What does urllib3's HTTPResponse inherit from, and what standard library class does that base inherit from?"
+  expects: "BaseHTTPResponse -> io.IOBase"
+  must_contain: ["BaseHTTPResponse", "IOBase"]
+  source: "urllib3/response.py"
+
+- id: th-33
+  category: two_hop
+  question: "Which requests class does HTTPProxyAuth inherit from, and what does that inherit from?"
+  expects: "HTTPBasicAuth -> AuthBase"
+  must_contain: ["HTTPBasicAuth", "AuthBase"]
+  source: "requests/auth.py"
+
+- id: th-34
+  category: two_hop
+  question: "Which exception does Timeout.start_connect raise if the connect timer was already started, and what does it inherit from?"
+  expects: "TimeoutStateError -> HTTPError"
+  must_contain: ["TimeoutStateError", "HTTPError"]
+  source: "urllib3/util/timeout.py + exceptions.py"
+
+- id: th-35
+  category: two_hop
+  question: "What does Session.get_adapter return, and which concrete class implements it in requests?"
+  expects: "a BaseAdapter; HTTPAdapter"
+  must_contain: ["BaseAdapter", "HTTPAdapter"]
+  source: "requests/sessions.py + adapters.py"
+
+- id: th-36
+  category: two_hop
+  question: "Which class does Session inherit from, and which method on it follows redirects?"
+  expects: "SessionRedirectMixin; resolve_redirects"
+  must_contain: ["SessionRedirectMixin", "resolve_redirects"]
+  source: "requests/sessions.py"
+
+- id: th-37
+  category: two_hop
+  question: "Which urllib3 warning does InsecureRequestWarning inherit from, and what does that inherit from?"
+  expects: "SecurityWarning -> HTTPWarning"
+  must_contain: ["SecurityWarning", "HTTPWarning"]
+  source: "urllib3/exceptions.py"
+
+- id: th-38
+  category: two_hop
+  question: "Which exception does urllib3's match_hostname raise on a mismatch, and which module defines that function?"
+  expects: "CertificateError; urllib3.util.ssl_match_hostname"
+  must_contain: ["CertificateError", "ssl_match_hostname"]
+  source: "urllib3/util/ssl_match_hostname.py"
+
+- id: th-39
+  category: two_hop
+  question: "What does HTTPAdapter.build_response return, and which Session method returns the same type to the caller?"
+  expects: "a Response; Session.request"
+  must_contain: ["Response", "Session.request"]
+  source: "requests/adapters.py + sessions.py"
+
+- id: th-40
+  category: two_hop
+  question: "Which urllib3 exception is raised for an unknown proxy scheme, and which two classes does it inherit from?"
+  expects: "ProxySchemeUnknown, from AssertionError and URLSchemeUnknown"
+  must_contain: ["ProxySchemeUnknown", "AssertionError", "URLSchemeUnknown"]
+  source: "urllib3/exceptions.py"
+
+- id: th-41
+  category: two_hop
+  question: "Which exception does HTTPConnectionPool.urlopen raise when the host changes and assert_same_host is set, and what is its parent?"
+  expects: "HostChangedError -> RequestError"
+  must_contain: ["HostChangedError", "RequestError"]
+  source: "urllib3/connectionpool.py + exceptions.py"
+
+- id: th-42
+  category: two_hop
+  question: "Which requests exception does Response.raise_for_status raise, and what does that exception inherit from?"
+  expects: "HTTPError -> RequestException"
+  must_contain: ["HTTPError", "RequestException"]
+  source: "requests/models.py + exceptions.py"
+
+- id: th-43
+  category: two_hop
+  question: "Which urllib3 exception is raised when a non-chunked body is read as chunked, and which two classes does it inherit from?"
+  expects: "ResponseNotChunked, from ProtocolError and ValueError"
+  must_contain: ["ResponseNotChunked", "ProtocolError", "ValueError"]
+  source: "urllib3/response.py read_chunked + exceptions.py"
+
+- id: th-44
+  category: two_hop
+  question: "Which requests exception inherits from both RequestException and TypeError, and which Response method raises it?"
+  expects: "StreamConsumedError; iter_content"
+  must_contain: ["StreamConsumedError", "iter_content"]
+  source: "requests/exceptions.py + models.py"
+
+- id: th-45
+  category: two_hop
+  question: "What does urllib3's create_urllib3_context return, and which exception does ssl_wrap_socket raise when wrapping fails?"
+  expects: "an ssl.SSLContext; SSLError"
+  must_contain: ["SSLContext", "SSLError"]
+  source: "urllib3/util/ssl_.py"
+
+- id: 3h-28
+  category: three_hop
+  question: "When DNS resolution fails in HTTPConnection._new_conn, what does urllib3 raise, what is its parent class, and what is that parent's own parent?"
+  expects: "NameResolutionError -> NewConnectionError -> ConnectTimeoutError"
+  must_contain: ["NameResolutionError", "NewConnectionError", "ConnectTimeoutError"]
+  source: "urllib3/connection.py + exceptions.py"
+
+- id: 3h-29
+  category: three_hop
+  question: "When a read times out inside urllib3's HTTPResponse, what is raised, what does requests convert it to in iter_content, and what does that requests exception inherit from?"
+  expects: "ReadTimeoutError -> ConnectionError -> RequestException"
+  must_contain: ["ReadTimeoutError", "ConnectionError", "RequestException"]
+  source: "urllib3/response.py + requests/models.py + exceptions.py"
+
+- id: 3h-30
+  category: three_hop
+  question: "What does PoolManager inherit from, which abstract method on that base must subclasses implement, and what does HTTPConnectionPool's implementation of it return?"
+  expects: "RequestMethods; urlopen; a BaseHTTPResponse"
+  must_contain: ["RequestMethods", "urlopen", "BaseHTTPResponse"]
+  source: "urllib3/poolmanager.py + _request_methods.py + connectionpool.py"
+
+- id: 3h-31
+  category: three_hop
+  question: "Which exception does HTTPConnectionPool._get_conn raise when the pool is closed, what does HTTPAdapter.send convert it into, and what does that requests exception inherit from?"
+  expects: "ClosedPoolError -> ConnectionError -> RequestException"
+  must_contain: ["ClosedPoolError", "ConnectionError", "RequestException"]
+  source: "urllib3/connectionpool.py + requests/adapters.py + exceptions.py"
+
+- id: 3h-32
+  category: three_hop
+  question: "What does requests' JSONDecodeError inherit from, what does that inherit from, and what builtin does the base of all requests exceptions derive from?"
+  expects: "InvalidJSONError -> RequestException -> IOError (OSError)"
+  must_contain: ["InvalidJSONError", "RequestException"]
+  must_contain_any: ["IOError", "OSError"]
+  source: "requests/exceptions.py"
+
+- id: 3h-33
+  category: three_hop
+  question: "Which urllib3 exception does Retry.increment raise, what does it inherit from, and what does that base inherit from?"
+  expects: "MaxRetryError -> RequestError -> PoolError"
+  must_contain: ["MaxRetryError", "RequestError", "PoolError"]
+  source: "urllib3/util/retry.py + exceptions.py"
+
+- id: 3h-34
+  category: three_hop
+  question: "Which exception does ProxyManager.__init__ raise for an unknown proxy scheme, which two classes does it inherit from, and what does the urllib3 one of those inherit from?"
+  expects: "ProxySchemeUnknown; AssertionError and URLSchemeUnknown; URLSchemeUnknown -> LocationValueError"
+  must_contain: ["ProxySchemeUnknown", "AssertionError", "URLSchemeUnknown", "LocationValueError"]
+  source: "urllib3/poolmanager.py + exceptions.py"
+
+- id: 3h-35
+  category: three_hop
+  question: "Which requests exception does HTTPAdapter.get_connection_with_tls_context raise for a malformed proxy URL, what does it inherit from, and what does that parent inherit from?"
+  expects: "InvalidProxyURL -> InvalidURL -> RequestException (and ValueError)"
+  must_contain: ["InvalidProxyURL", "InvalidURL", "RequestException"]
+  source: "requests/adapters.py + exceptions.py"
+
+- id: 3h-36
+  category: three_hop
+  question: "Inside Session.send, which method picks the adapter for the URL, what type does that method return, and which concrete adapter class actually sends the request?"
+  expects: "get_adapter; BaseAdapter; HTTPAdapter"
+  must_contain: ["get_adapter", "BaseAdapter", "HTTPAdapter"]
+  source: "requests/sessions.py + adapters.py"
+
+- id: 3h-37
+  category: three_hop
+  question: "When HTTPAdapter.send builds the response object, which method does it call, what does that method return, and which Session method returns that object to the caller?"
+  expects: "build_response; a Response; Session.request"
+  must_contain: ["build_response", "Response", "Session.request"]
+  source: "requests/adapters.py + sessions.py"
+
+- id: 3h-38
+  category: three_hop
+  question: "Which exception does urllib3's parse_url raise on a bad URL, what does requests convert it into in prepare_url, and what does that requests exception inherit from besides RequestException?"
+  expects: "LocationParseError -> InvalidURL, which also inherits ValueError"
+  must_contain: ["LocationParseError", "InvalidURL", "ValueError"]
+  source: "urllib3/util/url.py + requests/models.py + exceptions.py"
+
+- id: 3h-39
+  category: three_hop
+  question: "Which urllib3 exception does assert_header_parsing raise when a header fails validation, what does it inherit from, and what does that inherit from?"
+  expects: "HeaderParsingError -> HTTPError -> Exception"
+  must_contain: ["HeaderParsingError", "HTTPError", "Exception"]
+  source: "urllib3/util/response.py + exceptions.py"
+
+- id: 3h-40
+  category: three_hop
+  question: "Which exception does urllib3's HTTPResponse raise for an invalid chunk length, which urllib3 base does it inherit from, and which standard library exception is its other base?"
+  expects: "InvalidChunkLength; HTTPError; http.client.IncompleteRead"
+  must_contain: ["InvalidChunkLength", "HTTPError", "IncompleteRead"]
+  source: "urllib3/response.py _update_chunk_length + exceptions.py"
+
+- id: 3h-41
+  category: three_hop
+  question: "Which requests exception surfaces when urllib3 reports a proxy failure, what does it inherit from, and what does that inherit from?"
+  expects: "ProxyError -> ConnectionError -> RequestException"
+  must_contain: ["ProxyError", "ConnectionError", "RequestException"]
+  source: "requests/adapters.py + exceptions.py"
+
+- id: 3h-42
+  category: three_hop
+  question: "Which exception does Timeout.get_connect_duration raise if the connect timer was never started, what does it inherit from, and which urllib3 module defines the Timeout class?"
+  expects: "TimeoutStateError -> HTTPError; urllib3.util.timeout"
+  must_contain: ["TimeoutStateError", "HTTPError", "util.timeout"]
+  source: "urllib3/util/timeout.py + exceptions.py"
+
+- id: 3h-43
+  category: three_hop
+  question: "Which urllib3 exception does HTTPConnection._new_conn raise for a generic socket error, what does it inherit from, and what does that base inherit from?"
+  expects: "NewConnectionError -> ConnectTimeoutError (and HTTPError) -> TimeoutError"
+  must_contain: ["NewConnectionError", "ConnectTimeoutError", "TimeoutError"]
+  source: "urllib3/connection.py + exceptions.py"
+
+- id: 3h-44
+  category: three_hop
+  question: "Which requests class does HTTPDigestAuth inherit from, which method must that base's subclasses implement, and what does the base raise if it is not overridden?"
+  expects: "AuthBase; __call__; NotImplementedError"
+  must_contain: ["AuthBase", "__call__", "NotImplementedError"]
+  source: "requests/auth.py"
+
+- id: 3h-45
+  category: three_hop
+  question: "Which exception does HTTPConnectionPool._put_conn raise when the pool is full, what does it inherit from, and what does that inherit from?"
+  expects: "FullPoolError -> PoolError -> HTTPError"
+  must_contain: ["FullPoolError", "PoolError", "HTTPError"]
+  source: "urllib3/connectionpool.py + exceptions.py"
+
+- id: ag-24
+  category: aggregation
+  question: "How many classes does urllib3.exceptions define, counting warnings?"
+  expects: "38"
+  must_contain_any: ["38"]
+  source: "urllib3/exceptions.py (class count)"
+
+- id: ag-25
+  category: aggregation
+  question: "How many urllib3 exception classes inherit directly from HTTPError?"
+  expects: "16: BodyNotHttplibCompatible, DecodeError, HeaderParsingError, IncompleteRead, InvalidChunkLength, InvalidHeader, LocationValueError, NewConnectionError, PoolError, ProtocolError, ProxyError, ResponseError, SSLError, TimeoutError, TimeoutStateError, UnrewindableBodyError"
+  must_contain_any: ["16"]
+  source: "urllib3/exceptions.py"
+
+- id: ag-26
+  category: aggregation
+  question: "Which urllib3 exceptions inherit directly from PoolError?"
+  expects: "ClosedPoolError, EmptyPoolError, FullPoolError, RequestError"
+  must_contain: ["ClosedPoolError", "EmptyPoolError", "FullPoolError", "RequestError"]
+  source: "urllib3/exceptions.py"
+
+- id: ag-27
+  category: aggregation
+  question: "Which urllib3 exceptions inherit directly from RequestError?"
+  expects: "HostChangedError, MaxRetryError, ReadTimeoutError"
+  must_contain: ["HostChangedError", "MaxRetryError", "ReadTimeoutError"]
+  source: "urllib3/exceptions.py"
+
+- id: ag-28
+  category: aggregation
+  question: "Which urllib3 warning classes inherit directly from SecurityWarning?"
+  expects: "InsecurePlatformWarning, InsecureRequestWarning, NotOpenSSLWarning, SystemTimeWarning"
+  must_contain: ["InsecurePlatformWarning", "InsecureRequestWarning", "NotOpenSSLWarning", "SystemTimeWarning"]
+  source: "urllib3/exceptions.py"
+
+- id: ag-29
+  category: aggregation
+  question: "How many warning classes does urllib3.exceptions define?"
+  expects: "7: DependencyWarning, HTTPWarning, InsecurePlatformWarning, InsecureRequestWarning, NotOpenSSLWarning, SecurityWarning, SystemTimeWarning"
+  must_contain_any: ["7", "seven"]
+  source: "urllib3/exceptions.py"
+
+- id: ag-30
+  category: aggregation
+  question: "Which urllib3 exceptions have ValueError among their direct base classes?"
+  expects: "LocationValueError, ProxySchemeUnsupported, ResponseNotChunked"
+  must_contain: ["LocationValueError", "ProxySchemeUnsupported", "ResponseNotChunked"]
+  source: "urllib3/exceptions.py"
+
+- id: ag-31
+  category: aggregation
+  question: "Which exceptions can HTTPConnection._new_conn raise?"
+  expects: "ConnectTimeoutError, NameResolutionError, NewConnectionError"
+  must_contain: ["ConnectTimeoutError", "NameResolutionError", "NewConnectionError"]
+  source: "urllib3/connection.py"
+
+- id: ag-32
+  category: aggregation
+  question: "Which exceptions does HTTPResponse._error_catcher raise?"
+  expects: "ProtocolError, ReadTimeoutError, SSLError"
+  must_contain: ["ProtocolError", "ReadTimeoutError", "SSLError"]
+  source: "urllib3/response.py"
+
+- id: ag-33
+  category: aggregation
+  question: "Which exceptions does HTTPResponse.read_chunked raise?"
+  expects: "BodyNotHttplibCompatible, ProtocolError, ResponseNotChunked"
+  must_contain: ["BodyNotHttplibCompatible", "ProtocolError", "ResponseNotChunked"]
+  source: "urllib3/response.py"
+
+- id: ag-34
+  category: aggregation
+  question: "How many classes does requests.models define?"
+  expects: "5"
+  must_contain_any: ["5", "five"]
+  source: "requests/models.py"
+
+- id: ag-35
+  category: aggregation
+  question: "How many classes does urllib3.response define?"
+  expects: "8"
+  must_contain_any: ["8", "eight"]
+  source: "urllib3/response.py"
+
+- id: ag-36
+  category: aggregation
+  question: "Which classes in urllib3.response inherit from ContentDecoder?"
+  expects: "DeflateDecoder, GzipDecoder, MultiDecoder"
+  must_contain: ["DeflateDecoder", "GzipDecoder", "MultiDecoder"]
+  source: "urllib3/response.py"
+
+- id: ag-37
+  category: aggregation
+  question: "Which authentication classes does requests.auth define?"
+  expects: "AuthBase, HTTPBasicAuth, HTTPProxyAuth, HTTPDigestAuth"
+  must_contain: ["HTTPBasicAuth", "HTTPProxyAuth", "HTTPDigestAuth"]
+  source: "requests/auth.py"
+
+- id: ag-38
+  category: aggregation
+  question: "How many functions does requests.utils define at module level?"
+  expects: "44"
+  must_contain_any: ["44"]
+  source: "requests/utils.py"
+
+- id: ag-39
+  category: aggregation
+  question: "What parameters does urllib3's Timeout constructor accept?"
+  expects: "total, connect, read"
+  must_contain: ["total", "connect", "read"]
+  source: "urllib3/util/timeout.py Timeout.__init__"
+
+- id: ag-40
+  category: aggregation
+  question: "What parameters does HTTPAdapter's constructor accept?"
+  expects: "pool_connections, pool_maxsize, max_retries, pool_block"
+  must_contain: ["pool_connections", "pool_maxsize", "max_retries", "pool_block"]
+  source: "requests/adapters.py HTTPAdapter.__init__"
+
+- id: ag-41
+  category: aggregation
+  question: "Which Retry constructor parameters cap the number of retries per failure kind, rather than shaping the delay?"
+  expects: "total, connect, read, redirect, status, other"
+  must_contain: ["connect", "read", "redirect", "status"]
+  source: "urllib3/util/retry.py Retry.__init__"
+
+- id: ag-42
+  category: aggregation
+  question: "Which requests exceptions inherit directly from ConnectionError?"
+  expects: "ConnectTimeout, ProxyError, SSLError"
+  must_contain: ["ConnectTimeout", "ProxyError", "SSLError"]
+  source: "requests/exceptions.py"
+
+- id: ag-43
+  category: aggregation
+  question: "How many parameters does HTTPConnectionPool.urlopen accept, not counting self?"
+  expects: "14"
+  must_contain_any: ["14"]
+  source: "urllib3/connectionpool.py HTTPConnectionPool.urlopen"
+
+- id: ag-44
+  category: aggregation
+  question: "Which methods in requests.models raise ValueError directly?"
+  expects: "RequestEncodingMixin._encode_files and RequestHooksMixin.register_hook"
+  must_contain: ["_encode_files", "register_hook"]
+  source: "requests/models.py"
+
+- id: ag-45
+  category: aggregation
+  question: "How many classes does urllib3.poolmanager define?"
+  expects: "3: PoolKey, PoolManager, ProxyManager"
+  must_contain_any: ["3", "three"]
+  source: "urllib3/poolmanager.py"
+
+- id: oos-11
+  category: out_of_scope
+  question: "How do I make an async request with httpx?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-12
+  category: out_of_scope
+  question: "How do I configure aiohttp's ClientSession timeout?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-13
+  category: out_of_scope
+  question: "How do I add a middleware in Django?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-14
+  category: out_of_scope
+  question: "How do I write a Flask route that accepts JSON?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-15
+  category: out_of_scope
+  question: "How do I upload a file to S3 with boto3?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-16
+  category: out_of_scope
+  question: "How do I read a CSV file into a pandas DataFrame?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-17
+  category: out_of_scope
+  question: "How do I make an HTTP request in Go's net/http?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-18
+  category: out_of_scope
+  question: "How do I use fetch() in JavaScript to POST JSON?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-19
+  category: out_of_scope
+  question: "How does Node.js's http module handle keep-alive?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-20
+  category: out_of_scope
+  question: "How do I configure nginx as a reverse proxy?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-21
+  category: out_of_scope
+  question: "How do I write a Dockerfile for a Python web app?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-22
+  category: out_of_scope
+  question: "What is the difference between TCP and UDP?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-23
+  category: out_of_scope
+  question: "How do I train a neural network with PyTorch?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-24
+  category: out_of_scope
+  question: "How do I connect to PostgreSQL with psycopg?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-25
+  category: out_of_scope
+  question: "How do I send a POST request with the curl command?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-26
+  category: out_of_scope
+  question: "How do I mock HTTP calls in unit tests with the responses library?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-27
+  category: out_of_scope
+  question: "How do I crawl a website with Scrapy?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-28
+  category: out_of_scope
+  question: "How do I parse HTML with BeautifulSoup?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-29
+  category: out_of_scope
+  question: "How do I schedule a background job with Celery?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-30
+  category: out_of_scope
+  question: "How do I run coroutines concurrently with asyncio.gather?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-31
+  category: out_of_scope
+  question: "What is the capital of France?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-32
+  category: out_of_scope
+  question: "How do I sort a list of dictionaries by a key in Python?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-33
+  category: out_of_scope
+  question: "How do I run a GraphQL query with the gql client?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-34
+  category: out_of_scope
+  question: "How do I configure a Kubernetes ingress for HTTPS?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-35
+  category: out_of_scope
+  question: "How do I click a button with Selenium?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-36
+  category: out_of_scope
+  question: "How does gRPC handle retries and deadlines?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-37
+  category: out_of_scope
+  question: "How do I set a timeout on Java's HttpClient?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-38
+  category: out_of_scope
+  question: "How do I stream a response with the Rust reqwest crate?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-39
+  category: out_of_scope
+  question: "How do I configure a retry policy in Envoy?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
+
+- id: oos-40
+  category: out_of_scope
+  question: "How do I load environment variables with python-dotenv?"
+  expects: "Refuse: not answerable from the requests/urllib3 corpus"
+  source: "out of corpus"
