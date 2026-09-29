@@ -28,6 +28,15 @@ def load_questions(path: Path = QUESTIONS_PATH) -> list[dict]:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
+def credit_of(grade: dict) -> float:
+    """A grade's credit, falling back to the verdict for files written
+    before credit was recorded (D87)."""
+    credit = grade.get("credit")
+    if credit is None:
+        credit = {"correct": 1.0, "partial": 0.5, "incorrect": 0.0}.get(grade.get("verdict"), 0.0)
+    return float(credit)
+
+
 def summarise(results: list[dict]) -> dict:
     """Accuracy per category per system, counting only 'correct' as correct —
     'partial' deliberately does not count, so the headline number can't be
@@ -46,6 +55,9 @@ def summarise(results: list[dict]) -> dict:
                 "correct": correct,
                 "partial": partial,
                 "accuracy": round(correct / len(rows) * 100, 1),
+                # Partial credit (D87): the mean share of each reference the
+                # answers stated. Accuracy stays strict beside it.
+                "score": round(sum(credit_of(r[system]) for r in rows) / len(rows) * 100, 1),
                 "median_latency_ms": int(sorted(latencies)[len(latencies) // 2]),
             }
         summary[category] = entry
@@ -54,15 +66,17 @@ def summarise(results: list[dict]) -> dict:
 
 def print_table(summary: dict) -> None:
     print()
-    print(f"{'category':<14} {'n':>3}  {'hybrid':>8} {'baseline':>9}  {'delta':>7}")
-    print("-" * 50)
+    print(f"{'category':<14} {'n':>3}  {'hybrid':>8} {'baseline':>9}  {'delta':>7}   {'h.score':>8} {'b.score':>8}  {'delta':>7}")
+    print("-" * 88)
     for category in CATEGORY_ORDER:
         if category not in summary:
             continue
         e = summary[category]
         h, b = e["hybrid"]["accuracy"], e["baseline"]["accuracy"]
+        hs, bs = e["hybrid"]["score"], e["baseline"]["score"]
         print(
-            f"{category:<14} {e['n']:>3}  {h:>7.1f}% {b:>8.1f}%  {h - b:>+6.1f}pt"
+            f"{category:<14} {e['n']:>3}  {h:>7.1f}% {b:>8.1f}%  {h - b:>+6.1f}pt   "
+            f"{hs:>7.1f}% {bs:>7.1f}%  {hs - bs:>+6.1f}pt"
         )
     print()
     print(f"{'category':<14} {'hybrid p50':>11} {'baseline p50':>13}")
@@ -153,10 +167,10 @@ def main() -> None:
                 latency_ms = int((time.time() - start) * 1000)
 
                 if error:
-                    grade = {"verdict": "incorrect", "reason": error}
+                    grade = {"verdict": "incorrect", "reason": error, "credit": 0.0}
                 elif q["category"] == "out_of_scope":
                     g = grade_out_of_scope(out["answer"])
-                    grade = {"verdict": g.verdict, "reason": g.reason, "grader": "mechanical"}
+                    grade = {"verdict": g.verdict, "reason": g.reason, "grader": "mechanical", "credit": g.credit}
                 elif q.get("must_contain") or q.get("must_contain_any"):
                     # Checkable answers are graded without a model, removing
                     # the judge's run-to-run variance (D45) from 82% of the set.
@@ -165,12 +179,12 @@ def main() -> None:
                         must_contain=q.get("must_contain"),
                         must_contain_any=q.get("must_contain_any"),
                     )
-                    grade = {"verdict": g.verdict, "reason": g.reason, "grader": "mechanical"}
+                    grade = {"verdict": g.verdict, "reason": g.reason, "grader": "mechanical", "credit": g.credit}
                 else:
                     g = grade_answer(
                         q["question"], q["expects"], out["answer"], client=client
                     )
-                    grade = {"verdict": g.verdict, "reason": g.reason, "grader": "judge"}
+                    grade = {"verdict": g.verdict, "reason": g.reason, "grader": "judge", "credit": g.credit}
 
                 row[system] = {
                     **grade,

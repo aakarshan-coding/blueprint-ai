@@ -107,3 +107,20 @@ def test_format_table_shows_mean_with_its_spread():
     assert "single_hop" in text
     assert "75.0" in text and "50.0" in text and "100.0" in text
     assert "pooled" in text
+
+
+def test_aggregate_reports_a_partial_credit_score_beside_strict_accuracy():
+    """Partial counts for partial points in `score`, never in accuracy (D87).
+    Older files without a credit field fall back to the verdict."""
+    from graphrag.eval.summarize_runs import aggregate, format_table
+    runs = [{"results": [
+        {"id": "a", "category": "two_hop", "hybrid": {"verdict": "partial", "credit": 0.667},
+         "baseline": {"verdict": "incorrect", "credit": 0.0}},
+        {"id": "b", "category": "two_hop", "hybrid": {"verdict": "correct"},
+         "baseline": {"verdict": "partial"}},
+    ]}]
+    agg = aggregate(runs)
+    assert agg["two_hop"]["hybrid"]["mean"] == 50.0
+    assert agg["two_hop"]["hybrid_score"]["mean"] == 83.4  # (0.667 + 1) / 2
+    assert agg["two_hop"]["baseline_score"]["mean"] == 25.0  # (0 + 0.5) / 2
+    assert "hybrid score" in format_table(agg, runs=1)

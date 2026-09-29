@@ -17,7 +17,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-from graphrag.eval.run_benchmark import CATEGORY_ORDER
+from graphrag.eval.run_benchmark import CATEGORY_ORDER, credit_of
 
 SYSTEMS = ("hybrid", "baseline")
 
@@ -35,6 +35,12 @@ def _partial_rate(rows: list[dict], system: str) -> float:
     the graph actually has."""
     partial = sum(1 for r in rows if r[system]["verdict"] == "partial")
     return round(partial / len(rows) * 100, 1)
+
+
+def _score(rows: list[dict], system: str) -> float:
+    """Mean partial credit, as a percentage (D87): a three-part answer with
+    two parts right scores 66.7 here and 0 in accuracy."""
+    return round(sum(credit_of(r[system]) for r in rows) / len(rows) * 100, 1)
 
 
 def _stats(values: list[float]) -> dict:
@@ -73,6 +79,9 @@ def aggregate(runs: list[dict]) -> dict:
             "delta": _stats(delta),
             "hybrid_partial": _stats([_partial_rate(rows, "hybrid") for rows in run_rows]),
             "baseline_partial": _stats([_partial_rate(rows, "baseline") for rows in run_rows]),
+            "hybrid_score": _stats(hs := [_score(rows, "hybrid") for rows in run_rows]),
+            "baseline_score": _stats(bs := [_score(rows, "baseline") for rows in run_rows]),
+            "delta_score": _stats([round(h - b, 1) for h, b in zip(hs, bs)]),
         }
     return out
 
@@ -121,6 +130,22 @@ def format_table(agg: dict, *, runs: int) -> str:
             f"{category:<14}{entry['n']:>3}   {cells[0]:<22}{cells[1]:<22}{cells[2]:<22}"
             f"{entry['hybrid_partial']['mean']:>10.1f}{entry['baseline_partial']['mean']:>10.1f}{marker}"
         )
+    lines += [
+        "",
+        "Score = mean partial credit (D87): a term list two-thirds stated scores 66.7; a judge",
+        "answer missing one of three key facts scores 66.7. Accuracy above stays strict.",
+        "",
+        f"{'category':<14}{'n':>3}   {'hybrid score':<22}{'baseline score':<22}{'delta':<22}",
+        "-" * 83,
+    ]
+    for category, entry in agg.items():
+        cells = []
+        for key in ("hybrid_score", "baseline_score", "delta_score"):
+            s = entry[key]
+            sign = "+" if key == "delta_score" and s["mean"] >= 0 else ""
+            cells.append(f"{sign}{s['mean']:.1f}  [{s['min']:.1f} .. {s['max']:.1f}]")
+        marker = " <-- pooled" if category == "pooled" else ""
+        lines.append(f"{category:<14}{entry['n']:>3}   {cells[0]:<22}{cells[1]:<22}{cells[2]:<22}{marker}")
     return "\n".join(lines)
 
 

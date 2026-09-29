@@ -3333,6 +3333,61 @@ one incoming INHERITS_FROM hop runs from the anchor alone (not from every node t
 touched, which would be noise). Fifteen extra lines on that question; none on a chain
 anchored at a leaf exception.
 
+## D87 — Partial credit as a score, and a judge that lists what is missing instead of choosing a verdict
+
+**Status:** applied; 375 tests. The five D85 runs re-scored (`benchmark_results_exp7_scored_*`):
+mechanical questions offline, the ten judge questions through the new judge (100 calls).
+
+**Two changes the user asked for.**
+
+1. *Partial counts for partial points.* Every grade now carries `credit`, 0 to 1. For a
+   term list it is the share of required slots filled (two of three terms: 0.667; the
+   any-list is one slot). For the judge it is the share of the reference's key facts
+   stated. The summary reports **score**, the mean credit, beside accuracy; accuracy stays
+   strict so the earlier tables remain comparable. Files written before this fall back
+   to the verdict (correct 1, partial 0.5, incorrect 0).
+2. *Extra detail is still correct.* The judge no longer chooses a verdict. It lists the
+   reference's key facts, then which of them the answer does not state, plus two flags
+   (contradicts, declines). The verdict is derived: no fact missing is correct, whatever
+   else the answer says; some missing is partial with credit by count; all missing,
+   contradicting, or declining is incorrect. The rubric says in as many words that
+   additional detail is never a reason to mark anything missing. The old rubric said
+   "extra detail is fine" and the judge marked it partial anyway (D79); a verdict it
+   cannot choose it cannot get wrong that way.
+
+**Re-scored, five runs:**
+
+| category | accuracy hybrid | accuracy baseline | score hybrid | score baseline | score delta |
+|---|---|---|---|---|---|
+| single_hop | 100.0 | 100.0 | 100.0 | 100.0 | +0.0 |
+| two_hop | 89.3 | 56.0 | 89.3 | 61.6 | +27.8 |
+| three_hop | 65.2 | 33.3 | 79.1 | 57.2 | +22.0 |
+| aggregation | 73.1 | 8.7 | 76.5 | 11.6 | +64.9 |
+| out_of_scope | 98.0 | 50.0 | 98.0 | 50.0 | +48.0 |
+| **pooled** | **80.7** | 43.7 | **85.7** | 52.6 | **+33.1 [31.7..34.8]** |
+
+35 judge verdicts changed, every one partial → correct, all on the seven judge-graded
+single-hop questions and one counting question. Single-hop is now 100 for both systems:
+those questions were being answered fully by both and marked down for detail. The judge
+still discriminates where it should: `3h-08` stays partial at 0.667 for the wrong
+parameter name, and a baseline answer that declines stays incorrect.
+
+**What partial credit changes in the picture.** Three-hop, where a missing third part
+made the whole answer wrong, moves from 65 to 79 on score; the baseline moves more (33
+to 57), because it often gets the first hop. So the score delta on three-hop (+22) is
+smaller than the accuracy delta (+32). That is honest: the graph's advantage is largest
+on the last hop. Pooled: accuracy +36.9, score +33.1.
+
+**One wart.** On `sh-15` the judge's free-text reason says the answer "does not
+explicitly state the key fact about the Retry configuration" while its `missing` list is
+empty, so the verdict is correct. The list is what counts; the reason is commentary. A
+judge that contradicts itself in prose is a reminder that only the structured field
+should ever be read.
+
+**Current claim for the README:** by strict accuracy, hybrid 80.7 vs vector-only 43.7,
++36.9 pooled over five runs on 90 questions; by partial-credit score, 85.7 vs 52.6,
++33.1 [+31.7..+34.8].
+
 ---
 
 ## Open questions for the Phase 2 sweep

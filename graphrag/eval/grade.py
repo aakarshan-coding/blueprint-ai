@@ -20,19 +20,25 @@ MODEL = "gpt-4o-mini"
 Verdict = Literal["correct", "partial", "incorrect"]
 
 JUDGE_RUBRIC = """\
-You grade an answer against a known-correct reference answer.
+You check an answer against a known-correct reference answer.
 
-correct   - the answer states the key fact(s) in the reference. Extra detail
-            is fine. Different wording is fine.
-partial   - the answer gets some of the reference right but misses a required
-            part of it, or hedges so heavily the fact isn't actually asserted.
-incorrect - the answer contradicts the reference, states the wrong entity, or
-            says the information isn't available when the reference shows it
-            is.
+First, list the reference's key facts: the separate things a correct answer
+must state. Keep each one short. Do not list anything the reference does not
+say.
 
-Grade only on factual agreement with the reference. Do not reward fluency,
-length, or confidence. An answer that admits it doesn't know is "incorrect"
-for a question that has a real answer — honest, but still not the answer.
+Then, for each key fact, decide whether the answer states it. Different
+wording counts. A fact stated alongside other, additional information counts.
+List only the key facts the answer does NOT state as `missing`.
+
+Set `contradicts` only if the answer asserts something the reference says is
+false, or names the wrong entity in place of the right one.
+Set `declines` only if the answer says the information is unavailable or that
+it cannot answer, instead of answering.
+
+Additional detail in the answer beyond the reference -- examples, context,
+related facts, code -- is never a reason to mark anything missing. Grade only
+on whether the key facts are stated. Do not reward or penalise fluency,
+length, or confidence.
 """
 
 _REFUSAL_MARKERS = (
@@ -49,9 +55,48 @@ _REFUSAL_MARKERS = (
 )
 
 
+_CREDIT_FOR = {"correct": 1.0, "partial": 0.5, "incorrect": 0.0}
+
+
 class Grade(BaseModel):
     verdict: Verdict
     reason: str
+    # How much of the reference the answer states, 0 to 1 (D87). Mechanical
+    # grading sets it to the share of required terms present; the judge to
+    # the share of key facts stated. Left unset, it follows the verdict:
+    # correct 1, partial 0.5, incorrect 0.
+    credit: float | None = None
+
+    def model_post_init(self, __context) -> None:
+        if self.credit is None:
+            self.credit = _CREDIT_FOR[self.verdict]
+
+
+class JudgeReport(BaseModel):
+    """What the judge writes: the reference's key facts and which the
+    answer left out. The verdict is derived from this, not chosen by the
+    judge, so "partial" can only mean a key fact is missing (D87)."""
+
+    key_facts: list[str]
+    missing: list[str]
+    contradicts: bool
+    declines: bool
+    reason: str
+
+
+def grade_from_report(report: JudgeReport) -> Grade:
+    total = max(len(report.key_facts), 1)
+    missing = min(len(report.missing), total)
+    if report.declines or report.contradicts:
+        return Grade(verdict="incorrect", reason=report.reason, credit=0.0)
+    if missing == 0:
+        return Grade(verdict="correct", reason=report.reason, credit=1.0)
+    if missing >= total:
+        return Grade(verdict="incorrect", reason=f"Missing: {', '.join(report.missing)}.", credit=0.0)
+    return Grade(
+        verdict="partial", reason=f"Missing: {', '.join(report.missing)}.",
+        credit=round(1 - missing / total, 3),
+    )
 
 
 # An answer that opens with a refusal marker and then answers anyway
@@ -90,10 +135,13 @@ def grade_answer(question: str, expected: str, answer: str, *, client, model: st
             f"Reference answer: {expected}\n\n"
             f"Answer to grade: {answer}"
         ),
-        text_format=Grade,
+        text_format=JudgeReport,
         temperature=0,
     )
-    return response.output_parsed
+    parsed = response.output_parsed
+    if isinstance(parsed, Grade):  # a test double answering in the old shape
+        return parsed
+    return grade_from_report(parsed)
 
 
 def _states(answer: str, term: str) -> bool:
@@ -174,15 +222,20 @@ def grade_mechanically(
     ]
     any_missing = bool(must_contain_any) and not any_hit
 
+    # Credit is the share of required slots filled: each must_contain term
+    # is a slot, and the any-list is one more slot (D87).
+    slots = len(required) + (1 if must_contain_any else 0)
+    filled = (len(required) - len(missing)) + (1 if (must_contain_any and not any_missing) else 0)
+    credit = round(filled / slots, 3) if slots else 1.0
     if not missing and not any_missing:
         reason = f"States {any_hit[0]}." if any_hit and not required else "States every required term."
-        return Grade(verdict="correct", reason=reason)
+        return Grade(verdict="correct", reason=reason, credit=1.0)
     parts = list(missing)
     if any_missing:
         parts.append("one of " + "/".join(must_contain_any))
     stated_some = (len(missing) < len(required)) or (required and not missing) or bool(any_hit)
     if stated_some:
-        return Grade(verdict="partial", reason=f"Missing: {', '.join(parts)}.")
+        return Grade(verdict="partial", reason=f"Missing: {', '.join(parts)}.", credit=credit)
     if must_contain_any and not required:
-        return Grade(verdict="incorrect", reason=f"States none of: {', '.join(must_contain_any)}.")
-    return Grade(verdict="incorrect", reason=f"Missing: {', '.join(parts)}.")
+        return Grade(verdict="incorrect", reason=f"States none of: {', '.join(must_contain_any)}.", credit=0.0)
+    return Grade(verdict="incorrect", reason=f"Missing: {', '.join(parts)}.", credit=0.0)

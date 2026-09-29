@@ -216,3 +216,43 @@ def test_no_benchmark_question_can_be_passed_by_echoing_itself():
                                must_contain_any=q.get("must_contain_any")).verdict == "correct"
     ]
     assert echoable == []
+
+
+def test_mechanical_credit_is_the_share_of_required_terms_present():
+    """Partial counts for partial points (D87): two of three terms is 0.667."""
+    g = grade_mechanically("Session.request calls Session.send [c1].",
+                           must_contain=["Session.request", "Session.send", "HTTPAdapter.send"])
+    assert g.verdict == "partial" and abs(g.credit - 0.667) < 0.001
+    assert grade_mechanically("x", must_contain=["A"]).credit == 0.0
+    assert grade_mechanically("A", must_contain=["A"]).credit == 1.0
+    kw = dict(must_contain=["RequestException"], must_contain_any=["IOError", "OSError"])
+    assert grade_mechanically("RequestException is the base.", **kw).credit == 0.5
+
+
+def test_judge_verdict_is_derived_from_missing_key_facts_not_chosen():
+    """Extra detail can no longer be marked partial: the judge lists the
+    reference's key facts and which are missing; the verdict follows (D87)."""
+    from graphrag.eval.grade import JudgeReport, grade_from_report
+    g = grade_from_report(JudgeReport(key_facts=["persists cookies", "persists parameters"], missing=[],
+                                      contradicts=False, declines=False, reason="both stated, plus pooling detail"))
+    assert g.verdict == "correct" and g.credit == 1.0
+    g = grade_from_report(JudgeReport(key_facts=["a", "b", "c"], missing=["c"],
+                                      contradicts=False, declines=False, reason=""))
+    assert g.verdict == "partial" and abs(g.credit - 0.667) < 0.001 and "Missing: c" in g.reason
+    g = grade_from_report(JudgeReport(key_facts=["a"], missing=[], contradicts=True, declines=False, reason="wrong entity"))
+    assert g.verdict == "incorrect" and g.credit == 0.0
+    g = grade_from_report(JudgeReport(key_facts=["a", "b"], missing=["a", "b"], contradicts=False, declines=False, reason=""))
+    assert g.verdict == "incorrect"
+
+
+def test_grade_answer_asks_for_a_report_and_derives_the_grade():
+    from graphrag.eval.grade import JudgeReport
+    client = _FakeClient(JudgeReport(key_facts=["x", "y"], missing=["y"], contradicts=False, declines=False, reason="r"))
+    g = grade_answer("q", "ref", "ans", client=client)
+    assert client.responses.last_call["text_format"] is JudgeReport
+    assert g.verdict == "partial" and g.credit == 0.5
+
+
+def test_the_rubric_says_extra_detail_never_lowers_the_grade():
+    from graphrag.eval.grade import JUDGE_RUBRIC
+    assert "never a reason" in JUDGE_RUBRIC
