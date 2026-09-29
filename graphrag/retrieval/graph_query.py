@@ -116,6 +116,14 @@ def extract_mentions(
         if surface not in have:
             mentions.append(Mention(surface=surface, package="unknown"))
             have.add(surface)
+    # "HTTPAdapter's constructor" names HTTPAdapter.__init__ (D90): the
+    # question about its parameters anchored on the class and listed its
+    # methods. A constructor is a method with a fixed name; read it off.
+    if re.search(r"\bconstructor\b", question, re.IGNORECASE):
+        for m in list(mentions):
+            if m.surface[:1].isupper() and "." not in m.surface and f"{m.surface}.__init__" not in have:
+                mentions.append(Mention(surface=f"{m.surface}.__init__", package=m.package))
+                have.add(f"{m.surface}.__init__")
     return mentions
 
 
@@ -481,6 +489,14 @@ def repair_plan(
     if template_id == "T6_COUNT_BY_REL":
         modules = [c for c in candidates if "Module" in c.kind]
         others = [c for c in candidates if "Module" not in c.kind]
+        # "How many urllib3 exception classes inherit directly from HTTPError"
+        # planned a corpus-wide INHERITS_FROM count (D90). One class named,
+        # one relationship: the count is over that class's edges.
+        if len(others) == 1 and not modules and "Class" in others[0].kind and relationship:
+            return (
+                "T8_RELATED_BY", {"entity_id": others[0].canonical_id, "relationship": relationship},
+                f"the question names one class; its {relationship} edges, not a corpus-wide count",
+            )
         # "How many classes in requests.exceptions have more than one base"
         # resolves both `requests` and `requests.exceptions`; the most
         # specific module is the one the question is about (D82).

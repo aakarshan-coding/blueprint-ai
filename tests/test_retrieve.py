@@ -579,7 +579,7 @@ def test_members_plus_parents_get_summary_lines_by_base_and_multi_base():
     ]
     lines = [f.statement for f in summarize_members(facts)]
     assert lines[0] == "Members by base class: RequestException: B; ValueError: B; Warning: A."
-    assert lines[1] == "1 members have more than one base class: B."
+    assert "1 members have more than one base class: B." in lines
 
 
 def test_an_empty_plan_on_a_class_falls_back_to_its_members():
@@ -718,3 +718,30 @@ def test_a_wrap_chain_also_fetches_the_anchors_subclasses():
     assert (":<-INHERITS_FROM", ["requests.exceptions.RequestException"]) in session.expansion_queries
     assert "requests.exceptions.MissingSchema inherits from requests.exceptions.RequestException." in [
         f.statement for f in result.graph_facts]
+
+
+def test_members_summary_names_the_warning_classes_transitively():
+    from graphrag.retrieval.retrieve import summarize_members
+    from graphrag.retrieval.merge import GraphFact
+    facts = [
+        GraphFact("u.HTTPWarning is a class defined in u.", "c1", relationship="DEFINED_IN", subject="u.HTTPWarning", object="u"),
+        GraphFact("u.SecurityWarning is a class defined in u.", "c2", relationship="DEFINED_IN", subject="u.SecurityWarning", object="u"),
+        GraphFact("u.PoolError is a class defined in u.", "c3", relationship="DEFINED_IN", subject="u.PoolError", object="u"),
+        GraphFact("u.HTTPWarning inherits from builtins.Warning.", "p1", relationship="INHERITS_FROM", subject="u.HTTPWarning", object="builtins.Warning"),
+        GraphFact("u.SecurityWarning inherits from u.HTTPWarning.", "p2", relationship="INHERITS_FROM", subject="u.SecurityWarning", object="u.HTTPWarning"),
+        GraphFact("u.PoolError inherits from u.HTTPError.", "p3", relationship="INHERITS_FROM", subject="u.PoolError", object="u.HTTPError"),
+    ]
+    lines = [f.statement for f in summarize_members(facts)]
+    assert "2 members are warning classes (they derive from a Warning): HTTPWarning, SecurityWarning." in lines
+
+
+def test_a_subclasses_plan_fetches_grandparents_too():
+    rows = [{"relationship": "INHERITS_FROM", "neighbor": "urllib3.exceptions.HTTPError",
+             "chunk_id": "c1", "outgoing": True}]
+    session = _ChainThenParents(rows, parents={"urllib3.exceptions.HTTPError": ["builtins.Exception"]})
+    client = FakeOpenAI(plan={"template_id": "T8_RELATED_BY", "entity_id": "requests.sessions.Session",
+                              "relationship": "INHERITS_FROM"})
+
+    result = _retrieve(neo4j_session=session, openai_client=client)
+
+    assert "urllib3.exceptions.HTTPError inherits from builtins.Exception." in [f.statement for f in result.graph_facts]

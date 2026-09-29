@@ -139,7 +139,7 @@ _EXPANSIONS: dict[tuple[str, str | None], list[tuple[str, bool]]] = {
     ("T10_RAISED_BY_METHODS_OF", None): [("WRAPS_EXCEPTION", False), ("INHERITS_FROM", False), ("INHERITS_FROM", True)],
     # subclasses of X: what each of them wraps ("what does requests convert
     # a socket timeout to" from the anchor Timeout, 3h-03, D76)
-    ("T8_RELATED_BY", "INHERITS_FROM"): [("WRAPS_EXCEPTION", False)],
+    ("T8_RELATED_BY", "INHERITS_FROM"): [("WRAPS_EXCEPTION", False), ("INHERITS_FROM", False)],
 }
 
 
@@ -166,6 +166,24 @@ def summarize_members(facts: list[GraphFact]) -> list[GraphFact]:
         for base, names in sorted(by_base.items(), key=lambda kv: short(kv[0]))
     )
     lines = [GraphFact(f"Members by base class: {grouped}.", None)]
+    # "How many warning classes does urllib3.exceptions define": a member is
+    # a warning if any ancestor visible in the facts is a Warning (D90).
+    ancestors: dict[str, set[str]] = {}
+    for member in members:
+        seen, frontier = set(), list(parents.get(member, []))
+        while frontier:
+            node = frontier.pop()
+            if node in seen:
+                continue
+            seen.add(node)
+            frontier.extend(parents.get(node, []))
+        ancestors[member] = seen
+    warnings = sorted(short(m) for m, anc in ancestors.items()
+                      if any(a.split(".")[-1].endswith("Warning") for a in anc))
+    if warnings:
+        lines.append(GraphFact(
+            f"{len(warnings)} members are warning classes (they derive from a Warning): {', '.join(warnings)}.", None,
+        ))
     multi = sorted(short(m) for m, bases in parents.items() if len(set(bases)) > 1)
     if multi:
         lines.append(GraphFact(

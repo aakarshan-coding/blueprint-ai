@@ -571,3 +571,28 @@ def test_the_plan_model_takes_a_parameter_name_as_free_text_for_t13():
     model = _plan_model_for("T13_FUNCTIONS_WITH_PARAMETER", [])
     assert model is not None
     assert model(template_id="T13_FUNCTIONS_WITH_PARAMETER", name="data").name == "data"
+
+
+def test_repair_plan_scopes_a_count_to_the_one_class_named():
+    from graphrag.retrieval.graph_query import Candidate, repair_plan
+    candidates = [Candidate("urllib3.exceptions.HTTPError", kind="Class/Exception", degree=20)]
+    template_id, values, note = repair_plan("T6_COUNT_BY_REL", {"relationship": "INHERITS_FROM"}, candidates)
+    assert (template_id, values) == ("T8_RELATED_BY", {"entity_id": "urllib3.exceptions.HTTPError", "relationship": "INHERITS_FROM"})
+    assert note
+
+
+def test_constructor_in_the_question_adds_the_classs_init_as_a_mention():
+    from graphrag.retrieval.graph_query import Mentions
+
+    class _Parsed:
+        def __init__(self, v): self.output_parsed = v
+
+    class _Responses:
+        def parse(self, **kw):
+            return _Parsed(Mentions(mentions=[Mention(surface="HTTPAdapter", package="requests")]))
+
+    class _Client:
+        responses = _Responses()
+
+    mentions = extract_mentions("What parameters does HTTPAdapter's constructor accept?", client=_Client(), votes=1)
+    assert [m.surface for m in mentions] == ["HTTPAdapter", "HTTPAdapter.__init__"]
