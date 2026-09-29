@@ -306,6 +306,68 @@ def extract_returns(
 
 
 @dataclass(frozen=True)
+class StoresEdge:
+    """`self.attr = param` inside a method: the parameter's value is kept on
+    the class (D84). The read side (`self.attr` used later) is not modelled."""
+
+    function_id: str
+    param: str
+    class_id: str
+    attribute: str
+    chunk_id: str
+
+
+def extract_stores(
+    text: str, *, repo: str, path: str, dotted_module: str
+) -> list[StoresEdge]:
+    """Every `self.<attr> = <own parameter>` assignment in a method."""
+    tree = ast.parse(text)
+    edges = []
+    for name, node, start, end in iter_symbols(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or "." not in name:
+            continue
+        own = {a.arg for a in node.args.posonlyargs + node.args.args + node.args.kwonlyargs}
+        class_id = f"{dotted_module}.{name.rsplit('.', 1)[0]}"
+        for stmt in ast.walk(node):
+            if not (isinstance(stmt, ast.Assign) and len(stmt.targets) == 1):
+                continue
+            target, value = stmt.targets[0], stmt.value
+            if (
+                isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name)
+                and target.value.id == "self" and isinstance(value, ast.Name) and value.id in own
+            ):
+                edges.append(StoresEdge(
+                    function_id=f"{dotted_module}.{name}", param=value.id, class_id=class_id,
+                    attribute=target.attr, chunk_id=make_chunk_id(repo, path, start, end),
+                ))
+    return edges
+
+
+def returned_dict_keys(text: str, *, dotted_module: str) -> dict[str, dict[str, str]]:
+    """For each function that returns a dict literal, which key carries which
+    of its own parameters: `return {"verify": verify, ...}` ->
+    {"verify": "verify"}. A per-function summary the flow pass reads when a
+    caller assigns the call's result to a variable and spreads it (D84).
+    A rebound name (`verify = merge_setting(verify, self.verify)`) still
+    counts as the parameter: the value went through, changed or not."""
+    tree = ast.parse(text)
+    out: dict[str, dict[str, str]] = {}
+    for name, node, _start, _end in iter_symbols(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        own = {a.arg for a in node.args.posonlyargs + node.args.args + node.args.kwonlyargs}
+        keys: dict[str, str] = {}
+        for ret in ast.walk(node):
+            if isinstance(ret, ast.Return) and isinstance(ret.value, ast.Dict):
+                for k, v in zip(ret.value.keys, ret.value.values):
+                    if isinstance(k, ast.Constant) and isinstance(k.value, str) and isinstance(v, ast.Name) and v.id in own:
+                        keys[k.value] = v.id
+        if keys:
+            out[f"{dotted_module}.{name}"] = keys
+    return out
+
+
+@dataclass(frozen=True)
 class Parameter:
     name: str
     has_default: bool

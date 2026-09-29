@@ -291,6 +291,8 @@ def _plan_model_for(template_id: str, entity_ids: list[str]) -> type[BaseModel] 
             fields["max_hops"] = (Literal[_HOPS], ...)
         elif spec.kind == "package":
             fields["package"] = (Literal[PACKAGES], ...)
+        elif spec.kind == "identifier":
+            fields["name"] = (str, ...)
     return create_model(
         f"Plan_{template_id}", __config__=ConfigDict(extra="forbid"), **fields
     )

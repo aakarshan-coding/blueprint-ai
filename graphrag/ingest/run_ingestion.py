@@ -21,7 +21,9 @@ from graphrag.ingest.ast_extract import (
     extract_parameters,
     extract_raises,
     extract_returns,
+    extract_stores,
     module_dotted_name,
+    returned_dict_keys,
 )
 from graphrag.ingest.chunk import (
     make_chunk_id,
@@ -33,7 +35,7 @@ from graphrag.ingest.chunk import (
     iter_symbols,
 )
 from graphrag.ingest.embed import embed_texts, load_model
-from graphrag.ingest.jedi_calls import build_project, expand_overrides, resolve_calls
+from graphrag.ingest.jedi_calls import CallEdge, build_project, expand_overrides, resolve_calls
 from graphrag.ingest.load_vectors import upsert_chunks
 from graphrag.ingest.load_graph import (
     build_defined_in_edges,
@@ -115,7 +117,7 @@ def run_ast_pass() -> tuple[
     import_aliases: dict[str, dict[str, str]] = {}
     edges = {
         "inherits_from": [], "raises": [], "parameters": [], "calls": [],
-        "exception_wrapping": [], "jedi_calls": [], "returns": [],
+        "exception_wrapping": [], "jedi_calls": [], "returns": [], "stores": [],
     }
 
     # One jedi project per repo, the other repo importable from it — jedi
@@ -127,6 +129,20 @@ def run_ast_pass() -> tuple[
         for repo, root in src_roots.items()
     }
     packages = tuple(REPOS)
+
+    # A pre-pass the flow analysis needs before any module is walked (D84):
+    # which returned dict key carries which parameter, for every function
+    # in both packages, and every function's parameter names in order.
+    summaries: dict[str, dict[str, str]] = {}
+    callee_params: dict[str, list[str]] = {}
+    for repo, cfg in REPOS.items():
+        src_root = cfg["root"] / cfg["src"]
+        for p in collect_python_files(repo, cfg):
+            text = p.read_text(encoding="utf-8", errors="replace")
+            dotted = module_dotted_name(str(p), src_root=str(src_root), package_root=repo)
+            summaries.update(returned_dict_keys(text, dotted_module=dotted))
+            for pe in extract_parameters(text, dotted_module=dotted):
+                callee_params[pe.source_id] = [q.name for q in pe.parameters]
 
     for repo, cfg in REPOS.items():
         src_root = cfg["root"] / cfg["src"]
@@ -161,6 +177,9 @@ def run_ast_pass() -> tuple[
             edges["returns"] += extract_returns(
                 text, repo=repo, path=str(p), dotted_module=dotted
             )
+            edges["stores"] += extract_stores(
+                text, repo=repo, path=str(p), dotted_module=dotted
+            )
             param_edges = extract_parameters(text, dotted_module=dotted)
             edges["parameters"] += param_edges
             # The surface-name inventory is still collected — replay's
@@ -170,6 +189,7 @@ def run_ast_pass() -> tuple[
             edges["jedi_calls"] += resolve_calls(
                 text, repo=repo, path=str(p), dotted_module=dotted,
                 project=projects[repo], packages=packages,
+                summaries=summaries, callee_params=callee_params,
             )
             # Unwired until D57. Every WRAPS_EXCEPTION edge in the first
             # graph came from the LLM reading docstrings, which describe the
@@ -495,7 +515,7 @@ def run_full_ingestion(
     # the write) and makes a re-apply converge: an edge jedi no longer
     # produces must not survive from an earlier pass (D80).
     neo4j_session.run("MATCH ()-[r:CALLS]->() WHERE r.source IN ['jedi', 'override'] DELETE r")
-    neo4j_session.run("MATCH ()-[r:PASSES_TO]->() WHERE r.source = 'jedi' DELETE r")
+    neo4j_session.run("MATCH ()-[r:PASSES_TO]->() WHERE r.source IN ['jedi', 'override'] DELETE r")
     # Where a parameter's value goes (D83): `verify` in HTTPAdapter.send is
     # passed at position 2 of self.cert_verify(...), whose third own
     # parameter is `verify`, so HTTPAdapter.send.verify PASSES_TO
@@ -503,6 +523,20 @@ def run_full_ingestion(
     # named, the edge points at the callee itself.
     callee_params = {e.source_id: [p.name for p in e.parameters] for e in edges["parameters"]}
     param_ids = {parameter_id(f, p) for f, ps in callee_params.items() for p in ps}
+    # STORED_ON (D84): `self.attr = param`. Deleted and rewritten to converge.
+    print("Writing STORED_ON edges...")
+    neo4j_session.run("MATCH ()-[r:STORED_ON]->() WHERE r.source = 'ast' DELETE r")
+    for edge in edges.get("stores", []):
+        pid = parameter_id(edge.function_id, edge.param)
+        if pid not in param_ids or edge.class_id not in node_universe:
+            continue
+        merge_edge(
+            neo4j_session, source_id=pid, relationship="STORED_ON",
+            target_id=edge.class_id, chunk_id=edge.chunk_id, confidence=1.0,
+            source="ast", attribute=edge.attribute,
+        )
+        stats["ast_edges_written"] += 1
+
     print("Writing jedi CALLS edges...")
     for edge in edges["jedi_calls"]:
         # jedi sees definitions iter_symbols does not — functions under
@@ -526,6 +560,13 @@ def run_full_ingestion(
             names = callee_params.get(edge.target_id, [])
             callee_name = keyword if keyword else (names[index] if index is not None and index < len(names) else None)
             target = parameter_id(edge.target_id, callee_name) if callee_name else None
+            if target not in param_ids and keyword:
+                # A key no named parameter takes lands in the callee's
+                # **kwargs, if it has one, so the flow can continue:
+                # Session.send(**send_kwargs) takes `verify` in `kwargs`
+                # and spreads it on to the adapter (D84).
+                catch_all = next((n for n in names if n.endswith("kwargs")), None)
+                target = parameter_id(edge.target_id, catch_all) if catch_all else None
             if target not in param_ids:
                 target = edge.target_id
             merge_edge(
@@ -533,6 +574,18 @@ def run_full_ingestion(
                 target_id=target, chunk_id=edge.chunk_id, confidence=1.0, source="jedi",
             )
             stats["ast_edges_written"] += 1
+            # A flow into a base method also reaches each override, as a
+            # call does (D68): kwargs spread into BaseAdapter.send reach
+            # HTTPAdapter.send at runtime (D84).
+            if target == edge.target_id:
+                for o in expand_overrides(
+                    [CallEdge(source_id=source_param, surface="", target_id=target, chunk_id=edge.chunk_id)],
+                    subclasses=subclasses, node_universe=node_universe,
+                ):
+                    merge_edge(
+                        neo4j_session, source_id=source_param, relationship="PASSES_TO",
+                        target_id=o.target_id, chunk_id=edge.chunk_id, confidence=1.0, source="override",
+                    )
 
     # A call to a base-class method also reaches each override (D68):
     # jedi's static answer plus the runtime possibilities the inheritance

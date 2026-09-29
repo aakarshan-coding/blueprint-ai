@@ -652,3 +652,30 @@ def test_a_parameters_neighbourhood_is_followed_by_where_every_same_named_parame
     assert (":T12", "verify") in session.expansion_queries
     assert "requests.adapters.HTTPAdapter.send.verify is passed to requests.adapters.HTTPAdapter.cert_verify.verify." in statements
     assert "requests.adapters.HTTPAdapter.cert_verify.verify is passed to urllib3.util.ssl_.resolve_cert_reqs.candidate." in statements
+
+
+def test_seeding_looks_deeper_when_the_top_passages_are_all_prose():
+    """A question naming nothing, whose top passages are docs, still gets a
+    code anchor from further down the ranking (D84)."""
+    from tests.fakes import _Cursor
+    resolver = FakeResolver({"HTTPAdapter.send": "requests.adapters.HTTPAdapter.send"})
+    code_row = ("c9", "requests", "src/requests/adapters.py", "HTTPAdapter.send", "code", "...", 0.3)
+
+    class _DeeperConn(FakeConn):
+        """Docs only at the default depth; a code chunk further down."""
+
+        def cursor(self):
+            class C(_Cursor):
+                def execute(s, q, p=None):
+                    s._rows = [DOC_ROW, code_row] if (p or {}).get("k", 0) >= 20 else [DOC_ROW]
+
+            return C([DOC_ROW])
+
+    session = FakeSession([T1_ROW], descriptions={"requests.adapters.HTTPAdapter.send": (["Function"], 30)})
+    client = FakeOpenAI(mentions=[{"surface": "nothing", "package": "unknown"}],
+                        plan={"template_id": "T1_NEIGHBORS", "entity_id": "requests.adapters.HTTPAdapter.send"})
+
+    result = _retrieve(conn=_DeeperConn(), neo4j_session=session, resolver=resolver, openai_client=client)
+
+    assert result.seeded_from_passages is True
+    assert "requests.adapters.HTTPAdapter.send" in [c.canonical_id for c in result.candidates]

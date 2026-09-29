@@ -239,3 +239,42 @@ def test_a_call_records_which_of_the_callers_parameters_it_passes(tmp_path):
     by_target = {e.target_id: e.passes for e in edges if e.source_id == "pkg.p.send"}
     assert by_target["pkg.p.cert_verify"] == (("verify", None, 2), ("cert", None, 3))
     assert by_target["pkg.p.helper"] == (("timeout", "timeout", None),)
+
+
+def test_a_parameter_flows_through_a_returned_dict_an_update_and_a_spread(tmp_path):
+    """Session.request in miniature: settings = self.merge(..., verify, cert);
+    send_kwargs = {"timeout": timeout}; send_kwargs.update(settings);
+    self.send(prep, **send_kwargs). verify reaches send's verify parameter;
+    timeout reaches send's timeout; send's own **kwargs spread on reaches
+    the adapter (D84)."""
+    (tmp_path / "pkg").mkdir(exist_ok=True)
+    (tmp_path / "pkg" / "__init__.py").write_text("")
+    (tmp_path / "pkg" / "s.py").write_text(textwrap.dedent("""
+        def adapter_send(request, verify=True, timeout=None):
+            pass
+
+        class Session:
+            def merge(self, url, verify, cert):
+                return {"verify": verify, "cert": cert}
+
+            def request(self, url, timeout=None, verify=None, cert=None):
+                settings = self.merge(url, verify, cert)
+                send_kwargs = {"timeout": timeout}
+                send_kwargs.update(settings)
+                return self.send(url, **send_kwargs)
+
+            def send(self, request, **kwargs):
+                return adapter_send(request, **kwargs)
+    """))
+    from graphrag.ingest.ast_extract import extract_parameters, returned_dict_keys
+    text = (tmp_path / "pkg" / "s.py").read_text()
+    summaries = returned_dict_keys(text, dotted_module="pkg.s")
+    callee_params = {e.source_id: [p.name for p in e.parameters] for e in extract_parameters(text, dotted_module="pkg.s")}
+    project = build_project(tmp_path, others=[])
+    edges = resolve_calls(text, repo="pkg", path=str(tmp_path / "pkg" / "s.py"), dotted_module="pkg.s",
+                          project=project, packages=("pkg",), summaries=summaries, callee_params=callee_params)
+    by = {(e.source_id, e.target_id): e.passes for e in edges}
+    assert ("verify", "verify", None) in by[("pkg.s.Session.request", "pkg.s.Session.send")]
+    assert ("cert", "cert", None) in by[("pkg.s.Session.request", "pkg.s.Session.send")]
+    assert ("timeout", "timeout", None) in by[("pkg.s.Session.request", "pkg.s.Session.send")]
+    assert ("kwargs", None, None) in by[("pkg.s.Session.send", "pkg.s.adapter_send")]

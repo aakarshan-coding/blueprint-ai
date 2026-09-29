@@ -203,6 +203,13 @@ def retrieve(
             if not candidates or only_modules:
                 have = {c.canonical_id for c in candidates}
                 seeds = [s for s in _seed_from_passages(result.passages, resolver=resolver) if s not in have]
+                if not seeds:
+                    # The top passages can all be prose. A question that
+                    # names nothing ("when urllib3 rejects a header value
+                    # during send") still has code near it in the vector
+                    # space; look further down for a code chunk (D84).
+                    deeper = search_chunks(question, conn=conn, model=embedding_model, k=max(k, 5) * 4)
+                    seeds = [s for s in _seed_from_passages(deeper, resolver=resolver) if s not in have][:3]
                 if seeds:
                     info = describe(seeds)
                     candidates = candidates + [
@@ -292,7 +299,9 @@ def retrieve(
     # filtered to one relationship and its rows *are* the answer: capping it
     # cut "which exceptions derive from RequestException" from fifteen to
     # eight and dropped the ValueError ones (D66, 3h-04).
-    if template_id not in ("T8_RELATED_BY", "T10_RAISED_BY_METHODS_OF", "T11_EDGES_IN_PACKAGE"):
+    if template_id not in (
+        "T8_RELATED_BY", "T10_RAISED_BY_METHODS_OF", "T11_EDGES_IN_PACKAGE", "T13_FUNCTIONS_WITH_PARAMETER",
+    ):
         result.graph_facts = rank_facts(question, result.graph_facts, model=embedding_model)
 
     # A wrap chain answers "what does requests raise when urllib3 raises X",

@@ -432,3 +432,33 @@ def test_extract_returns_reads_the_annotation_and_ignores_typing_scaffolding():
     assert edges["pkg.m.maybe"] == ["Response"]
     assert edges["pkg.m.quoted"] == ["urllib3.response.HTTPResponse"]
     assert "pkg.m.plain" not in edges and "pkg.m.none" not in edges and "pkg.m.untyped" not in edges
+
+
+def test_extract_stores_records_self_attribute_assignments_from_parameters():
+    import textwrap
+    from graphrag.ingest.ast_extract import extract_stores
+    src = textwrap.dedent("""
+        class Session:
+            def __init__(self, verify=True):
+                self.verify = verify
+                self.count = 0
+            def other(self, x):
+                y = x
+    """)
+    edges = extract_stores(src, repo="r", path="s.py", dotted_module="pkg.s")
+    assert [(e.function_id, e.param, e.class_id, e.attribute) for e in edges] == [
+        ("pkg.s.Session.__init__", "verify", "pkg.s.Session", "verify")]
+
+
+def test_returned_dict_keys_maps_keys_to_the_parameters_they_carry():
+    import textwrap
+    from graphrag.ingest.ast_extract import returned_dict_keys
+    src = textwrap.dedent("""
+        def merge(self, url, proxies, stream, verify, cert):
+            verify = merge_setting(verify, self.verify)
+            return {"proxies": proxies, "stream": stream, "verify": verify, "cert": cert, "url": "x"}
+        def other(self):
+            return 3
+    """)
+    assert returned_dict_keys(src, dotted_module="pkg.s") == {
+        "pkg.s.merge": {"proxies": "proxies", "stream": "stream", "verify": "verify", "cert": "cert"}}

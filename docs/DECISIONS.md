@@ -3239,6 +3239,44 @@ and taken from a resolved id), then one hop further. Live: both verify questions
 flow through attributes (`self.verify`). Those are the gaps the two verify questions still
 have between `Session.request` and `HTTPAdapter.send`; the answer model has both ends.
 
+## D84 — The four leftovers: flow through dicts and kwargs, stores on self, parameters by name, deeper seeding
+
+**Status:** applied; 369 tests; ontology seventeen relationship types; graph re-applied
+twice. Live-checked, not benchmarked.
+
+**1. Flow through a dict or a keyword pack.** The verify value leaves `Session.request`
+inside a settings dict and arrives at `HTTPAdapter.send` as a keyword argument; D83's
+direct-argument edges stopped at the dict. A bounded data-flow pass now follows four
+shapes inside a function, in statement order: a dict literal holding parameters,
+`var[key] = param`, `var.update(other)`, and `var = f(...)` where f's summary says which
+returned key carries which of f's parameters, mapped back through the arguments the call
+passed. A pre-pass over both packages builds those summaries (`return {"verify": verify,
+...}`). At a call with `**var`, each key reaches the callee's parameter of that name; a
+key no named parameter takes lands in the callee's `**kwargs` parameter; a function's own
+`**kwargs` spread on reaches the callee as a whole, and through overrides, as calls do.
+52 edges gained, then 20 override edges. The graph now holds the path the two verify
+questions asked for: `Session.request.verify → Session.send.kwargs → HTTPAdapter.send`,
+and separately `HTTPAdapter.send.verify → HTTPAdapter.cert_verify.verify`. Not modelled:
+a value rebound through a call (`verify = merge_setting(verify, ...)` counts as the
+parameter still, an approximation), and anything the summaries cannot see.
+
+**2. Stores on self.** `STORED_ON`: `self.attr = param` in a method, 165 edges, with the
+attribute name on the edge. The read side (`self.attr` used later) is not modelled; no
+benchmark question needs it yet.
+
+**3. Parameters by name.** `T13_FUNCTIONS_WITH_PARAMETER`, planner-visible: every
+function defining a parameter of one name, the name being model text validated as a bare
+identifier and bound, never interpolated. Live: "which functions in requests.api name a
+data parameter" plans it and the context lists all 27 across both packages, the three
+required among them.
+
+**4. Deeper seeding.** When the top passages are all prose and nothing seeds, a second
+search four times as deep looks for a code chunk. Live on the one no-anchor question it
+found `inject_into_urllib3`, a contrib function nearer in name than in meaning; the
+question is still unanswered, now with a wrong anchor instead of none. Kept, because on
+a question whose nearest code chunk is the right one it would work, and it costs one
+local search; the miss is the vector ranking's, not the seeding's.
+
 ---
 
 ## Open questions for the Phase 2 sweep

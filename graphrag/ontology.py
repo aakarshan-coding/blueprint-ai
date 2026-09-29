@@ -15,6 +15,8 @@ AST_RELATIONSHIPS = frozenset({
     # D83: what a function's return value is, and where a parameter's value
     # goes. Two question shapes had no edge to answer them (D78, D82).
     "RETURNS", "PASSES_TO",
+    # D84: a parameter's value kept on the object (`self.verify = verify`).
+    "STORED_ON",
 })
 
 LLM_RELATIONSHIPS = frozenset({
@@ -49,6 +51,10 @@ RELATIONSHIP_MEANINGS = {
     "RAISES": "this function can throw that exception.",
     "HAS_PARAMETER": "this function accepts that parameter.",
     "RETURNS": "this function's return value is an instance of that class.",
+    "STORED_ON": (
+        "this parameter's value is stored on that class as an attribute, to "
+        "be read back by its other methods later."
+    ),
     "PASSES_TO": (
         "this parameter's value is passed as an argument to that function, or "
         "to that named parameter of it. It says where the value goes next, "

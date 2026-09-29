@@ -40,7 +40,7 @@ def test_every_offered_template_is_described_to_the_model():
 
 def test_every_offered_template_has_parameters_a_plan_can_fill():
     # Every kind _plan_model_for knows how to turn into a schema field.
-    fillable = {"entity_id", "relationship", "max_hops", "package"}
+    fillable = {"entity_id", "relationship", "max_hops", "package", "name"}
     unfillable = {
         name for name, t in PLANNABLE.items()
         if {spec.name for spec in t.params} - fillable
@@ -564,3 +564,10 @@ def test_repair_plan_scopes_a_count_to_the_most_specific_module_named():
     # A module plus a specific entity: the count is left to the model's choice.
     candidates.append(Candidate("requests.exceptions.Timeout", kind="Class", degree=6))
     assert repair_plan("T6_COUNT_BY_REL", {"relationship": "INHERITS_FROM"}, candidates)[2] is None
+
+
+def test_the_plan_model_takes_a_parameter_name_as_free_text_for_t13():
+    from graphrag.retrieval.graph_query import _plan_model_for
+    model = _plan_model_for("T13_FUNCTIONS_WITH_PARAMETER", [])
+    assert model is not None
+    assert model(template_id="T13_FUNCTIONS_WITH_PARAMETER", name="data").name == "data"

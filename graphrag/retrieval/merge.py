@@ -16,6 +16,7 @@ REL_PHRASES = {
     "HAS_PARAMETER": "has parameter",
     "RETURNS": "returns an instance of",
     "PASSES_TO": "is passed to",
+    "STORED_ON": "is stored as an attribute on",
     "DOCUMENTED_IN": "is documented in",
     "EXPLAINS": "explains",
     "IMPLEMENTS": "implements",
@@ -357,6 +358,8 @@ def verbalize(
         return _verbalize_edges_from(rows, relationship=relationship)
     if template_id == "T12_FLOW_OF_PARAMETER_NAME":
         return _verbalize_edges_from(rows, relationship="PASSES_TO")
+    if template_id == "T13_FUNCTIONS_WITH_PARAMETER":
+        return _verbalize_edges_from(rows, relationship="DEFINED_IN")
     if template_id == "T6_COUNT_BY_REL":
         return _verbalize_count(rows, relationship=relationship)
     if template_id == "T7_DOCS_FOR_SYMBOL":

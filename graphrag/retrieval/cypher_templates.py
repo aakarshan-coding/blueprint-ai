@@ -262,6 +262,24 @@ TEMPLATES: dict[str, Template] = {
         ),
         params=(ParamSpec("name", "identifier"),),
     ),
+    "T13_FUNCTIONS_WITH_PARAMETER": Template(
+        # "Which functions in requests.api name a data parameter" (D84): the
+        # functions that define a parameter of one name. The name is model
+        # text, validated as a bare identifier and bound, never interpolated.
+        cypher=(
+            "MATCH (p:Parameter)-[r:DEFINED_IN]->(f) WHERE p.id ENDS WITH '.' + $name "
+            "RETURN p.id AS entity, f.id AS neighbor, r.chunk_id AS chunk_id, "
+            "coalesce(r.source, 'llm') AS source, "
+            "labels(p) AS entity_labels, labels(f) AS neighbor_labels ORDER BY f.id LIMIT 100"
+        ),
+        params=(ParamSpec("name", "identifier"),),
+        description=(
+            "Every function that defines a parameter of one name, across both "
+            "packages. Use for 'which functions take a data parameter' or "
+            "'where is verify a parameter'. Needs name (the bare parameter "
+            "name as written), no entity."
+        ),
+    ),
     "T7_DOCS_FOR_SYMBOL": Template(
         cypher=(
             "MATCH (a {id: $entity_id})-[:DOCUMENTED_IN]->(d) "

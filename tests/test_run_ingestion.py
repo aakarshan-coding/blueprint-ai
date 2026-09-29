@@ -139,4 +139,13 @@ def test_ingestion_writes_returns_and_passes_to_edges_and_converges():
     from graphrag.ingest import run_ingestion
     src = inspect.getsource(run_ingestion.run_full_ingestion)
     assert 'relationship="RETURNS"' in src and "r.source = 'ast' DELETE r" in src
-    assert 'relationship="PASSES_TO"' in src and "PASSES_TO]->() WHERE r.source = 'jedi' DELETE r" in src
+    assert 'relationship="PASSES_TO"' in src and "PASSES_TO]->() WHERE r.source IN ['jedi', 'override'] DELETE r" in src
+
+
+def test_unmatched_flow_keys_land_in_kwargs_and_flows_follow_overrides():
+    import inspect
+    from graphrag.ingest import run_ingestion
+    src = inspect.getsource(run_ingestion.run_full_ingestion)
+    assert 'n.endswith("kwargs")' in src
+    assert "PASSES_TO]->() WHERE r.source IN ['jedi', 'override'] DELETE r" in src
+    assert 'target_id=o.target_id' in src

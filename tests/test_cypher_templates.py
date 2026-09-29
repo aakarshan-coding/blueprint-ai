@@ -351,3 +351,12 @@ def test_flow_of_parameter_name_takes_a_bare_identifier_only():
     assert ":PASSES_TO" in query and params["name"] == "verify"
     with pytest.raises(ValueError):
         run_template(session, "T12_FLOW_OF_PARAMETER_NAME", {"name": "x OR 1=1"}, known_entity_ids=set())
+
+
+def test_functions_with_parameter_is_offered_and_binds_a_validated_name():
+    from graphrag.retrieval.cypher_templates import TEMPLATES
+    assert TEMPLATES["T13_FUNCTIONS_WITH_PARAMETER"].description
+    session = _FakeSession()
+    run_template(session, "T13_FUNCTIONS_WITH_PARAMETER", {"name": "data"}, known_entity_ids=set())
+    query, params = session.calls[0]
+    assert ":DEFINED_IN" in query and params["name"] == "data" and "$name" in query
