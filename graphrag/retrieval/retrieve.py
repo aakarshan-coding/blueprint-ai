@@ -79,25 +79,33 @@ def _nodes_of(facts: list[GraphFact]) -> list[str]:
 
 
 def _expand(
-    facts: list[GraphFact], *, relationship: str, neo4j_session, from_facts=None, extra_ids=()
+    facts: list[GraphFact], *, relationship: str, neo4j_session, from_facts=None, extra_ids=(), ids=None
 ) -> tuple[list[GraphFact], list[GraphFact]]:
     """Append one outgoing hop of `relationship` from every node the kept
     facts name (or only the nodes `from_facts` name), plus `extra_ids`.
     Returns the new list and the facts it added, so a caller can hop again
     from just those."""
-    ids = _nodes_of(facts if from_facts is None else from_facts)
+    # A relationship written "<-REL" is followed against the arrow: the
+    # nodes are the targets and the new facts' subjects are what points at
+    # them (subclasses, callers). `ids` overrides the start set.
+    incoming = relationship.startswith("<-")
+    relationship = relationship.removeprefix("<-")
+    if ids is None:
+        ids = _nodes_of(facts if from_facts is None else from_facts)
+    ids = list(ids)
     for extra in extra_ids:
         if extra not in ids:
             ids.append(extra)
     if not ids:
         return facts, []
+    template = "T9_EDGES_TO" if incoming else "T9_EDGES_FROM"
     rows = run_template(
-        neo4j_session, "T9_EDGES_FROM",
+        neo4j_session, template,
         {"entity_ids": ids, "relationship": relationship}, known_entity_ids=set(ids),
     )
     stated = {f.statement for f in facts}
     added = [
-        f for f in verbalize("T9_EDGES_FROM", rows, relationship=relationship)
+        f for f in verbalize(template, rows, relationship=relationship)
         if f.statement not in stated
     ]
     return facts + added, added
@@ -109,8 +117,10 @@ def _expand(
 # become grandparents ("what is that parent's parent", 3h-24) without
 # walking every ancestor of every node.
 _EXPANSIONS: dict[tuple[str, str | None], list[tuple[str, bool]]] = {
-    # wrap chain: "...and what does that inherit from" -> parents, then theirs
-    ("T3_EXCEPTION_WRAP_CHAIN", None): [("INHERITS_FROM", False), ("INHERITS_FROM", True)],
+    # wrap chain: "...and what does that inherit from" -> parents, then theirs;
+    # and the anchor's own subclasses (D85), since a base class is a common
+    # wrong-template anchor for "which exceptions derive from X"
+    ("T3_EXCEPTION_WRAP_CHAIN", None): [("INHERITS_FROM", False), ("INHERITS_FROM", True), ("<-INHERITS_FROM", False)],
     # a module's members: which are warnings, which have two bases
     ("T8_RELATED_BY", "DEFINED_IN"): [("INHERITS_FROM", False)],
     # what a function raises: what each of those wraps, and inherits from
@@ -353,6 +363,8 @@ def retrieve(
     if hops and result.graph_facts:
         try:
             last_added: list[GraphFact] | None = None
+            anchor_match = re.search(r"'entity_id': '([^']+)'", result.plan or "")
+            anchor_ids = [anchor_match.group(1)] if anchor_match else []
             for rel, follow in hops:
                 result.graph_facts, added = _expand(
                     result.graph_facts, relationship=rel, neo4j_session=neo4j_session,
@@ -360,6 +372,9 @@ def retrieve(
                         last_added if follow
                         else ([f for f in result.graph_facts if f.subject in same_named] if same_named else None)
                     ),
+                    # an incoming hop starts from the anchor alone: the
+                    # subclasses of every node a chain touched would be noise
+                    ids=anchor_ids if rel.startswith("<-") else None,
                 )
                 result.expanded += len(added)
                 last_added = added

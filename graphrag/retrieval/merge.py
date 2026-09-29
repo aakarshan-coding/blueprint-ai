@@ -321,7 +321,7 @@ def verbalize(
     """Convert one run_template() result into readable, cited statements."""
     if template_id == "T1_NEIGHBORS":
         return _verbalize_neighbors(rows, entity_id=entity_id)
-    if template_id == "T9_EDGES_FROM":
+    if template_id in ("T9_EDGES_FROM", "T9_EDGES_TO"):
         return _verbalize_edges_from(rows, relationship=relationship)
     if template_id == "T8_RELATED_BY":
         # T8 rows carry no `relationship` column — the type is fixed by the

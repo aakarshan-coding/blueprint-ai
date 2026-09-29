@@ -246,6 +246,23 @@ TEMPLATES: dict[str, Template] = {
             "relationship, no entity."
         ),
     ),
+    # T9's mirror: incoming edges of one type into the given nodes. Used
+    # after a wrap chain for the anchor's subclasses (D85): "which
+    # exceptions ultimately derive from RequestException" was planned as a
+    # wrap chain from RequestException five runs of five, and the chain has
+    # nothing to say about subclasses.
+    "T9_EDGES_TO": Template(
+        cypher=(
+            "MATCH (a)-[r:__relationship__]->(b) WHERE b.id IN $entity_ids "
+            "RETURN a.id AS entity, b.id AS neighbor, r.chunk_id AS chunk_id, "
+            "coalesce(r.source, 'llm') AS source, "
+            "labels(a) AS entity_labels, labels(b) AS neighbor_labels"
+        ),
+        params=(
+            ParamSpec("entity_ids", "entity_ids"),
+            ParamSpec("relationship", "relationship_type"),
+        ),
+    ),
     # Not offered to the planner: retrieve() runs it for a Parameter anchor
     # (D83). A bare parameter name resolves to one documented parameter
     # (`Session.request.verify`), and "which function applies verify" is

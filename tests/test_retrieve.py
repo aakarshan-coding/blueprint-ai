@@ -679,3 +679,42 @@ def test_seeding_looks_deeper_when_the_top_passages_are_all_prose():
 
     assert result.seeded_from_passages is True
     assert "requests.adapters.HTTPAdapter.send" in [c.canonical_id for c in result.candidates]
+
+
+def test_a_wrap_chain_also_fetches_the_anchors_subclasses():
+    """"Which exceptions ultimately derive from RequestException" planned a
+    wrap chain from RequestException five runs of five (D85). The chain
+    says nothing about subclasses; an incoming INHERITS_FROM hop from the
+    anchor alone does."""
+    chain_rows = [{
+        "chain": ["requests.exceptions.RequestException", "requests.exceptions.ConnectionError"],
+        "chunk_ids": ["c1"], "starts": ["requests.exceptions.ConnectionError"],
+    }]
+    session = _ChainThenParents(chain_rows, parents={})
+    incoming = {"requests.exceptions.RequestException": ["requests.exceptions.MissingSchema"]}
+    original_run = session.run
+
+    def run(query, **params):
+        if "WHERE b.id IN $entity_ids" in query:
+            session.expansion_queries.append((":<-INHERITS_FROM", params["entity_ids"]))
+            rows = [{"entity": sub, "neighbor": e, "chunk_id": "s1", "source": "ast"}
+                    for e in params["entity_ids"] for sub in incoming.get(e, [])]
+
+            class R:
+                def data(self_inner):
+                    return rows
+
+            return R()
+        return original_run(query, **params)
+
+    session.run = run
+    resolver = FakeResolver({"ProxyError": "requests.exceptions.RequestException"})
+    client = FakeOpenAI(mentions=[{"surface": "ProxyError", "package": "requests"}],
+                        plan={"template_id": "T3_EXCEPTION_WRAP_CHAIN",
+                              "entity_id": "requests.exceptions.RequestException", "max_hops": 3})
+
+    result = _retrieve(neo4j_session=session, resolver=resolver, openai_client=client)
+
+    assert (":<-INHERITS_FROM", ["requests.exceptions.RequestException"]) in session.expansion_queries
+    assert "requests.exceptions.MissingSchema inherits from requests.exceptions.RequestException." in [
+        f.statement for f in result.graph_facts]
