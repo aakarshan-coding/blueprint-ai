@@ -52,6 +52,13 @@ _REFUSAL_MARKERS = (
     "unable to answer",
     "i don't know",
     "no information",
+    # "The context does not contain information about the capital of France"
+    # was scored as answering (D89): a refusal in words the list lacked.
+    "does not contain",
+    "doesn't contain",
+    "not contain information",
+    "no relevant information",
+    "does not include",
 )
 
 

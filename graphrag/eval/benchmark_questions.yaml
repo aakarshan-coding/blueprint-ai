@@ -1296,9 +1296,9 @@
 
 - id: ag-38
   category: aggregation
-  question: "How many functions does requests.utils define at module level?"
-  expects: "44"
-  must_contain_any: ["44"]
+  question: "How many distinct functions does requests.utils define at module level?"
+  expects: "40 (the source has 44 def statements, four of which are typing overloads of existing names)"
+  must_contain_any: ["40", "forty"]
   source: "requests/utils.py"
 
 - id: ag-39
@@ -1332,8 +1332,8 @@
 - id: ag-43
   category: aggregation
   question: "How many parameters does HTTPConnectionPool.urlopen accept, not counting self?"
-  expects: "14"
-  must_contain_any: ["14"]
+  expects: "14 named parameters plus **response_kw; 14 or 15 both accepted"
+  must_contain_any: ["14", "fourteen", "15", "fifteen"]
   source: "urllib3/connectionpool.py HTTPConnectionPool.urlopen"
 
 - id: ag-44

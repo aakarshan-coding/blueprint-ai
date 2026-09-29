@@ -256,3 +256,10 @@ def test_grade_answer_asks_for_a_report_and_derives_the_grade():
 def test_the_rubric_says_extra_detail_never_lowers_the_grade():
     from graphrag.eval.grade import JUDGE_RUBRIC
     assert "never a reason" in JUDGE_RUBRIC
+
+
+def test_a_refusal_phrased_as_does_not_contain_is_a_refusal():
+    """Two out-of-scope answers that declined were scored as answering
+    because the marker list lacked their wording (D89)."""
+    assert looks_like_refusal("The context does not contain information about the capital of France.")
+    assert looks_like_refusal("The provided context doesn't contain details on pandas.")

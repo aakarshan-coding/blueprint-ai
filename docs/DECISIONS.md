@@ -3432,6 +3432,66 @@ non-technical questions.
 **Cost.** Five runs on 220 questions is roughly two hours. The D85 code is what will be
 measured, plus D86 (unmeasured).
 
+## D89 — Five runs on 220 questions: the larger set says the same thing, with smaller numbers
+
+**Status:** measured. Files `benchmark_results_exp8_1..5.json` as recorded and
+`benchmark_results_exp8_scored_*` after the two grading corrections below. Same code as
+D85 plus D86. No connection errors in any run. Roughly 28 minutes per run.
+
+**Two grading corrections found by the run, applied before scoring:**
+- Two of the new references were wrong and the system was right. `requests.utils` has 44
+  `def` statements but four are typing overloads of existing names; the module defines 40
+  distinct functions, which is what the graph said. `urlopen` has 14 named parameters
+  plus `**response_kw`; 14 and 15 are both accepted now.
+- The refusal check missed the wording "the context does not contain information", so
+  answers that declined were scored as answering, on both systems. Markers added. This
+  is why out-of-scope moves from 91.5 / 66.0 as recorded to 98.0 / 85.5 after scoring:
+  the baseline was declining more often than the old markers could see.
+
+**Strict accuracy, 220 questions, five runs:**
+
+| category | n | hybrid | baseline | delta |
+|---|---|---|---|---|
+| single_hop | 45 | 95.6 | 95.6 | +0.0 |
+| two_hop | 45 | 65.3 [64.4..66.7] | 45.4 | +20.0 [17.7..24.4] |
+| three_hop | 45 | 67.6 [64.4..68.9] | 28.4 | +39.1 [33.4..44.5] |
+| aggregation | 45 | 74.2 [71.1..77.8] | 14.2 | +60.0 [55.5..64.5] |
+| out_of_scope | 40 | 98.0 | 85.5 | +12.5 |
+| **pooled** | 220 | **79.7 [78.6..80.9]** | 53.1 | **+26.6 [24.1..29.1]** |
+
+Score with partial credit: hybrid 85.6, baseline 63.1, delta about +22.
+
+**What changed against the 90-question table, and why.** The pooled lead is +26.6 here
+against +36.9 there. Three things: two-hop is much harder in the new set (65 against 89),
+because the new two-hop questions are mostly urllib3's exception tree and ask for a
+grandparent or a second relationship the current expansions do not fetch; out-of-scope
+has thirty new questions the baseline declines on its own, so the graph's refusal
+advantage shrinks from +48 to +12; and aggregation and three-hop held (74, 68). The
+larger set is the more honest one: the original 90 leaned on the shapes the graph
+handles best.
+
+**The run-1 misses on the new questions, grouped:**
+- Two-hop, 14 misses, mostly `partial`: the second hop is a grandparent (`PoolError →
+  HTTPError → Exception`, `HTTPResponse → BaseHTTPResponse → io.IOBase`) after a
+  subclasses/parents plan, which fetched only wraps.
+- Aggregation, 7 misses: a corpus-wide count planned where one class was named; the
+  "constructor" of a class anchoring on the class, not its `__init__`; a count of warning
+  classes that needs the inheritance chain followed to `Warning`.
+- Out-of-scope, 1 real miss: the httpx question answered from general knowledge.
+
+D90 addresses the first two groups deterministically; it is not measured here.
+
+## D90 — Grandparents after a parents plan, counts scoped to a named class, "constructor", warnings named
+
+**Status:** applied; 380 tests. Not measured.
+
+Four small retrieval changes from the D89 miss groups: a subclasses/parents plan is
+followed by one more INHERITS_FROM hop (the grandparent); a corpus-wide count with
+exactly one class named becomes that class's edges of the same relationship; the word
+"constructor" next to a class name adds `Class.__init__` as a mention; and the members
+summary gains a line naming the members that derive, transitively within the facts, from
+a Warning. Each is an exact answer to a question shape the larger set exposed.
+
 ---
 
 ## Open questions for the Phase 2 sweep
