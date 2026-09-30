@@ -3492,6 +3492,41 @@ exactly one class named becomes that class's edges of the same relationship; the
 summary gains a line naming the members that derive, transitively within the facts, from
 a Warning. Each is an exact answer to a question shape the larger set exposed.
 
+## D91 — Five runs on D90: pooled 79.7 → 83.1 on 220 questions, seven up, none down
+
+**Status:** measured. Files `benchmark_results_exp9_1..5.json`; compare to
+`exp8_scored_*` (D89). Same questions and grader. No connection errors. Baseline held
+(53.1 → 53.1).
+
+| category | n | hybrid D89 | hybrid now | delta now |
+|---|---|---|---|---|
+| single_hop | 45 | 95.6 | 95.1 | +0.0 |
+| two_hop | 45 | 65.3 | **72.4** [68.9..75.6] | +26.2 [22.2..31.2] |
+| three_hop | 45 | 67.6 | **71.1** [68.9..73.3] | +42.7 [40.0..46.7] |
+| aggregation | 45 | 74.2 | **81.3** [80.0..82.2] | +67.1 [62.2..71.1] |
+| out_of_scope | 40 | 98.0 | 97.0 | +12.0 |
+| **pooled** | 220 | 79.7 | **83.1** [82.3..84.1] | **+30.0 [28.7..31.4]** |
+
+Score with partial credit: hybrid 88.2, baseline 63.0, delta +25.2 [24.3..26.1].
+
+**Seven questions from never right to right, none the other way.** Each maps to one of the
+four D90 changes: the grandparent hop (`th-21` PoolError → HTTPError → Exception, `th-24`
+HTTPSConnectionPool → HTTPConnectionPool → ConnectionPool, `th-14`, `3h-32`); the count
+scoped to the one class named (`ag-13`); "constructor" as `__init__` (`ag-40`, the
+HTTPAdapter constructor's parameters); and the warnings line (`ag-29`, seven warning
+classes in `urllib3.exceptions`).
+
+**The picture on 220 questions.** Every category the graph is meant for is above 70, and
+aggregation is above 80 in every run. The pooled lead over vector-only is 30 points,
+worst run 28.7. Two-hop remains the weakest graph category at 72; its remaining misses
+are the urllib3 exception questions where the planner anchors on the wrong one of two
+similarly named classes.
+
+**Current claim for the README:** on 220 questions over five runs, hybrid 83.1 vs
+vector-only 53.1 by strict accuracy (+30.0 [+28.7..+31.4]); 88.2 vs 63.0 with partial
+credit (+25.2 [+24.3..+26.1]); +26 on two-hop, +43 on three-hop, +67 on aggregation,
++12 on out-of-scope, even on single-hop.
+
 ---
 
 ## Open questions for the Phase 2 sweep
