@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 
 scripts/fetch_corpus.sh
 docker compose up -d
-python -m graphrag.ingest.run_ingestion --ast-only      # parser-derived graph + vector store
+graphrag ingest --corpus corpora/requests-urllib3.yaml  # parser-derived graph + vector store
 python -m graphrag.ingest.replay_llm_edges              # the model-derived edges, from the log
 for i in 1 2 3 4 5; do
   python -m graphrag.eval.run_benchmark

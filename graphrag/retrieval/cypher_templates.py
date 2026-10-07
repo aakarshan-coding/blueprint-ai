@@ -13,7 +13,8 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
-from graphrag.ontology import PACKAGES, RELATIONSHIP_TYPES
+from graphrag.corpus import get_packages
+from graphrag.ontology import RELATIONSHIP_TYPES
 
 ParamKind = Literal["entity_id", "entity_ids", "relationship_type", "hop_limit", "package", "identifier"]
 
@@ -238,12 +239,11 @@ TEMPLATES: dict[str, Template] = {
         ),
         description=(
             "Every edge of one relationship type whose source is anywhere in "
-            "one package (requests or urllib3), listed. Use for 'list all "
-            "requests exceptions that wrap a urllib3 exception' "
-            "(WRAPS_EXCEPTION, requests) or 'which requests classes inherit "
-            "from a builtin' (INHERITS_FROM, requests), when the question "
-            "names no single entity to start from. Needs package and "
-            "relationship, no entity."
+            "one of the ingested packages, listed. Use for 'list all "
+            "exceptions in package P that wrap one from another package' "
+            "(WRAPS_EXCEPTION, P) or 'which classes in P inherit from a "
+            "builtin' (INHERITS_FROM, P), when the question names no single "
+            "entity to start from. Needs package and relationship, no entity."
         ),
     ),
     # T9's mirror: incoming edges of one type into the given nodes. Used
@@ -329,8 +329,9 @@ def _validate_param(spec: ParamSpec, value, *, known_entity_ids: set[str]) -> No
         if not isinstance(value, str) or not _IDENTIFIER.match(value):
             raise ValueError(f"{value!r} is not a bare identifier")
     elif spec.kind == "package":
-        if value not in PACKAGES:
-            raise ValueError(f"{value!r} is not a corpus package ({', '.join(PACKAGES)})")
+        packages = get_packages()
+        if value not in packages:
+            raise ValueError(f"{value!r} is not a corpus package ({', '.join(packages) or 'none ingested'})")
     elif spec.kind == "relationship_type":
         if value not in RELATIONSHIP_TYPES:
             raise ValueError(f"{value!r} is not in the ontology's relationship types")

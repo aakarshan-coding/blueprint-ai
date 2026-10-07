@@ -12,6 +12,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from graphrag.corpus import get_packages
+
 from graphrag.retrieval.consistency import VOTES, majority_vote
 
 Route = Literal["GRAPH", "VECTOR", "BOTH", "REFUSE"]
@@ -26,8 +28,10 @@ class RouterDecision(BaseModel):
 
 MODEL = "gpt-4o-mini"  # cheap/fast — this is the "small model call" role (§8)
 
-_SYSTEM_PROMPT = """\
-You route questions about the requests and urllib3 Python libraries to one \
+def system_prompt(packages: tuple[str, ...] = ()) -> str:
+    names = " and ".join(packages) if packages else "the ingested"
+    return f"""\
+You route questions about the {names} Python libraries to one \
 of two retrieval systems, or both.
 
 Route to GRAPH for:
@@ -36,8 +40,8 @@ Route to GRAPH for:
 - comparisons across entities ("how do X and Y differ")
 - aggregations over relationships ("how many exceptions wrap Z")
 - counts or lists of what a module, class or function defines or contains \
-("how many functions does requests.api define", "what parameters does \
-Session.request accept", "which classes in requests.exceptions are warnings")
+("how many functions does module X define", "what parameters does method Y \
+accept", "which classes in module X are warnings")
 
 Route to VECTOR for:
 - definitions ("what is X")
@@ -47,12 +51,11 @@ Route to VECTOR for:
 Route to BOTH only when the question genuinely needs both a fact and its \
 relationships.
 
-Route to REFUSE when the question cannot be answered from the requests/urllib3 \
-documentation and source code themselves — even if it mentions "requests" or \
-"urllib3" by name. A question about integrating requests with another \
-framework (Django, Flask, Celery, ...), or about a library requests/urllib3 \
-don't depend on, is out of scope and should be REFUSE, not VECTOR or GRAPH, \
-regardless of which library names appear in it. Questions about extending \
+Route to REFUSE when the question cannot be answered from the {names} \
+documentation and source code themselves — even if it mentions one of those \
+libraries by name. A question about integrating them with another framework \
+or tool, or about a library they do not depend on, is out of scope and should \
+be REFUSE, not VECTOR or GRAPH, regardless of which library names appear in it. Questions about extending \
 or subclassing the libraries' own classes (a custom adapter, what a \
 BaseAdapter subclass must implement, a Retry subclass) are in scope: they \
 are answered from the base class's own source. Never REFUSE merely because \
@@ -61,6 +64,9 @@ confidence score for that instead.
 
 Always include a confidence score between 0 and 1 for your own classification.
 """
+
+
+_SYSTEM_PROMPT = system_prompt()
 
 
 def classify_question(
@@ -77,7 +83,7 @@ def classify_question(
     def ask() -> RouterDecision:
         response = client.responses.parse(
             model=model,
-            instructions=_SYSTEM_PROMPT,
+            instructions=system_prompt(get_packages()),
             input=question,
             text_format=RouterDecision,
             temperature=0,

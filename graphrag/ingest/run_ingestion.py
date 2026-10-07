@@ -25,10 +25,12 @@ from graphrag.ingest.ast_extract import (
     module_dotted_name,
     returned_dict_keys,
 )
+from graphrag.corpus import Corpus, Repo, get_corpus
 from graphrag.ingest.chunk import (
     make_chunk_id,
     Chunk,
     chunk_changelog,
+    chunk_markdown,
     chunk_python,
     chunk_rst,
     iter_docstrings_for_llm,
@@ -46,20 +48,8 @@ from graphrag.ingest.load_graph import (
 from graphrag.ingest.node_ids import concept_id, parameter_id
 from graphrag.ingest.resolve import Resolver
 
-REPOS = {
-    "requests": {
-        "root": Path("requests_repo"),
-        "src": "src",
-        "docs": "docs",
-        "changelog": "HISTORY.md",
-    },
-    "urllib3": {
-        "root": Path("urllib3_repo"),
-        "src": "src",
-        "docs": "docs",
-        "changelog": "CHANGES.rst",
-    },
-}
+# The corpus used to be a dict here; it is now graphrag.corpus (D93). Every
+# function below takes an optional `corpus` and falls back to the active one.
 
 # From a 20-chunk sample: ~3.5 chars/token holds for both code and prose in
 # this corpus. A char-count estimate, not a real tokenizer count — good
@@ -70,36 +60,42 @@ OUTPUT_PRICE_PER_MTOK = 10.00
 EST_OUTPUT_TOKENS_PER_CHUNK = 150  # typical relationships-found response size
 
 
-def collect_python_files(repo: str, cfg: dict) -> list[Path]:
-    return sorted((cfg["root"] / cfg["src"]).rglob("*.py"))
+def collect_python_files(repo: Repo) -> list[Path]:
+    """Every .py file under the repository's package, skipping test trees."""
+    package_root = repo.src_root / repo.name
+    return sorted(p for p in package_root.rglob("*.py") if not any(part in ("tests", "test") for part in p.relative_to(package_root).parts))
 
 
-def collect_doc_files(repo: str, cfg: dict) -> list[Path]:
-    return sorted((cfg["root"] / cfg["docs"]).rglob("*.rst"))
+def collect_doc_files(repo: Repo) -> list[Path]:
+    if repo.docs_root is None or not repo.docs_root.is_dir():
+        return []
+    return sorted(list(repo.docs_root.rglob("*.rst")) + list(repo.docs_root.rglob("*.md")))
 
 
-def chunk_corpus() -> list[Chunk]:
-    """Chunk every source, doc, and changelog file across both repos."""
+def chunk_corpus(corpus: Corpus | None = None) -> list[Chunk]:
+    """Chunk every source, doc, and changelog file across the corpus."""
+    corpus = corpus or get_corpus()
     chunks: list[Chunk] = []
 
-    for repo, cfg in REPOS.items():
-        for p in collect_python_files(repo, cfg):
+    for repo in corpus.repos:
+        for p in collect_python_files(repo):
             text = p.read_text(encoding="utf-8", errors="replace")
-            chunks.extend(chunk_python(text, repo=repo, path=str(p)))
+            chunks.extend(chunk_python(text, repo=repo.name, path=str(p)))
 
-        for p in collect_doc_files(repo, cfg):
+        for p in collect_doc_files(repo):
             text = p.read_text(encoding="utf-8", errors="replace")
-            chunks.extend(chunk_rst(text, repo=repo, path=str(p)))
+            chunker = chunk_markdown if p.suffix == ".md" else chunk_rst
+            chunks.extend(chunker(text, repo=repo.name, path=str(p)))
 
-        changelog_path = cfg["root"] / cfg["changelog"]
-        if changelog_path.exists():
+        changelog_path = repo.changelog_path
+        if changelog_path is not None and changelog_path.exists():
             text = changelog_path.read_text(encoding="utf-8", errors="replace")
-            chunks.extend(chunk_changelog(text, repo=repo, path=str(changelog_path)))
+            chunks.extend(chunk_changelog(text, repo=repo.name, path=str(changelog_path)))
 
     return chunks
 
 
-def run_ast_pass() -> tuple[
+def run_ast_pass(corpus: Corpus | None = None) -> tuple[
     set[str], dict[str, dict[str, str]], dict[str, list], dict[str, str]
 ]:
     """Run the deterministic pass over every module. Returns the node
@@ -123,30 +119,31 @@ def run_ast_pass() -> tuple[
     # One jedi project per repo, the other repo importable from it — jedi
     # names definitions relative to the project root, and a urllib3 file
     # analysed under requests' root comes back as "urllib3_repo.src.urllib3.…".
-    src_roots = {repo: cfg["root"] / cfg["src"] for repo, cfg in REPOS.items()}
+    corpus = corpus or get_corpus()
+    src_roots = {repo.name: repo.src_root for repo in corpus.repos}
     projects = {
-        repo: build_project(root, others=[r for k, r in src_roots.items() if k != repo])
-        for repo, root in src_roots.items()
+        name: build_project(root, others=[r for k, r in src_roots.items() if k != name])
+        for name, root in src_roots.items()
     }
-    packages = tuple(REPOS)
+    packages = corpus.packages
 
     # A pre-pass the flow analysis needs before any module is walked (D84):
     # which returned dict key carries which parameter, for every function
     # in both packages, and every function's parameter names in order.
     summaries: dict[str, dict[str, str]] = {}
     callee_params: dict[str, list[str]] = {}
-    for repo, cfg in REPOS.items():
-        src_root = cfg["root"] / cfg["src"]
-        for p in collect_python_files(repo, cfg):
+    for repo_cfg in corpus.repos:
+        repo, src_root = repo_cfg.name, repo_cfg.src_root
+        for p in collect_python_files(repo_cfg):
             text = p.read_text(encoding="utf-8", errors="replace")
             dotted = module_dotted_name(str(p), src_root=str(src_root), package_root=repo)
             summaries.update(returned_dict_keys(text, dotted_module=dotted))
             for pe in extract_parameters(text, dotted_module=dotted):
                 callee_params[pe.source_id] = [q.name for q in pe.parameters]
 
-    for repo, cfg in REPOS.items():
-        src_root = cfg["root"] / cfg["src"]
-        for p in collect_python_files(repo, cfg):
+    for repo_cfg in corpus.repos:
+        repo, src_root = repo_cfg.name, repo_cfg.src_root
+        for p in collect_python_files(repo_cfg):
             text = p.read_text(encoding="utf-8", errors="replace")
             dotted = module_dotted_name(
                 str(p), src_root=str(src_root), package_root=repo
@@ -216,7 +213,7 @@ _PARAM_DOC_PATTERN = re.compile(r":param\s+(\w+)\s*:")
 
 
 def build_public_and_doc_index(
-    import_aliases: dict[str, dict[str, str]],
+    import_aliases: dict[str, dict[str, str]], corpus: Corpus | None = None
 ) -> tuple[set[str], dict[str, set[str]]]:
     """Return (publicly exported ids, {function_id: documented param names}).
 
@@ -225,14 +222,15 @@ def build_public_and_doc_index(
     a package's own __init__ — which only became trustworthy once D35 fixed
     relative-import resolution inside __init__ files.
     """
+    corpus = corpus or get_corpus()
     public_ids: set[str] = set()
-    for repo in REPOS:
+    for repo in corpus.packages:
         public_ids |= set(import_aliases.get(repo, {}).values())
 
     documented: dict[str, set[str]] = {}
-    for repo, cfg in REPOS.items():
-        src_root = cfg["root"] / cfg["src"]
-        for p in collect_python_files(repo, cfg):
+    for repo_cfg in corpus.repos:
+        repo, src_root = repo_cfg.name, repo_cfg.src_root
+        for p in collect_python_files(repo_cfg):
             text = p.read_text(encoding="utf-8", errors="replace")
             dotted = module_dotted_name(
                 str(p), src_root=str(src_root), package_root=repo
@@ -258,13 +256,15 @@ def module_of(canonical_id: str, node_types: dict[str, str]) -> str | None:
     return None
 
 
-def collect_llm_inputs(chunks: list[Chunk]) -> list[tuple[str, str]]:
+def collect_llm_inputs(chunks: list[Chunk], corpus: Corpus | None = None) -> list[tuple[str, str]]:
     """Every (chunk_id, text) pair the LLM pass would read: doc/changelog
     chunks plus every symbol's docstring, pulled separately per D6."""
+    corpus = corpus or get_corpus()
     inputs = [(c.chunk_id, c.text) for c in chunks if c.kind in ("doc", "changelog")]
 
-    for repo, cfg in REPOS.items():
-        for p in collect_python_files(repo, cfg):
+    for repo_cfg in corpus.repos:
+        repo = repo_cfg.name
+        for p in collect_python_files(repo_cfg):
             text = p.read_text(encoding="utf-8", errors="replace")
             for doc in iter_docstrings_for_llm(text, repo=repo, path=str(p)):
                 inputs.append((doc.chunk_id, doc.docstring))
@@ -318,7 +318,7 @@ def _write_ast_nodes(session, node_universe: set[str], node_types: dict[str, str
         merge_node(session, node_types.get(canonical_id, "Function"), canonical_id)
 
 
-def symbol_chunk_ids() -> dict[str, str]:
+def symbol_chunk_ids(corpus: Corpus | None = None) -> dict[str, str]:
     """Each code symbol's own chunk id, by canonical id.
 
     The same walk as run_ast_pass and the same id function as the chunker,
@@ -330,10 +330,11 @@ def symbol_chunk_ids() -> dict[str, str]:
     makes none for module-level code), so submodule edges keep the
     placeholder.
     """
+    corpus = corpus or get_corpus()
     ids: dict[str, str] = {}
-    for repo, cfg in REPOS.items():
-        src_root = cfg["root"] / cfg["src"]
-        for p in collect_python_files(repo, cfg):
+    for repo_cfg in corpus.repos:
+        repo, src_root = repo_cfg.name, repo_cfg.src_root
+        for p in collect_python_files(repo_cfg):
             text = p.read_text(encoding="utf-8", errors="replace")
             dotted = module_dotted_name(str(p), src_root=str(src_root), package_root=repo)
             for name, _node, start, end in iter_symbols(ast.parse(text)):
@@ -381,6 +382,7 @@ def run_full_ingestion(
     neo4j_session,
     limit: int | None = None,
     llm_edge_log_path: str | None = None,
+    corpus: Corpus | None = None,
 ) -> dict:
     """Write the AST pass and (bounded) LLM pass into a real Neo4j graph.
 
@@ -406,7 +408,7 @@ def run_full_ingestion(
     print("Writing AST-derived nodes...")
     _write_ast_nodes(neo4j_session, node_universe, node_types)
 
-    chunk_ids = symbol_chunk_ids()
+    chunk_ids = symbol_chunk_ids(corpus)
 
     print("Writing parameters...")
     param_count = _write_parameters(neo4j_session, edges["parameters"], chunk_ids)
@@ -765,11 +767,12 @@ def main() -> None:
         print("\n--dry-run: stopping before any LLM call or Neo4j write.")
         return
 
-    from neo4j import GraphDatabase
     from openai import OpenAI
 
+    from graphrag.settings import neo4j_driver, postgres_conn
+
     openai_client = OpenAI()
-    driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "graphragpassword"))
+    driver = neo4j_driver()
 
     # --ast-only is limit=0 with no log path: an empty LLM input list makes
     # no model calls, and passing no path keeps the existing LLM edge log
@@ -787,12 +790,8 @@ def main() -> None:
     # The vector store is rebuilt by the same script that builds the graph,
     # so one command reproduces both from a clean clone. Every write is an
     # upsert keyed by chunk_id, so re-running converges like the graph does.
-    import psycopg
-    from pgvector.psycopg import register_vector
-
     print("Embedding chunks and writing the vector store...")
-    pg_conn = psycopg.connect("postgresql://graphrag:graphragpassword@localhost:5432/graphrag")
-    register_vector(pg_conn)
+    pg_conn = postgres_conn()
     stats["chunks_embedded"] = write_vectors(conn=pg_conn, chunks=chunks, model=load_model())
     pg_conn.close()
 

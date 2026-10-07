@@ -3552,6 +3552,57 @@ files and no README. Four changes, each its own commit:
 **Not done, on purpose.** No new features, no squashed history: the commits and the log
 are the evidence that the work happened in the order it did.
 
+## D93 — graphrag as a tool: any Python repository, one command to ingest, one to ask
+
+**Status:** applied; 389 tests; smoke-tested on a repository the project had never seen.
+
+**Why.** The user wanted the project usable by anyone, the way a general tool is, not a
+one-corpus experiment. The mechanism already was general; the configuration was not:
+the two libraries were a dict in the ingestion script, their names were typed into the
+router prompt, the mention prompt, the planner's package enum and the ontology, the
+database credentials were literals in five scripts, and only reStructuredText docs were
+chunked.
+
+**What changed.**
+- `graphrag/corpus.py`: a corpus is one or more repositories, each with a package name,
+  source folder, docs folder and changelog. `detect_repo()` reads that from a
+  repository's layout (`src/<pkg>/__init__.py` or `<pkg>/__init__.py`, `docs/`, the
+  usual changelog names). The active corpus is whatever `graphrag ingest` last wrote to
+  `data/corpus.json`, else `corpora/requests-urllib3.yaml`, the measured setup.
+- Every ingestion function takes a `corpus`; the package enum, the router prompt and the
+  mention prompt read the active corpus's package names; the refusal text and the
+  template descriptions no longer name any library. `graphrag/settings.py` reads the
+  store locations from `GRAPHRAG_*` environment variables with the compose defaults.
+- A Markdown chunker beside the reStructuredText one, same breadcrumbs and packing.
+- `graphrag ingest <repo> [<repo>...] [--with-llm] [--keep] [--dry-run]` and
+  `graphrag ask "question" [--show-plan] [--show-context]`, installed as a console script.
+  Ingest clears the stores unless `--keep`, runs the parser pass and the embeddings with
+  no model calls, and runs the documentation pass only with `--with-llm`, using the
+  caller's own `OPENAI_API_KEY`. The oracle reads its roots, packages and default test
+  directory from the corpus too.
+
+**Smoke test, `pallets/itsdangerous`, never seen before:** detected `src/itsdangerous`,
+`docs`, `CHANGES.rst`; 101 chunks, 180 nodes, 205 parser edges; "Which classes in
+itsdangerous.exc inherit from BadSignature?" answered `BadTimeSignature` and `BadHeader`
+with citations; an nginx question was refused. One miss: "what does Serializer.loads
+raise when the signature is bad" planned RAISES on `loads` itself, and the raise happens
+two calls deeper; the answer declined and one of its citations did not match anything
+retrieved. A call-chain-then-raises expansion exists for T5 plans, not for a RAISES plan
+that finds little; noted, not chased.
+
+**A reproducibility gap this exposed.** Restoring the measured corpus from the repository
+(`graphrag ingest --corpus corpora/requests-urllib3.yaml`, then the replay) reproduces
+every parser-derived edge type exactly (DEFINED_IN 2021, HAS_PARAMETER 1135, CALLS 778,
+PASSES_TO 542, RAISES 179, STORED_ON 165, RETURNS 126, INHERITS_FROM 117) and all 1,396
+chunks. The model-derived types differ slightly from the graph the D91 numbers were
+measured on: CONTROLS 481 → 441, CHANGED_IN 345 → 359, WRAPS_EXCEPTION 100 → 112, and
+single digits elsewhere. That graph had accumulated the project's history of replays
+and cleanups (D64 among them); a fresh replay is the clean set. The parser side, which
+carries the structural answers, is identical. Whether the benchmark numbers move on the
+replayed graph is a measurement, not an argument: a confirmation run is the honest next
+step, and until it is done the README should say the numbers were measured on the
+historical graph.
+
 ---
 
 ## Open questions for the Phase 2 sweep

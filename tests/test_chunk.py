@@ -167,3 +167,12 @@ def test_iter_docstrings_for_llm_skips_undocumented_symbols():
 
     assert "Adapter.close" not in by_symbol
     assert "helper" not in by_symbol
+
+
+def test_markdown_is_chunked_by_heading_with_a_breadcrumb_and_fences_are_left_alone():
+    from graphrag.ingest.chunk import chunk_markdown
+    text = "# Guide\n\nIntro.\n\n## Install\n\n```\n# not a heading\npip install x\n```\n\n## Use\n\nCall f().\n"
+    chunks = chunk_markdown(text, repo="r", path="docs/guide.md")
+    sections = [c.section for c in chunks]
+    assert sections == ["Guide", "Guide > Install", "Guide > Use"]
+    assert "pip install x" in chunks[1].text and all(c.kind == "doc" for c in chunks)

@@ -13,7 +13,7 @@ from graphrag.answer.synthesize import synthesize_answer
 from graphrag.retrieval.retrieve import RetrievalResult, retrieve
 from graphrag.retrieval.vector_search import DEFAULT_K
 
-REFUSAL_TEXT = "This question is outside the scope of the requests/urllib3 corpus."
+REFUSAL_TEXT = "This question is outside the scope of the ingested codebase."
 NO_CONTEXT_TEXT = "No supporting information was retrieved for this question."
 
 
@@ -25,6 +25,7 @@ def _report(r: RetrievalResult, *, answer: str, citations_valid: bool, invalid: 
         "retrieved_ids": sorted(r.retrieved_ids),
         "citations_valid": citations_valid,
         "invalid_citations": invalid,
+        "context": r.context,
         "graph_facts_used": len(r.graph_facts),
         "vector_passages_used": len(r.passages),
         "refused": r.refused,

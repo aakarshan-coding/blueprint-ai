@@ -1,0 +1,16 @@
+# The corpus every number in the README was measured on. `scripts/reproduce.sh`
+# ingests it; `scripts/fetch_corpus.sh` fetches the two repositories at the
+# measured commits. A new user never needs this file: `graphrag ingest <repo>`
+# detects a repository's layout and writes data/corpus.json instead.
+name: requests-urllib3
+repos:
+  - name: requests
+    root: requests_repo
+    src: src
+    docs: docs
+    changelog: HISTORY.md
+  - name: urllib3
+    root: urllib3_repo
+    src: src
+    docs: docs
+    changelog: CHANGES.rst

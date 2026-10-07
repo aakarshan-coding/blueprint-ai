@@ -12,6 +12,7 @@ the right value is settled by the recall@k measurement in Phase 2 — not here.
 import ast
 import hashlib
 import re
+from pathlib import Path
 from dataclasses import dataclass
 
 # An reStructuredText section heading is a title line followed by a line of
@@ -314,6 +315,63 @@ def chunk_python(text: str, *, repo: str, path: str) -> list[Chunk]:
 
 # A release heading looks like "2.34.2 (2026-05-14)" or plain "2.8.0".
 _RELEASE_TITLE = re.compile(r"^(\d+(?:\.\d+)+)(?:\s*\(.*\))?$")
+
+
+_MD_HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
+
+
+def chunk_markdown(
+    text: str,
+    *,
+    repo: str,
+    path: str,
+    max_chars: int = DEFAULT_MAX_CHARS,
+) -> list[Chunk]:
+    """Split a Markdown document into chunks, one or more per section (D93).
+
+    Nesting comes from the number of leading `#`; the breadcrumb and the
+    paragraph packing are the same as for reStructuredText, so a Markdown
+    section cites and embeds exactly like an .rst one. Fenced code blocks are
+    not split on headings-looking lines inside them.
+    """
+    lines = text.splitlines()
+    headings: list[tuple[int, str, int]] = []
+    in_fence = False
+    for i, line in enumerate(lines):
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        m = _MD_HEADING.match(line)
+        if m:
+            headings.append((i, m.group(2).strip(), len(m.group(1))))
+    if not headings:
+        headings = [(0, Path(path).stem, 1)]
+        if lines and _MD_HEADING.match(lines[0]) is None:
+            pass
+
+    chunks: list[Chunk] = []
+    breadcrumb: list[str] = []
+    for position, (line_index, title, level) in enumerate(headings):
+        breadcrumb = breadcrumb[: level - 1] + [title]
+        section = " > ".join(breadcrumb)
+        is_last = position + 1 == len(headings)
+        section_end = len(lines) - 1 if is_last else headings[position + 1][0] - 1
+        blocks = _paragraph_blocks(lines, line_index, section_end)
+        for span_start, span_end in _pack_blocks(lines, blocks, max_chars):
+            chunks.append(
+                _build_chunk(
+                    repo=repo,
+                    path=path,
+                    kind="doc",
+                    section=section,
+                    start_line=span_start + 1,
+                    end_line=span_end + 1,
+                    text="\n".join(lines[span_start : span_end + 1]).strip(),
+                )
+            )
+    return chunks
 
 
 def chunk_changelog(

@@ -137,10 +137,11 @@ def main() -> None:
     print("Loading embedding model...")
     embedding_model = load_model()
 
+    from graphrag.settings import neo4j_driver, postgres_conn
+
     client = OpenAI()
-    conn = psycopg.connect("postgresql://graphrag:graphragpassword@localhost:5432/graphrag")
-    register_vector(conn)
-    driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "graphragpassword"))
+    conn = postgres_conn()
+    driver = neo4j_driver()
 
     results = []
     with driver.session() as session:

@@ -274,31 +274,51 @@ scripts/             fetch the corpus at pinned commits; reproduce the table end
 
 ## Quickstart
 
-You need Docker, Python 3.12 or newer, and an OpenAI API key. Routing, planning and the
-judge use `gpt-4o-mini`; answers use `gpt-4o`. One benchmark run is about $3.
+You need Docker, Python 3.12 or newer, and your own OpenAI API key in `OPENAI_API_KEY`.
+Routing, planning and the judge use `gpt-4o-mini`; answers use `gpt-4o`. The key is read
+from the environment and never stored.
+
+### Use it on your own Python code
 
 ```bash
 git clone https://github.com/aakarshan-coding/blueprint-ai.git && cd blueprint-ai
-pip install -e ".[embed,dev]"
-scripts/fetch_corpus.sh                              # requests and urllib3 at the measured commits
-docker compose up -d                                 # Neo4j 5 and Postgres with pgvector
-python -m graphrag.ingest.run_ingestion --ast-only   # parser-derived graph and the vector store
-python -m graphrag.ingest.replay_llm_edges           # model-derived edges, replayed from the log
-export OPENAI_API_KEY=sk-...
-python -m graphrag.eval.run_benchmark                # one run, about 28 minutes
+pip install -e ".[embed]"
+docker compose up -d                        # Neo4j 5 and Postgres with pgvector
+graphrag ingest ../some-python-repo         # detects the package, docs and changelog; parser pass + embeddings, no model calls
+graphrag ask "What does Session.send call?" --show-plan
 ```
 
-The unit tests need none of that: `pip install -e ".[dev]" && pytest`.
+`ingest` takes several repositories at once when they import each other. Add
+`--with-llm` to also run the model pass over documentation and docstrings; it costs a
+few dollars for a library-sized repository and its edges are logged so a re-ingest can
+replay them. `ask --show-context` prints the context the answer was written from.
 
-`scripts/reproduce.sh` runs the benchmark five times and summarises the result.
-`python -m graphrag.eval.runtime_oracle -- requests_repo/tests` scores the graph against
-real execution in about three minutes.
+What a new repository gets: everything a parser can see (the 9 structural relationship
+types) and text search over its docs. The model-derived relationship types need
+`--with-llm`. Only Python is supported; see [limits](#limits-and-open-items).
+
+### Reproduce the benchmark
+
+```bash
+pip install -e ".[embed,dev]"
+scripts/fetch_corpus.sh                                   # requests and urllib3 at the measured commits
+docker compose up -d
+graphrag ingest --corpus corpora/requests-urllib3.yaml    # the measured two-library corpus
+python -m graphrag.ingest.replay_llm_edges                # the model-derived edges, replayed from the log
+python -m graphrag.eval.run_benchmark                     # one run, about 28 minutes, about $3
+```
+
+`scripts/reproduce.sh` does all of that and runs the benchmark five times.
+`python -m graphrag.eval.runtime_oracle` scores the graph against the corpus's own test
+suite in about three minutes. The unit tests need none of it: `pip install -e ".[dev]" && pytest`.
 
 ## Limits and open items
 
-- **Two libraries only.** The ontology and templates are general; the question set and
-  the numbers are specific to `requests` and `urllib3`. Nothing is measured on another
-  codebase.
+- **Python only, and measured on two libraries.** `graphrag ingest` works on any Python
+  repository with a conventional layout (a package under `src/` or the root, docs in
+  reStructuredText or Markdown). Another language needs a new extractor behind the same
+  ontology. The benchmark numbers are specific to `requests` and `urllib3`; nothing is
+  measured on another codebase.
 - **Two-hop is the weakest graph category at 72.** The remaining misses are urllib3
   exception questions where two classes have similar names and the planner anchors on
   the wrong one.

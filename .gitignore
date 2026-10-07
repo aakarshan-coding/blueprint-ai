@@ -23,3 +23,4 @@ results/latest_benchmark_results.json
 # are committed as JSON; these are just what scrolled past.
 *.log
 results/local/*.json
+data/corpus.json

@@ -35,7 +35,7 @@ from pydantic import BaseModel, ConfigDict, Field, create_model
 from graphrag.ingest.resolve import Resolver
 from graphrag.ontology import RELATIONSHIP_TYPES
 from graphrag.retrieval.consistency import VOTES, majority_vote
-from graphrag.ontology import PACKAGES
+from graphrag.corpus import get_packages
 from graphrag.retrieval.cypher_templates import MAX_HOPS, TEMPLATES
 
 MODEL = "gpt-4o-mini"
@@ -44,9 +44,6 @@ MODEL = "gpt-4o-mini"
 # Deriving both the offered set and the prompt from this one dict is what
 # stops them drifting (D54).
 PLANNABLE = {name: t for name, t in sorted(TEMPLATES.items()) if t.description}
-
-Package = Literal["requests", "urllib3", "unknown"]
-
 
 # --- stage 1: what does the question mention? --------------------------------
 
@@ -58,7 +55,10 @@ class Mention(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     surface: str
-    package: Package
+    # The package the question's wording assigns the name, or "unknown".
+    # Free text rather than an enum so the same model works for any corpus
+    # (D93); resolve_mentions only uses it to narrow a tie.
+    package: str
 
 
 class Mentions(BaseModel):
@@ -67,20 +67,25 @@ class Mentions(BaseModel):
     mentions: list[Mention]
 
 
-MENTION_PROMPT = """\
+def mention_prompt(packages: tuple[str, ...] = ()) -> str:
+    names = ", ".join(packages) if packages else "the ingested codebase"
+    return f"""\
 List every code entity the question names: a class, function, method, \
-exception, parameter, or module from the requests or urllib3 libraries.
+exception, parameter, or module from {names}.
 
-Write each surface exactly as it appears in the question ("Session", \
-"HTTPAdapter.send", "ReadTimeoutError") -- never expand it to a dotted path \
-you were not given. Do not list generic words ("exception", "library", \
+Write each surface exactly as it appears in the question (for example a class \
+name, a dotted method name, an exception name) -- never expand it to a dotted \
+path you were not given. Do not list generic words ("exception", "library", \
 "request") or values ("False", "30").
 
-For each, record which package the question says it belongs to. "urllib3's \
-ReadTimeoutError" and "which requests exception" are explicit; if the \
-question does not say, use "unknown". Never infer the package from your own \
-knowledge of where a name is defined -- only from the question's wording.
+For each, record which package the question says it belongs to, as the package \
+name ({names}); if the question does not say, use "unknown". Never infer the \
+package from your own knowledge of where a name is defined -- only from the \
+question's wording.
 """
+
+
+MENTION_PROMPT = mention_prompt()
 
 
 # The mention list is the anchor of everything downstream, and it is not
@@ -99,7 +104,7 @@ def extract_mentions(
     def ask() -> Mentions:
         response = client.responses.parse(
             model=model,
-            instructions=MENTION_PROMPT,
+            instructions=mention_prompt(get_packages()),
             input=question,
             text_format=Mentions,
             temperature=0,
@@ -298,7 +303,8 @@ def _plan_model_for(template_id: str, entity_ids: list[str]) -> type[BaseModel] 
         elif spec.kind == "hop_limit":
             fields["max_hops"] = (Literal[_HOPS], ...)
         elif spec.kind == "package":
-            fields["package"] = (Literal[PACKAGES], ...)
+            packages = get_packages() or ("none",)
+            fields["package"] = (Literal[packages], ...)
         elif spec.kind == "identifier":
             fields["name"] = (str, ...)
     return create_model(
@@ -336,8 +342,8 @@ _CLOSING = """
 The message lists the entities that were resolved from the question, each \
 with its kind and how many edges it has. entity_id must be one of those \
 ids, exactly as listed. Prefer the most specific entity the question is \
-about: a Module or a package root ("requests", "urllib3") has dozens of \
-edges and returns everything at once, which answers nothing -- if the \
+about: a Module or a package root (the top-level package itself) has dozens \
+of edges and returns everything at once, which answers nothing -- if the \
 question is about a specific class, function or exception, choose that. \
 When the question asks which things relate to an entity by one \
 relationship ("which classes inherit from X", "what does X raise", "how \

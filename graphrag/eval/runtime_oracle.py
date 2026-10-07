@@ -34,9 +34,21 @@ from contextlib import contextmanager
 from pathlib import Path
 
 REPO_ROOTS = {
-    "requests": Path("requests_repo/src"),
-    "urllib3": Path("urllib3_repo/src"),
+    # Filled from the active corpus at run time (D93); this literal is only the
+    # shape. See _repo_roots().
 }
+
+
+def _repo_roots() -> dict[str, Path]:
+    from graphrag.corpus import get_corpus
+
+    return {repo.name: repo.src_root for repo in get_corpus().repos}
+
+
+def _packages() -> tuple[str, ...]:
+    from graphrag.corpus import get_packages
+
+    return get_packages()
 TRACE_PATH = Path("results/oracle/trace.json")
 REPORT_PATH = Path("results/oracle/report.json")
 
@@ -80,7 +92,7 @@ def exception_id(exc_type: type) -> str:
 
 class Oracle:
     def __init__(self, *, roots: dict[str, Path] | None = None):
-        self.roots = roots or REPO_ROOTS
+        self.roots = roots or _repo_roots()
         self.calls: set[tuple[str, str]] = set()
         self.raises: set[tuple[str, str]] = set()
         self.wraps: set[tuple[str, str]] = set()
@@ -220,7 +232,7 @@ def compare_pairs(
 
 
 def _in_corpus(pair: tuple[str, str]) -> bool:
-    return all(p.split(".")[0] in ("requests", "urllib3", "builtins") for p in pair)
+    return all(p.split(".")[0] in (*_packages(), "builtins") for p in pair)
 
 
 def find_implicit(ids: set[str]) -> set[str]:
@@ -256,14 +268,15 @@ def run_suite(pytest_args: list[str]) -> Oracle:
     import pytest
     import types
 
-    for root in REPO_ROOTS.values():
+    roots = _repo_roots()
+    for root in roots.values():
         sys.path.insert(0, str(root.resolve()))
-    for name in [m for m in sys.modules if m.split(".")[0] in ("requests", "urllib3")]:
+    for name in [m for m in sys.modules if m.split(".")[0] in roots]:
         del sys.modules[name]
     # urllib3's checkout imports `urllib3._version`, a file its build step
     # generates and the clone does not contain. Stub it so the corpus tree
     # imports; the version string plays no part in anything traced.
-    if not (REPO_ROOTS["urllib3"] / "urllib3" / "_version.py").exists():
+    if "urllib3" in roots and not (roots["urllib3"] / "urllib3" / "_version.py").exists():
         stub = types.ModuleType("urllib3._version")
         stub.__version__ = "2.2.0"
         stub.__version_tuple__ = (2, 2, 0)
@@ -300,7 +313,10 @@ def main() -> None:
         implicit = set(trace.get("implicit", []))
         hierarchy = trace.get("hierarchy", {})
     else:
-        pytest_args = args.pytest_args or ["requests_repo/tests", "-q", "-p", "no:cacheprovider", "-p", "no:cov"]
+        from graphrag.corpus import get_corpus
+
+        default_tests = str(get_corpus().repos[0].root_path / "tests")
+        pytest_args = args.pytest_args or [default_tests, "-q", "-p", "no:cacheprovider", "-p", "no:cov"]
         oracle = run_suite(pytest_args)
         observed = {"calls": oracle.calls, "raises": oracle.raises, "wraps": oracle.wraps}
         implicit, hierarchy = oracle.implicit, oracle.hierarchy
@@ -309,9 +325,9 @@ def main() -> None:
               f"{len(oracle.raises)} raises, {len(oracle.wraps)} wraps, "
               f"{len(oracle.implicit)} implicit callees")
 
-    from neo4j import GraphDatabase
+    from graphrag.settings import neo4j_driver
 
-    driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "graphragpassword"))
+    driver = neo4j_driver()
     report: dict = {}
     with driver.session() as s:
         for key, rel in (("calls", "CALLS"), ("raises", "RAISES"), ("wraps", "WRAPS_EXCEPTION")):
