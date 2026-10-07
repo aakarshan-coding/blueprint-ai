@@ -1,205 +1,326 @@
-# Blueprint: graph + vector RAG over a codebase, measured
+# Blueprint: a code-aware question answering system, and the benchmark that measures it
 
 [![tests](https://github.com/aakarshan-coding/blueprint-ai/actions/workflows/tests.yml/badge.svg)](https://github.com/aakarshan-coding/blueprint-ai/actions/workflows/tests.yml)
 
-A question-answering system over the source and docs of two Python libraries, `requests`
-and `urllib3`. Two retrieval halves share one corpus: a **vector index** of code and prose
-chunks, and a **knowledge graph** of 17 relationship types that a parser extracts from the
-code (inheritance, calls, raises, what wraps what, where a parameter's value goes). A
-planner turns a question into one of a fixed set of Cypher templates; the graph's facts and
-the vector passages go to a model that writes a cited answer.
+This project answers questions about the source code of two Python libraries, `requests`
+and `urllib3`. Questions like "if urllib3 raises `ProtocolError`, what does requests
+raise instead?" or "how many exception classes inherit from `RequestException`?"
 
-The point of the project is the **measurement**: a 220-question benchmark, run five times
-per change because the models are not deterministic, graded mostly without a model, and
-audited for the ways a grader can be fooled. The graph's contribution is the gap between
-the hybrid system and a vector-only baseline that shares everything else.
+Plain text search over the code cannot answer those well. The answer to the first
+question is one line inside an `except` block; the answer to the second is a count that
+appears nowhere in the text. So the system builds a **knowledge graph** of the code
+first: which class inherits from which, which function raises what, which exception is
+raised in place of another. Then it answers a question by looking up facts in that graph
+and combining them with ordinary text search.
 
-**Contents:** [Results](#results) · [How the numbers were earned](#how-the-numbers-were-earned) ·
-[Architecture](#architecture) · [Repository map](#repository-map) · [Quickstart](#quickstart) ·
-[Limits and open items](#limits-and-open-items) · [Reading further](#reading-further)
+The main deliverable is not the system but the **measurement** of it. A 220-question
+benchmark compares the graph-plus-text system against a text-only baseline, five runs
+per change, with a grader that was itself audited for ways to be fooled. The graph's
+contribution is the gap between the two.
+
+**Contents:** [One question, end to end](#one-question-end-to-end) · [Results](#results) ·
+[How it works](#how-it-works) · [Why it is built this way](#why-it-is-built-this-way) ·
+[How the numbers were earned](#how-the-numbers-were-earned) · [Repository map](#repository-map) ·
+[Quickstart](#quickstart) · [Limits and open items](#limits-and-open-items) · [Reading further](#reading-further)
+
+## One question, end to end
+
+Take the benchmark question *"What requests exception corresponds to urllib3's
+ReadTimeoutError?"* Here is what happens to it.
+
+1. **Routing.** A small model decides the question needs the graph, not just text.
+2. **Finding the anchor.** The name `ReadTimeoutError` is read out of the question and
+   resolved to a node in the graph, `urllib3.exceptions.ReadTimeoutError`. The planner
+   is only ever offered nodes that really exist.
+3. **Planning.** The planner picks one query template from a fixed list and fills in its
+   parameters. Here: `T3_EXCEPTION_WRAP_CHAIN(entity_id='urllib3.exceptions.ReadTimeoutError',
+   max_hops=2)`, meaning "follow the wraps relationship up to two steps from this node".
+4. **Running and expanding.** The template runs as a fixed Cypher query. The facts it
+   returns are expanded by one more step that the question shape usually needs; for a
+   wrap chain, that is the parent classes of what was found.
+5. **Building the context.** Each fact becomes one line, tagged by where it came from.
+   `(code)` means a parser extracted it from the source; `(docs)` means a model read it
+   in documentation. Trimmed:
+
+   ```
+   Relationship meanings:
+   - WRAPS_EXCEPTION: this exception is raised in place of that one, inside an except handler that caught it.
+   - INHERITS_FROM: this class is a subclass of that one.
+   Lines marked (code) were extracted from the source by a parser; lines marked (docs) by a model
+   reading documentation. Where they disagree, prefer (code).
+
+   === GRAPH RELATIONSHIPS ===
+   [c1] (code) requests.exceptions.ReadTimeout wraps urllib3.exceptions.ReadTimeoutError.
+   [c2] (code) requests.exceptions.ConnectionError wraps urllib3.exceptions.ReadTimeoutError.
+   [c3] (code) urllib3.exceptions.ReadTimeoutError wraps socket.timeout.
+   [c4] (code) requests.exceptions.ReadTimeout inherits from requests.exceptions.Timeout.
+   [c5] (code) requests.exceptions.Timeout inherits from requests.exceptions.RequestException.
+   ```
+
+   The top text-search passages are appended below the graph lines.
+6. **Answering.** A model writes the answer from that context only, citing the `[c…]`
+   ids. A validator rejects any citation that does not point at something retrieved.
+
+The text-only baseline skips steps 2 to 4: it gets the same passages, the same answer
+model and the same prompt, and nothing else. That is the comparison the benchmark makes.
 
 ## Results
 
-220 questions, five categories, five runs on identical code. Each cell is the mean across
-runs; the pooled row shows the worst and best run in brackets. Strict accuracy: a
-"partial" answer counts as wrong.
+220 questions in five categories. Each category is run five times on identical code,
+because the models are not deterministic even at temperature 0. Numbers are the mean
+across runs; the pooled row shows the worst and best run in brackets. An answer counts
+only if it is fully correct.
 
-| category | n | hybrid | vector only | lead |
+| category | n | graph + text | text only | lead |
 |---|---|---|---|---|
-| single-hop (one fact) | 45 | 95.1 | 95.1 | +0.0 |
-| two-hop (two linked facts) | 45 | 72.4 | 46.2 | +26.2 |
-| three-hop (three linked facts) | 45 | 71.1 | 28.4 | +42.7 |
-| aggregation (count or list) | 45 | 81.3 | 14.2 | +67.1 |
-| out of scope (should refuse) | 40 | 97.0 | 85.0 | +12.0 |
+| single-hop: one fact | 45 | 95.1 | 95.1 | +0.0 |
+| two-hop: two linked facts | 45 | 72.4 | 46.2 | +26.2 |
+| three-hop: three linked facts | 45 | 71.1 | 28.4 | +42.7 |
+| aggregation: a count or a list | 45 | 81.3 | 14.2 | +67.1 |
+| out of scope: should refuse | 40 | 97.0 | 85.0 | +12.0 |
 | **pooled** | 220 | **83.1** [82.3 .. 84.1] | 53.1 [52.3 .. 54.1] | **+30.0** [28.7 .. 31.4] |
 
-With partial credit (the share of each reference's required parts an answer states):
-hybrid 88.2, vector only 63.0, lead +25.2 [24.3 .. 26.1].
+With partial credit, where an answer that states two of three required parts scores
+two thirds: graph + text 88.2, text only 63.0.
 
-What the table says, in one line each:
+What each row means:
 
-- On single facts the graph is not needed; both halves have the same passages.
-- On linked facts the graph's value is in the **last hop**: the baseline usually gets the
-  first fact and loses the chain.
-- On counting and listing, text search cannot do it; a passage never says "how many
-  subclasses". The graph computes it.
-- On out-of-scope questions, an empty graph result is a strong refusal signal.
+- **Single facts need no graph.** Both systems see the same passages, so they tie.
+- **Linked facts are where the graph earns its keep, mostly on the last link.** The
+  text-only system usually finds the first fact and loses the chain after it.
+- **Counting is something text search cannot do.** No passage says "15 classes inherit
+  from this one". The graph computes it, and the context states the number.
+- **An empty graph result is a good refusal signal.** When the question is about Django,
+  nothing in the graph matches, and the system says so.
 
-Source: [`results/exp9/`](results/exp9), summarised with
-`python -m graphrag.eval.summarize_runs results/exp9/*.json`. Every earlier table is in
-[`results/`](results/README.md), mapped to the decision that produced it.
+The numbers come from [`results/exp9/`](results/exp9); reproduce the table with
+`python -m graphrag.eval.summarize_runs results/exp9/*.json`. Every earlier table, going
+back to the first single run, is kept in [`results/`](results/README.md) with the
+decision it belongs to.
+
+## How it works
+
+Two phases. Ingestion runs once and builds the stores. Answering runs per question.
+
+### Ingestion: from source files to a graph and a vector index
+
+**1. Split the corpus into chunks.** The system needs pieces small enough to embed and
+precise enough to cite. Code is split at symbol boundaries, so one function or one
+class header is one chunk. Documentation is split at section headings. Every chunk gets
+a stable id, and that id is the one key shared by the graph and the vector store: a graph
+fact cites the chunk it came from, and that same chunk is what text search returns.
+([`ingest/chunk.py`](graphrag/ingest/chunk.py))
+
+**2. Extract structural facts with a parser.** For facts the code states outright, a
+parser is both cheaper and more accurate than a model, so Python's `ast` module reads
+every file and records: which class inherits from which, which exceptions a function
+raises, which exception a handler raises in place of the one it caught, each function's
+parameters and declared return type, and where a parameter's value is passed next.
+([`ingest/ast_extract.py`](graphrag/ingest/ast_extract.py))
+
+**3. Resolve calls with a type-aware tool.** "What does `conn.urlopen(...)` call?" needs
+to know what `conn` is, which a plain parser cannot. The system uses jedi, a static
+analysis library, to resolve each call to the function it reaches. When the call is to a
+base-class method, an edge is also added to every subclass that overrides it, because
+that is what runs at runtime. ([`ingest/jedi_calls.py`](graphrag/ingest/jedi_calls.py))
+
+**4. Let a model read the prose, for the facts only prose has.** Documentation says
+things like "this parameter controls certificate verification" that no parser can see.
+A model extracts those relationships from documentation and docstrings. Its output is
+logged, so later ingestion runs replay the log instead of paying for extraction again.
+([`ingest/llm_extract.py`](graphrag/ingest/llm_extract.py),
+[`ingest/replay_llm_edges.py`](graphrag/ingest/replay_llm_edges.py))
+
+**5. Turn names into graph nodes.** The parser sees surface names like `ReadTimeoutError`
+or `self.send`; the graph needs canonical ids like `urllib3.exceptions.ReadTimeoutError`.
+A resolver tries a fixed ladder of rules, from "this exact id exists" down to "this is a
+Python builtin", and gives up rather than guess. Each rung was added for a measured
+reason, recorded in the log. ([`ingest/resolve.py`](graphrag/ingest/resolve.py))
+
+**6. Write the stores.** Nodes and edges go to Neo4j, with every edge carrying the chunk
+it came from and whether a parser or a model produced it. Chunk embeddings go to
+Postgres with pgvector. ([`ingest/load_graph.py`](graphrag/ingest/load_graph.py),
+[`ingest/load_vectors.py`](graphrag/ingest/load_vectors.py))
+
+The result: 8 kinds of node and 17 kinds of relationship, defined in one place with the
+plain-language meaning the answer model is shown for each.
+([`ontology.py`](graphrag/ontology.py))
+
+### Answering: from a question to a cited answer
+
+**1. Route.** A small model classifies the question: graph, text, both, or refuse. A
+low-confidence verdict falls back to "both". ([`retrieval/router.py`](graphrag/retrieval/router.py))
+
+**2. Find anchors.** The system needs a node to start from. A small model lists the
+code names in the question; a regular expression adds any dotted name it missed; a check
+drops any name that is not actually in the question text, because the model sometimes
+invents one. Each surviving name is resolved to graph nodes, which become the
+candidates. If nothing resolves, the top text-search hits supply candidates instead.
+([`retrieval/graph_query.py`](graphrag/retrieval/graph_query.py))
+
+**3. Plan one query.** The model never writes a database query. It is shown the
+candidates and a short list of templates with descriptions, and it fills in one
+template's typed parameters. A parameter is validated before anything runs: an entity
+must be one of the candidates, a relationship must be in the ontology, a hop count must
+be in range. ([`retrieval/cypher_templates.py`](graphrag/retrieval/cypher_templates.py))
+
+**4. Repair the plan where the graph proves it wrong.** The planner is a small model and
+makes a few predictable mistakes: a corpus-wide count when the question named one
+module, a relationship that a module cannot have, a wrap chain started from a function.
+A short list of deterministic rules fixes those shapes. If a plan runs and returns
+nothing, the system falls back to the next reasonable plan, such as the named module's
+members. Every repair is recorded on the result so the benchmark can see how often it
+fired. ([`retrieval/graph_query.py`](graphrag/retrieval/graph_query.py) `repair_plan`,
+[`retrieval/retrieve.py`](graphrag/retrieval/retrieve.py))
+
+**5. Expand by plan shape.** A question that asks "what does requests raise, and what
+does that inherit from" needs two different relationships, and one template walks one.
+So after the plan's facts are ranked and capped, one more hop is fetched for the nodes
+that survived, chosen by the plan's shape: parents after a wrap chain, what each raised
+exception wraps after a raises plan, what callees raise after a call chain. Fetching
+after the cap keeps the expansion from crowding out the facts it explains.
+([`retrieval/retrieve.py`](graphrag/retrieval/retrieve.py) `_EXPANSIONS`)
+
+**6. Build the context.** Each fact becomes one sentence in the direction the edge really
+runs, tagged `(code)` or `(docs)`, citing its chunk. Counting questions get derived
+lines the model would otherwise have to compute: "15 classes are defined in
+requests.exceptions: …", "9 members have more than one base class: …". A legend states
+what each relationship means. Text passages follow.
+([`retrieval/merge.py`](graphrag/retrieval/merge.py))
+
+**7. Write and check the answer.** The answer model is instructed to use only the
+context and to cite a chunk id after each claim. A validator checks that every cited id
+was actually retrieved. ([`answer/synthesize.py`](graphrag/answer/synthesize.py),
+[`answer/citations.py`](graphrag/answer/citations.py))
+
+One function, `retrieve()`, runs steps 1 to 6 for both the answer pipeline and the
+measurement tools, so a probe can never measure a different pipeline than the one that
+answers.
+
+## Why it is built this way
+
+**A parser for structure, a model for prose.** The runtime oracle (below) measured it:
+parser-extracted "wraps" edges are right 71% of the time against real execution,
+model-extracted ones 29%. So anything the code states directly is parsed, the model is
+kept to documentation, and every edge is tagged with which one produced it. The answer
+model is told to prefer `(code)` lines when they disagree.
+
+**Templates instead of model-written queries.** Letting the model write Cypher is more
+flexible, and the nearest open-source project does it. This project does not, for two
+reasons. A fixed template with validated parameters cannot touch anything the plan did
+not name, which is the security boundary. And the same plan always produces the same
+query, which is what makes retrieval stable enough to measure: on 58 of 60 questions,
+five runs retrieved exactly the same facts.
+
+**Repairs act on evidence, not labels.** One repair rule keyed on a node label that
+ingestion does not assign reliably. It replaced the wrap chain on five flagship
+questions with an empty query. The rule was removed and replaced with "run the planned
+query; fall back only if it returns nothing". That principle now governs every repair.
+
+**The baseline shares everything but the graph.** Same chunks, same passages, same answer
+model, same prompt. An early experiment changed the shared prompt to help the graph
+side and watched the baseline's refusals collapse; the rule since then is that a
+graph-side change may not touch anything the baseline uses.
 
 ## How the numbers were earned
 
-The project kept a decisions log from the first day:
-[`docs/DECISIONS.md`](docs/DECISIONS.md), 91 entries, each with the evidence and the
-reversals. The parts that mattered most:
+The decisions log, [`docs/DECISIONS.md`](docs/DECISIONS.md), has 92 entries. Each
+records what was tried, what was measured, and what was kept or reversed. The practices
+that mattered most:
 
-1. **A noise floor before any claim.** `temperature=0` is not deterministic: two runs of
-   identical code disagreed on ~12% of verdicts. Every number since is a five-run mean
-   with its spread, and a change counts only if its worst run beats the previous best.
-   ([D51](docs/DECISIONS.md), [D60](docs/DECISIONS.md))
-2. **A runtime oracle for the graph itself.** The `requests` test suite runs under
-   `sys.settrace`; every observed call, raise and exception-wrap is scored against the
-   graph's edges. Parser-extracted wrap edges are right 71% of the time, model-extracted
-   ones 29%, which decided the parser-for-structure, model-for-prose split.
-   ([D67](docs/DECISIONS.md), [`results/oracle/`](results/oracle))
-3. **The biggest gains were plumbing, found by reading one failing context.** A dedupe
-   keyed on chunk id was discarding every fact after the first from the same chunk; nine
-   raise edges reached the model as one. A chain template stopped one hop short of the
-   question. A plan anchored on a function ran a query only exceptions can satisfy. Three
-   retrieval fixes took three-hop from 30 to 67; no model changed.
-   ([D71](docs/DECISIONS.md)–[D74](docs/DECISIONS.md))
-4. **The grader was audited against itself.** Seven questions could be passed by echoing
-   the question; class names matched prose ("read timeout" satisfied `Timeout`); a hedge
-   in a later sentence cancelled an assertion; "the context does not say, however here is
-   an answer" counted as a refusal. All fixed, with a test that no question passes its own
-   grader; every fix made the grader stricter, and the strictness landed on the baseline.
-   ([D79](docs/DECISIONS.md), [D87](docs/DECISIONS.md))
-5. **References were corrected when the system was right.** Four of the hand-written
-   answers were wrong (one counted typing overloads as functions). The 130 questions added
-   last take their references from an independent parse of both libraries, with every
-   count computed and asserted before it is written. ([D88](docs/DECISIONS.md))
+- **Measure the noise before claiming a gain.** Two runs of identical code disagreed on
+  about 12% of verdicts. Since then every number is a five-run mean with its spread, and
+  a change counts only when its worst run clears the previous best. (D51, D60)
+- **Check the graph against reality, not against itself.** The runtime oracle runs the
+  `requests` test suite under `sys.settrace`, records every call, raise and wrap that
+  actually happens, and scores the graph's edges against them. It is the one measure of
+  the graph that does not depend on the benchmark. (D67, [`results/oracle/`](results/oracle))
+- **Read the failing context before touching the model.** Three of the largest gains
+  were plumbing: a deduplication keyed on chunk id was discarding every fact after the
+  first from the same chunk, so nine raise edges reached the model as one; a chain
+  template stopped one hop short of what the question asked; a plan anchored on a
+  function ran a query only exceptions can satisfy. Those fixes took three-hop from 30
+  to 67. No model changed. (D71 to D74)
+- **Audit the grader.** Seven questions could be passed by repeating the question. Class
+  names matched ordinary words, so "read timeout" satisfied `Timeout`. A hedge in a later
+  sentence cancelled an earlier correct assertion. All fixed, with a test that no
+  question passes its own grader. Every fix made grading stricter, and the strictness
+  fell mostly on the baseline. (D79, D87)
+- **Correct the references when the system is right.** Four hand-written answers were
+  wrong; one counted typing overloads as separate functions. The 130 questions added last
+  take their facts from an independent parse of both libraries, and every count is
+  computed and asserted before the question is written. (D88)
 
-Grading: 180 questions by required terms (no model), 40 by a refusal check (no model),
-10 by a model judge that lists the reference's key facts and which are missing, with the
-verdict derived from that list rather than chosen.
-
-## Architecture
-
-```mermaid
-flowchart LR
-    subgraph ingest [Ingestion, once]
-        SRC[requests + urllib3<br/>source and docs] --> CH[chunker]
-        CH --> VEC[(pgvector<br/>1,396 chunks)]
-        SRC --> AST[AST extractors<br/>inherits, raises, wraps,<br/>parameters, returns, flow]
-        SRC --> JEDI[jedi call resolution<br/>+ override expansion]
-        SRC --> LLM[LLM pass on prose<br/>replayed from a log]
-        AST --> G[(Neo4j<br/>17 relationship types)]
-        JEDI --> G
-        LLM --> G
-    end
-    subgraph answer [Answering a question]
-        Q[question] --> R[router]
-        R --> M[mentions: model + dotted names<br/>grounded in the question]
-        M --> P[planner: one template,<br/>validated params]
-        P --> REP[deterministic plan repair<br/>and empty-result fallback]
-        REP --> G
-        G --> X[expansion by plan shape:<br/>parents, wraps, raises, flow]
-        X --> CTX[context: tagged facts<br/>+ derived counts + passages]
-        Q --> VEC
-        VEC --> CTX
-        CTX --> S[synthesis with citations]
-        S --> V[citation validation]
-    end
-```
-
-The pieces, and where each lives:
-
-| stage | what it does | code |
-|---|---|---|
-| Ontology | 8 entity types, 17 relationship types, the legend the answer model is shown | [`graphrag/ontology.py`](graphrag/ontology.py) |
-| Chunking | code chunks are symbols; doc chunks are sections; one `chunk_id` joins graph and vectors | [`ingest/chunk.py`](graphrag/ingest/chunk.py) |
-| Parser extraction | bases, raises, `except X: raise Y`, signatures, return annotations, where a parameter's value is passed next | [`ingest/ast_extract.py`](graphrag/ingest/ast_extract.py) |
-| Call resolution | jedi (`goto` first, `infer` second), plus edges to every override of a called base method | [`ingest/jedi_calls.py`](graphrag/ingest/jedi_calls.py) |
-| Name resolution | a ladder of rungs from exact id to builtin, each one a decision in the log | [`ingest/resolve.py`](graphrag/ingest/resolve.py) |
-| Templates | the only Cypher that ever runs; every parameter validated by kind | [`retrieval/cypher_templates.py`](graphrag/retrieval/cypher_templates.py) |
-| Planner | mentions → candidates from the live graph → one template; `repair_plan` fixes the shapes the small model gets wrong | [`retrieval/graph_query.py`](graphrag/retrieval/graph_query.py) |
-| Retrieval | the one sequence both the pipeline and the probes use: route, plan, run, fall back, expand, rank, assemble | [`retrieval/retrieve.py`](graphrag/retrieval/retrieve.py) |
-| Context | facts verbalised with provenance `(code)`/`(docs)`, derived count and listing lines, a legend | [`retrieval/merge.py`](graphrag/retrieval/merge.py) |
-| Grading | term matching, refusal check, report-based judge, partial credit | [`eval/grade.py`](graphrag/eval/grade.py) |
-| Benchmark | 220 questions, both systems, same prompt; five-run summaries | [`eval/run_benchmark.py`](graphrag/eval/run_benchmark.py), [`eval/summarize_runs.py`](graphrag/eval/summarize_runs.py) |
-| Oracle | the graph scored against a trace of the real test suite | [`eval/runtime_oracle.py`](graphrag/eval/runtime_oracle.py) |
-
-Two design rules run through all of it. **The model never writes a query**: it picks a
-template and fills typed parameters, which is both the security boundary and what makes a
-plan reproducible. **Repairs act on what the graph proves, not on labels**: a plan that
-returns nothing falls back; a rule that guessed from an unreliable label once emptied
-five flagship questions and was replaced ([D77](docs/DECISIONS.md)).
+Grading, for the record: 180 questions are graded by required terms with no model, 40 by
+a refusal check with no model, and 10 by a model judge that lists the reference's key
+facts and which are missing, with the verdict derived from that list.
 
 ## Repository map
 
 ```
-graphrag/            the package (6,500 lines)
-  ontology.py        entity and relationship types, with meanings
-  ingest/            chunking, extraction, resolution, graph and vector loading
-  retrieval/         router, planner, templates, expansion, context assembly
-  answer/            synthesis prompt and citation validation
+graphrag/            the package, about 6,500 lines
+  ontology.py        node and relationship types, each with its meaning in plain words
+  ingest/            chunking, parser and jedi extraction, name resolution, store loading
+  retrieval/         router, anchors, planner and repairs, templates, expansion, context
+  answer/            the synthesis prompt and citation validation
   eval/              grader, benchmark, five-run summaries, runtime oracle
-tests/               380 unit tests, no database or model needed (5,700 lines)
-docs/DECISIONS.md    the decisions log, D1–D91: what was tried, measured, kept, reversed
-docs/research/       how other tools build code knowledge graphs; a deep read of code-graph-rag
-results/             every benchmark run cited in the log, mapped to its decision
-data/                the LLM extraction log, replayed so ingestion makes no model calls
+tests/               380 unit tests; no database and no model calls needed, about 5,700 lines
+docs/DECISIONS.md    the decisions log, D1 to D92
+docs/research/       two research notes: how other tools build code graphs; a close read of code-graph-rag
+results/             every benchmark run the log cites, mapped to its decision
+data/                the model-extraction log that ingestion replays
 scripts/             fetch the corpus at pinned commits; reproduce the table end to end
 ```
 
 ## Quickstart
 
-Needs Docker, Python 3.12+, and an OpenAI key (the router, planner and synthesis use
-`gpt-4o-mini` and `gpt-4o`; a full benchmark run is about $3).
+You need Docker, Python 3.12 or newer, and an OpenAI API key. Routing, planning and the
+judge use `gpt-4o-mini`; answers use `gpt-4o`. One benchmark run is about $3.
 
 ```bash
 git clone https://github.com/aakarshan-coding/blueprint-ai.git && cd blueprint-ai
 pip install -e ".[embed,dev]"
-scripts/fetch_corpus.sh                 # requests + urllib3 at the measured commits
-docker compose up -d                    # Neo4j 5 and pgvector
-python -m graphrag.ingest.run_ingestion --ast-only   # parser-derived graph, vector store
-python -m graphrag.ingest.replay_llm_edges           # model-derived edges, from the log
+scripts/fetch_corpus.sh                              # requests and urllib3 at the measured commits
+docker compose up -d                                 # Neo4j 5 and Postgres with pgvector
+python -m graphrag.ingest.run_ingestion --ast-only   # parser-derived graph and the vector store
+python -m graphrag.ingest.replay_llm_edges           # model-derived edges, replayed from the log
 export OPENAI_API_KEY=sk-...
-python -m graphrag.eval.run_benchmark               # one run, ~28 minutes
+python -m graphrag.eval.run_benchmark                # one run, about 28 minutes
 ```
 
 The unit tests need none of that: `pip install -e ".[dev]" && pytest`.
 
-To reproduce the table rather than one run, `scripts/reproduce.sh` does the five runs and
-summarises them. To check the graph against real execution,
-`python -m graphrag.eval.runtime_oracle -- requests_repo/tests` (about 3 minutes).
+`scripts/reproduce.sh` runs the benchmark five times and summarises the result.
+`python -m graphrag.eval.runtime_oracle -- requests_repo/tests` scores the graph against
+real execution in about three minutes.
 
 ## Limits and open items
 
-- **Two libraries.** Nothing here is measured on another codebase. The ontology and the
-  templates are general; the question set and the numbers are not.
-- **Two-hop is the weakest graph category at 72.** Its remaining misses are urllib3
-  exception questions where the planner anchors on the wrong one of two similarly named
-  classes.
-- **The planner drifts with a longer template list.** Two questions changed template on
-  identical candidates when the list grew from six to eight. Deterministic repairs cover
-  the shapes seen so far; planner voting is the untested alternative.
-- **Value flow stops at attributes.** Flow through dict literals, `update()`, returned
-  dicts and `**kwargs` is followed; a value stored on `self` and read back later is not.
-- **Ten judge-graded questions are unaudited against human labels.** The judge once
-  contradicted its own structured output in prose; only the structured field is scored.
+- **Two libraries only.** The ontology and templates are general; the question set and
+  the numbers are specific to `requests` and `urllib3`. Nothing is measured on another
+  codebase.
+- **Two-hop is the weakest graph category at 72.** The remaining misses are urllib3
+  exception questions where two classes have similar names and the planner anchors on
+  the wrong one.
+- **The planner drifts when the template list grows.** Two questions changed template on
+  identical inputs when the list went from six to eight. Deterministic repairs cover the
+  shapes seen so far; voting the planner is the untried alternative.
+- **Value flow stops at attributes.** A parameter is followed through dict literals,
+  `update()` calls, returned dicts and `**kwargs`. A value stored on `self` and read back
+  later is not followed.
+- **The ten judge-graded questions have no human labels.** The judge once contradicted
+  its own structured output in its free-text reason; only the structured field is scored.
 
-The full list is at the end of [`docs/DECISIONS.md`](docs/DECISIONS.md), under *Open items*.
+The full list is at the end of [`docs/DECISIONS.md`](docs/DECISIONS.md) under *Open items*.
 
 ## Reading further
 
-- [`docs/DECISIONS.md`](docs/DECISIONS.md): start at D51 (the noise floor), D67 (the
-  oracle), D72 (the dedupe bug), D79 (the grader audit), D89–D91 (the 220-question set).
+- [`docs/DECISIONS.md`](docs/DECISIONS.md). Good entry points: D51 (the noise floor),
+  D67 (the oracle), D72 (the deduplication bug), D79 (the grader audit), D89 to D91 (the
+  220-question set).
 - [`docs/research/2026-09-24-codebase-knowledge-graphs.md`](docs/research/2026-09-24-codebase-knowledge-graphs.md):
-  eleven tools that build graphs from code, cited, and what this project took from each.
+  eleven tools that build graphs from code, with citations, and what this project took from each.
 - [`docs/research/2026-09-26-code-graph-rag.md`](docs/research/2026-09-26-code-graph-rag.md):
-  a close read of the nearest open-source project, and why its free-Cypher design was not adopted.
+  a close read of the nearest open-source project and why its model-written-query design was not adopted.
 - [`docs/superpowers/specs/2026-09-16-graph-rag-design.md`](docs/superpowers/specs/2026-09-16-graph-rag-design.md):
-  the original design document, before any of the above was learned.
+  the original design document, written before any of the above was learned.
