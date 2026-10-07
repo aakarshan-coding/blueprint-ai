@@ -24,3 +24,4 @@ results/latest_benchmark_results.json
 *.log
 results/local/*.json
 data/corpus.json
+*.egg-info/

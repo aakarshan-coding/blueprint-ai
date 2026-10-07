@@ -94,7 +94,12 @@ What each row means:
   nothing in the graph matches, and the system says so.
 
 The numbers come from [`results/exp9/`](results/exp9); reproduce the table with
-`python -m graphrag.eval.summarize_runs results/exp9/*.json`. Every earlier table, going
+`python -m graphrag.eval.summarize_runs results/exp9/*.json`. One caveat on
+reproducing the runs themselves: a fresh ingest from this repository rebuilds every
+parser-derived edge exactly, but the model-derived edges come out slightly different
+from the graph these runs used, which had accumulated the project's history of replays
+and cleanups. The gap is logged in D93 and a confirmation run on the fresh graph is the
+open step. Every earlier table, going
 back to the first single run, is kept in [`results/`](results/README.md) with the
 decision it belongs to.
 
