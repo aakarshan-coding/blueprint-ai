@@ -11,6 +11,7 @@ venv/
 # secrets + local state
 .env
 .cache/
+.claude/settings.local.json
 
 # data artifacts
 *.db
