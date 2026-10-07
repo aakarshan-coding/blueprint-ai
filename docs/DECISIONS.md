@@ -3643,6 +3643,42 @@ Both are true, and the runtime oracle can judge the envelope edges directly, bec
 trace records the real `__context__` chain. That is D95. The D91 table stays the last
 measurement on the historical graph; this one is the first on a graph anyone can rebuild.
 
+## D95 — A narrowed wrap records the envelope too
+
+**Status:** applied; 389 tests; graph re-applied; oracle re-scored on the saved trace.
+Not yet benchmarked.
+
+**The change.** When an `except` handler narrows with `isinstance(e.reason, X)` and
+raises Y, the extractor now records two wraps: Y wraps X (the reason, as D57 recorded)
+and Y wraps the caught exception (the envelope, which D57 dropped as "not the
+informative fact"). Narrowing on the exception itself, `isinstance(e, X)`, still records
+only X; that is the case D57's four false edges came from, and nothing there changes.
+
+**The oracle, same trace, before → after:**
+
+| wrap edges | in graph | confirmed at runtime | recall | precision |
+|---|---|---|---|---|
+| parser (`ast`) | 44 → 48 | 20 → 21 | 71.4% → 75.0% | 38.6% → 43.8% |
+| model (`llm`) | 42 → 54 | 8 → 5 | 28.6% → 17.9% | 21.4% → 5.6% |
+
+The four new parser edges are the envelopes around `MaxRetryError`: `RetryError`,
+`ConnectTimeout`, `ProxyError` and `SSLError` wrapping it. One is confirmed by the test
+suite; the other three sit on paths the suite does not exercise. The model row is the
+fresh replay's set (D93), measured here for the first time against the trace: worse
+than the historical set in both recall and precision. The parser-for-structure case
+grows stronger with every measurement.
+
+**Live.** `th-08`, `3h-06`, `3h-15` and `th-01` rebuild with every required name in the
+context; before D95 the first two lacked `RetryError` and `SSLError`.
+
+**What this reverses.** Part of D57. D57 was right that pairing every caught type with
+every raise produced false edges, and that stands for `isinstance(e, ...)`. It was
+wrong to extend the rule to `isinstance(e.reason, ...)`: there the caught exception
+really did arrive and really was replaced. The historical graph hid the gap for 38
+decisions because a model edge filled it, and the gap appeared the first time the
+graph was rebuilt from scratch (D94). That is the argument for rebuilding from scratch
+before every claim, which the tool now makes a one-line command.
+
 ---
 
 ## Open questions for the Phase 2 sweep

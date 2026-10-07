@@ -523,15 +523,21 @@ class ExceptionWrapEdge:
     chunk_id: str
 
 
-def _isinstance_narrowing(test: ast.expr, bound: str | None) -> list[str] | None:
+def _isinstance_narrowing(test: ast.expr, bound: str | None) -> tuple[list[str], bool] | None:
     """The types an `if isinstance(e, ...)` guard narrows the caught exception
-    to, or None when the test says nothing certain about it.
+    to, or None when the test says nothing certain about it. The second
+    element says whether the test looked at an attribute of the caught
+    exception (`e.reason`) rather than the exception itself.
 
     `isinstance(e.reason, X)` counts too: a MaxRetryError's `.reason` is the
     urllib3 error it carries, and `raise ConnectTimeout(e)` under that guard
-    wraps the reason, which is the fact worth having. A negated or compound
-    test (`not isinstance`, `isinstance(...) and retry`) does not pin the type
-    on the raise's path, so it does not narrow.
+    wraps the reason. It also replaces the MaxRetryError that was caught;
+    D57 recorded only the reason, and D94 measured what that cost (the
+    envelope edge, "RetryError wraps MaxRetryError", was missing from a
+    freshly built graph and eight questions lost it). Both facts are true
+    and both are recorded now (D95); the caller decides. A negated or
+    compound test (`not isinstance`, `isinstance(...) and retry`) does not
+    pin the type on the raise's path, so it does not narrow.
     """
     if bound is None or not isinstance(test, ast.Call):
         return None
@@ -541,6 +547,7 @@ def _isinstance_narrowing(test: ast.expr, bound: str | None) -> list[str] | None
         return None
 
     subject = test.args[0]
+    via_attribute = isinstance(subject, ast.Attribute)
     while isinstance(subject, ast.Attribute):
         subject = subject.value
     if not (isinstance(subject, ast.Name) and subject.id == bound):
@@ -548,8 +555,8 @@ def _isinstance_narrowing(test: ast.expr, bound: str | None) -> list[str] | None
 
     types = test.args[1]
     if isinstance(types, ast.Tuple):
-        return [ast.unparse(t) for t in types.elts]
-    return [ast.unparse(types)]
+        return [ast.unparse(t) for t in types.elts], via_attribute
+    return [ast.unparse(types)], via_attribute
 
 
 def _wrap_pairs(
@@ -576,8 +583,16 @@ def _wrap_pairs(
                         yield caught_name, raised
 
         elif isinstance(stmt, ast.If):
-            narrowed = _isinstance_narrowing(stmt.test, bound)
-            yield from _wrap_pairs(stmt.body, narrowed or caught, bound=bound, scope=scope)
+            narrowing = _isinstance_narrowing(stmt.test, bound)
+            if narrowing is None:
+                on_branch = caught
+            else:
+                types, via_attribute = narrowing
+                # Narrowed on the exception itself: only the narrowed type
+                # arrived. Narrowed on its attribute: the caught exception
+                # arrived, carrying the narrowed type; both are wrapped (D95).
+                on_branch = list(caught) + types if via_attribute else types
+            yield from _wrap_pairs(stmt.body, on_branch, bound=bound, scope=scope)
             yield from _wrap_pairs(stmt.orelse, caught, bound=bound, scope=scope)
 
         elif isinstance(stmt, ast.Try):

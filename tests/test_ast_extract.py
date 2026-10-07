@@ -303,8 +303,10 @@ def test_isinstance_narrowing_attributes_each_raise_to_the_narrowed_type():
 
 def test_isinstance_narrowing_on_an_attribute_of_the_caught_exception():
     """`isinstance(e.reason, X)` narrows on the urllib3 error *inside* a
-    MaxRetryError. The informative fact is that ConnectTimeout wraps the
-    reason, not the envelope."""
+    MaxRetryError. ConnectTimeout wraps the reason, and it also replaces the
+    MaxRetryError that was caught: both are recorded (D95). D57 kept only
+    the reason, and a freshly built graph then lost "RetryError wraps
+    MaxRetryError" on eight benchmark questions (D94)."""
     edges = extract_exception_wrapping(
         WRAP_SOURCE, repo="requests", path="src/requests/adapters.py",
         dotted_module="requests.adapters",
@@ -312,7 +314,7 @@ def test_isinstance_narrowing_on_an_attribute_of_the_caught_exception():
     pairs = {(e.caught_surface, e.raised_surface) for e in edges}
 
     assert ("ConnectTimeoutError", "ConnectTimeout") in pairs
-    assert ("MaxRetryError", "ConnectTimeout") not in pairs
+    assert ("MaxRetryError", "ConnectTimeout") in pairs
 
 
 def test_isinstance_narrowing_with_a_tuple_narrows_to_each_member():

@@ -7025,10 +7025,10 @@
  "wraps": {
   "llm": {
    "observed": 28,
-   "in_graph": 42,
-   "confirmed": 8,
-   "recall": 0.286,
-   "observed_precision": 0.214,
+   "in_graph": 54,
+   "confirmed": 5,
+   "recall": 0.179,
+   "observed_precision": 0.056,
    "missing_from_graph": [
     [
      "builtins.TypeError",
@@ -7043,6 +7043,10 @@
      "urllib3.exceptions.ProtocolError"
     ],
     [
+     "requests.exceptions.ConnectTimeout",
+     "urllib3.exceptions.MaxRetryError"
+    ],
+    [
      "requests.exceptions.ConnectionError",
      "urllib3.exceptions.MaxRetryError"
     ],
@@ -7055,20 +7059,28 @@
      "urllib3.exceptions.ReadTimeoutError"
     ],
     [
+     "requests.exceptions.InvalidHeader",
+     "urllib3.exceptions.InvalidHeader"
+    ],
+    [
      "requests.exceptions.InvalidJSONError",
      "builtins.ValueError"
     ],
     [
-     "requests.exceptions.InvalidURL",
-     "builtins.ValueError"
+     "requests.exceptions.ProxyError",
+     "urllib3.exceptions.MaxRetryError"
     ],
     [
-     "requests.exceptions.InvalidURL",
-     "urllib3.exceptions.LocationParseError"
+     "requests.exceptions.ReadTimeout",
+     "urllib3.exceptions.ReadTimeoutError"
     ],
     [
-     "requests.exceptions.InvalidURL",
-     "urllib3.exceptions.LocationValueError"
+     "requests.exceptions.RetryError",
+     "urllib3.exceptions.MaxRetryError"
+    ],
+    [
+     "requests.exceptions.SSLError",
+     "urllib3.exceptions.MaxRetryError"
     ],
     [
      "requests.exceptions.UnrewindableBodyError",
@@ -7113,6 +7125,46 @@
    ],
    "unconfirmed_in_graph": [
     [
+     "builtins.Exception",
+     "concept:invalidstate"
+    ],
+    [
+     "builtins.Exception",
+     "concept:poolrunsoutofconnections"
+    ],
+    [
+     "builtins.Exception",
+     "concept:sockettimeout"
+    ],
+    [
+     "builtins.Exception",
+     "requests.cookies.RequestsCookieJar.set_cookie.cookie"
+    ],
+    [
+     "builtins.KeyError",
+     "concept:cookienotfound"
+    ],
+    [
+     "builtins.OverflowError",
+     "urllib3.response.HTTPResponse.read"
+    ],
+    [
+     "builtins.UnicodeError",
+     "requests.exceptions.InvalidURL"
+    ],
+    [
+     "builtins.ValueError",
+     "builtins.AssertionError"
+    ],
+    [
+     "builtins.ValueError",
+     "concept:numericvaluelessthanorequaltozero"
+    ],
+    [
+     "builtins.ValueError",
+     "concept:typeisnotanintegerfloatornone"
+    ],
+    [
      "concept:errorsduringresponseread",
      "urllib3.exceptions.ProtocolError"
     ],
@@ -7137,6 +7189,10 @@
      "requests.exceptions.MissingSchema"
     ],
     [
+     "concept:pyopensslspackageleveldependencies",
+     "builtins.ImportError"
+    ],
+    [
      "concept:readtimeoutsoversslconnections",
      "urllib3.exceptions.ReadTimeoutError"
     ],
@@ -7153,8 +7209,20 @@
      "concept:httpsconnection"
     ],
     [
+     "requests",
+     "builtins.IOError"
+    ],
+    [
+     "requests",
+     "requests.exceptions.JSONDecodeError"
+    ],
+    [
      "requests.cookies.CookieConflictError",
      "concept:multiplecookiesthatmatchnameandoptionallydomainandpath"
+    ],
+    [
+     "requests.cookies.MockRequest.get_host",
+     "concept:parsetheurlinput"
     ],
     [
      "requests.exceptions.ConnectTimeout",
@@ -7177,10 +7245,6 @@
      "requests.exceptions.RequestException"
     ],
     [
-     "requests.exceptions.InvalidHeader",
-     "urllib3.exceptions.SSLError"
-    ],
-    [
      "requests.exceptions.InvalidSchema",
      "concept:leadingwhitespaceurls"
     ],
@@ -7195,10 +7259,6 @@
     [
      "requests.exceptions.ReadTimeout",
      "requests.exceptions.Timeout"
-    ],
-    [
-     "requests.exceptions.ReadTimeout",
-     "urllib3.exceptions.SSLError"
     ],
     [
      "requests.exceptions.Timeout",
@@ -7221,6 +7281,22 @@
      "requests.exceptions.RequestException"
     ],
     [
+     "requests.models.Response.content",
+     "builtins.AttributeError"
+    ],
+    [
+     "requests.models.Response.raise_for_status",
+     "requests.exceptions.HTTPError"
+    ],
+    [
+     "urllib3",
+     "urllib3.exceptions.LocationParseError"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "builtins.ValueError"
+    ],
+    [
      "urllib3.contrib.emscripten.fetch._RequestError",
      "concept:requestraisesajavascriptexception"
     ],
@@ -7237,29 +7313,33 @@
      "requests.exceptions.InvalidHeader"
     ],
     [
+     "urllib3.exceptions.LocationParseError",
+     "builtins.ValueError"
+    ],
+    [
      "urllib3.exceptions.ProxySchemeUnsupported",
      "concept:parameter:ssl_context"
     ],
     [
      "urllib3.exceptions.TimeoutStateError",
      "urllib3.exceptions.TimeoutStateError"
+    ],
+    [
+     "urllib3.util.ssl_",
+     "builtins.ImportError"
     ]
    ]
   },
   "ast": {
    "observed": 28,
-   "in_graph": 44,
-   "confirmed": 20,
-   "recall": 0.714,
-   "observed_precision": 0.386,
+   "in_graph": 48,
+   "confirmed": 21,
+   "recall": 0.75,
+   "observed_precision": 0.438,
    "missing_from_graph": [
     [
      "builtins.ValueError",
      "builtins.ValueError"
-    ],
-    [
-     "requests.exceptions.RetryError",
-     "urllib3.exceptions.MaxRetryError"
     ],
     [
      "urllib3.exceptions.ConnectTimeoutError",
@@ -7399,10 +7479,10 @@
   },
   "all": {
    "observed": 28,
-   "in_graph": 84,
+   "in_graph": 99,
    "confirmed": 21,
    "recall": 0.75,
-   "observed_precision": 0.286,
+   "observed_precision": 0.212,
    "missing_from_graph": [
     [
      "builtins.ValueError",
@@ -7435,8 +7515,48 @@
    ],
    "unconfirmed_in_graph": [
     [
+     "builtins.Exception",
+     "concept:invalidstate"
+    ],
+    [
+     "builtins.Exception",
+     "concept:poolrunsoutofconnections"
+    ],
+    [
+     "builtins.Exception",
+     "concept:sockettimeout"
+    ],
+    [
+     "builtins.Exception",
+     "requests.cookies.RequestsCookieJar.set_cookie.cookie"
+    ],
+    [
+     "builtins.KeyError",
+     "concept:cookienotfound"
+    ],
+    [
+     "builtins.OverflowError",
+     "urllib3.response.HTTPResponse.read"
+    ],
+    [
+     "builtins.UnicodeError",
+     "requests.exceptions.InvalidURL"
+    ],
+    [
+     "builtins.ValueError",
+     "builtins.AssertionError"
+    ],
+    [
      "builtins.ValueError",
      "builtins.TypeError"
+    ],
+    [
+     "builtins.ValueError",
+     "concept:numericvaluelessthanorequaltozero"
+    ],
+    [
+     "builtins.ValueError",
+     "concept:typeisnotanintegerfloatornone"
     ],
     [
      "concept:errorsduringresponseread",
@@ -7463,6 +7583,10 @@
      "requests.exceptions.MissingSchema"
     ],
     [
+     "concept:pyopensslspackageleveldependencies",
+     "builtins.ImportError"
+    ],
+    [
      "concept:readtimeoutsoversslconnections",
      "urllib3.exceptions.ReadTimeoutError"
     ],
@@ -7483,8 +7607,20 @@
      "urllib3.contrib.emscripten.fetch._RequestError"
     ],
     [
+     "requests",
+     "builtins.IOError"
+    ],
+    [
+     "requests",
+     "requests.exceptions.JSONDecodeError"
+    ],
+    [
      "requests.cookies.CookieConflictError",
      "concept:multiplecookiesthatmatchnameandoptionallydomainandpath"
+    ],
+    [
+     "requests.cookies.MockRequest.get_host",
+     "concept:parsetheurlinput"
     ],
     [
      "requests.exceptions.ConnectTimeout",
@@ -7519,10 +7655,6 @@
      "requests.exceptions.RequestException"
     ],
     [
-     "requests.exceptions.InvalidHeader",
-     "urllib3.exceptions.SSLError"
-    ],
-    [
      "requests.exceptions.InvalidSchema",
      "concept:leadingwhitespaceurls"
     ],
@@ -7551,10 +7683,6 @@
      "requests.exceptions.Timeout"
     ],
     [
-     "requests.exceptions.ReadTimeout",
-     "urllib3.exceptions.SSLError"
-    ],
-    [
      "requests.exceptions.RetryError",
      "urllib3.exceptions.ResponseError"
     ],
@@ -7577,6 +7705,22 @@
     [
      "requests.exceptions.TooManyRedirects",
      "requests.exceptions.RequestException"
+    ],
+    [
+     "requests.models.Response.content",
+     "builtins.AttributeError"
+    ],
+    [
+     "requests.models.Response.raise_for_status",
+     "requests.exceptions.HTTPError"
+    ],
+    [
+     "urllib3",
+     "urllib3.exceptions.LocationParseError"
+    ],
+    [
+     "urllib3.connectionpool.HTTPConnectionPool.urlopen",
+     "builtins.ValueError"
     ],
     [
      "urllib3.contrib.emscripten.fetch._RequestError",
@@ -7621,6 +7765,10 @@
     [
      "urllib3.exceptions.LocationParseError",
      "builtins.UnicodeError"
+    ],
+    [
+     "urllib3.exceptions.LocationParseError",
+     "builtins.ValueError"
     ],
     [
      "urllib3.exceptions.ProtocolError",
@@ -7673,6 +7821,10 @@
     [
      "urllib3.exceptions.UnrewindableBodyError",
      "builtins.OSError"
+    ],
+    [
+     "urllib3.util.ssl_",
+     "builtins.ImportError"
     ]
    ]
   }
