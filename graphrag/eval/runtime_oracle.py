@@ -37,8 +37,8 @@ REPO_ROOTS = {
     "requests": Path("requests_repo/src"),
     "urllib3": Path("urllib3_repo/src"),
 }
-TRACE_PATH = Path("runtime_oracle_trace.json")
-REPORT_PATH = Path("runtime_oracle_report.json")
+TRACE_PATH = Path("results/oracle/trace.json")
+REPORT_PATH = Path("results/oracle/report.json")
 
 
 def canonical_id(code, *, roots: dict[str, Path]) -> str | None:

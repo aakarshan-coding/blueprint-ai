@@ -101,7 +101,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--trials", type=int, default=4)
     parser.add_argument("--results", type=Path, default=RESULTS_PATH)
-    parser.add_argument("--out", type=Path, default=Path("regrade_stability.json"))
+    parser.add_argument("--out", type=Path, default=Path("results/stability/regrade_stability.json"))
     args = parser.parse_args()
 
     questions = {

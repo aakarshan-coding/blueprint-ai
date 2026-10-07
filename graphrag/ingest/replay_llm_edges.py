@@ -147,7 +147,7 @@ if __name__ == "__main__":
 
     driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "graphragpassword"))
     with driver.session() as session:
-        stats = replay("llm_edges_log.jsonl", resolver=resolver, neo4j_session=session,
+        stats = replay("data/llm_edges_log.jsonl", resolver=resolver, neo4j_session=session,
                        doc_index=doc_index, release_index=release_index)
     driver.close()
 

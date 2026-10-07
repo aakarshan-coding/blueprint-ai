@@ -19,7 +19,7 @@ from pathlib import Path
 import yaml
 
 QUESTIONS_PATH = Path("graphrag/eval/benchmark_questions.yaml")
-RESULTS_PATH = Path("benchmark_results.json")
+RESULTS_PATH = Path("results/latest_benchmark_results.json")  # scratch output, gitignored; runs are kept under results/<experiment>/
 
 CATEGORY_ORDER = ["single_hop", "two_hop", "three_hop", "aggregation", "out_of_scope"]
 

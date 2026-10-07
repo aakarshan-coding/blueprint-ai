@@ -16,6 +16,9 @@ venv/
 *.db
 out/
 
+# the last benchmark run's scratch output; kept runs live under results/<experiment>/
+results/latest_benchmark_results.json
+
 # console transcripts from benchmark/ingestion runs. The results they describe
 # are committed as JSON; these are just what scrolled past.
 *.log

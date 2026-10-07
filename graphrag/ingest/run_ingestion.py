@@ -780,7 +780,7 @@ def main() -> None:
             chunks, node_universe, import_aliases, edges, node_types,
             openai_client=openai_client, neo4j_session=neo4j_session,
             limit=0 if args.ast_only else args.limit,
-            llm_edge_log_path=None if args.ast_only else "llm_edges_log.jsonl",
+            llm_edge_log_path=None if args.ast_only else "data/llm_edges_log.jsonl",
         )
     driver.close()
 

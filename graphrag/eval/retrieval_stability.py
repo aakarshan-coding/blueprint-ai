@@ -86,7 +86,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--trials", type=int, default=4)
     parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--out", type=Path, default=Path("retrieval_stability.json"))
+    parser.add_argument("--out", type=Path, default=Path("results/stability/retrieval_stability.json"))
     args = parser.parse_args()
 
     questions = yaml.safe_load(QUESTIONS_PATH.read_text(encoding="utf-8"))
