@@ -30,3 +30,6 @@ include = ["graphrag*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# The tests import their shared fakes as `tests.fakes`; `python -m pytest` puts the
+# repository root on sys.path and the `pytest` script does not. Make it explicit.
+pythonpath = ["."]
