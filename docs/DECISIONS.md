@@ -3527,6 +3527,31 @@ vector-only 53.1 by strict accuracy (+30.0 [+28.7..+31.4]); 88.2 vs 63.0 with pa
 credit (+25.2 [+24.3..+26.1]); +26 on two-hop, +43 on three-hop, +67 on aggregation,
 +12 on out-of-scope, even on single-hop.
 
+## D92 — The repository made presentable: README, layout, reproducibility, CI
+
+**Status:** applied. No code behaviour changed; 380 tests, now also run on GitHub Actions.
+
+**Why.** The engineering was in the log and the tests; the GitHub page showed 82 result
+files and no README. Four changes, each its own commit:
+
+1. *Layout.* Results live under `results/<experiment>/` with an index mapping each
+   experiment to the decision it measured; the LLM edge log under `data/`; tools write
+   scratch output under `results/` (gitignored). The root is nine entries.
+2. *Reproducibility.* `scripts/fetch_corpus.sh` clones both libraries at the commits the
+   numbers were measured on (`requests` dae7ef63, `urllib3` b1d30ab);
+   `scripts/reproduce.sh` goes from a clean clone to the five-run table. `pyproject.toml`
+   pins dependency ranges, with `embed` (torch) and `dev` extras so the tests install
+   light. The empty `api` package and `requirements.txt` are gone. MIT license.
+3. *CI.* GitHub Actions runs the unit suite on Python 3.12 and 3.13 on every push; the
+   suite needs no database and makes no model calls.
+4. *README.* Leads with the 220-question table and what it says; then how the numbers
+   were earned (five items, each linked to its decision); an architecture diagram and a
+   stage-to-file table; a repository map; a quickstart; limits and open items; where to
+   read further. Under 250 lines.
+
+**Not done, on purpose.** No new features, no squashed history: the commits and the log
+are the evidence that the work happened in the order it did.
+
 ---
 
 ## Open questions for the Phase 2 sweep
