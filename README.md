@@ -296,7 +296,13 @@ graphrag ask "What does Session.send call?" --show-plan
 `ingest` takes several repositories at once when they import each other. Add
 `--with-llm` to also run the model pass over documentation and docstrings; it costs a
 few dollars for a library-sized repository and its edges are logged so a re-ingest can
-replay them. `ask --show-context` prints the context the answer was written from.
+replay them. `ask --show-context` prints the context the answer was written from, and
+`ask --compare` prints the vector-only baseline's answer to the same question beneath
+the graph's, which is the benchmark's comparison on a single question.
+
+`scripts/demo.sh` runs a five-step demo on `itsdangerous`, a library the system was
+never tuned on: ingest, a structural question with its plan, a side-by-side comparison,
+the tagged context, and a refusal. Set `PAUSE=1` to step through it.
 
 What a new repository gets: everything a parser can see (the 9 structural relationship
 types) and text search over its docs. The model-derived relationship types need

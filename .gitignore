@@ -25,3 +25,6 @@ results/latest_benchmark_results.json
 results/local/*.json
 data/corpus.json
 *.egg-info/
+
+# demo checkout (scripts/demo.sh)
+.demo/

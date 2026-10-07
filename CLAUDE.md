@@ -46,6 +46,8 @@ docker compose up -d                   # Neo4j 5 and Postgres with pgvector
 graphrag ingest <repo> [<repo>...]     # any Python repo: parser pass + embeddings, no model calls
 graphrag ingest <repo> --with-llm      # also the model pass over docs (caller's key, logged for replay)
 graphrag ask "question" --show-plan    # one answer with citations
+graphrag ask "question" --compare      # also the vector-only answer, side by side
+scripts/demo.sh                        # five-step demo on itsdangerous (replaces the stored corpus)
 python -m graphrag.eval.run_benchmark  # one run on the 220 questions, ~28 min, ~$3
 python -m graphrag.eval.summarize_runs results/exp10/*.json
 python -m graphrag.eval.runtime_oracle --no-run   # re-score the graph against the saved trace

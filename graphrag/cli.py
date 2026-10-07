@@ -2,6 +2,7 @@
 
     graphrag ingest ./some-repo [./another-repo ...] [--with-llm] [--reset]
     graphrag ask "What does Session.send call?"
+    graphrag ask "What does Session.send call?" --compare   # also the vector-only answer
 
 Ingest detects each repository's package, source folder, docs and changelog,
 writes data/corpus.json so later commands know the corpus, clears the stores
@@ -104,25 +105,47 @@ def _ask(args: argparse.Namespace) -> int:
     public_ids, documented = build_public_and_doc_index(import_aliases, corpus)
     resolver = Resolver(node_universe=node_universe, import_aliases=import_aliases,
                         public_ids=public_ids, documented_params=documented)
+    client = OpenAI()
+    model = load_model()
     conn = postgres_conn()
     driver = neo4j_driver()
     with driver.session() as session:
         out = answer_hybrid(
-            args.question, conn=conn, neo4j_session=session, openai_client=OpenAI(),
-            resolver=resolver, embedding_model=load_model(),
+            args.question, conn=conn, neo4j_session=session, openai_client=client,
+            resolver=resolver, embedding_model=model,
         )
+    baseline = None
+    if args.compare:
+        # The benchmark's baseline: same passages, same answer model, same
+        # prompt, no graph. Side by side, the graph's contribution is visible
+        # on one question instead of asserted from a table.
+        from graphrag.eval.baseline import answer_vector_only
+
+        baseline = answer_vector_only(args.question, conn=conn, openai_client=client, embedding_model=model)
     driver.close(); conn.close()
+
     if args.show_plan:
         print(f"[route {out.get('route')}] [plan {out.get('graph_plan')}] [facts {out.get('graph_facts_used')}]")
     if args.show_context and out.get("context"):
         print(out["context"]); print("---")
-    print(out["answer"])
+    print(format_answer("graph + text", out) if baseline else out["answer"])
+    if baseline:
+        print()
+        print(format_answer("text only (no graph)", baseline))
     if not out.get("citations_valid", True):
         print("(warning: an answer citation did not match anything retrieved)", file=sys.stderr)
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
+def format_answer(label: str, out: dict) -> str:
+    """One labelled answer block for --compare."""
+    facts = out.get("graph_facts_used", 0)
+    passages = out.get("vector_passages_used", 0)
+    header = f"== {label}: {facts} graph facts, {passages} passages =="
+    return f"{header}\n{out['answer']}"
+
+
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="graphrag", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -141,8 +164,14 @@ def main(argv: list[str] | None = None) -> int:
     ask.add_argument("question")
     ask.add_argument("--show-plan", action="store_true", help="print the route and the graph plan")
     ask.add_argument("--show-context", action="store_true", help="print the context the answer was written from")
+    ask.add_argument("--compare", action="store_true",
+                     help="also answer with the vector-only baseline (no graph) and print both")
     ask.set_defaults(func=_ask)
+    return parser
 
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
     args = parser.parse_args(argv)
     if args.command == "ingest" and not args.repos and not args.corpus:
         parser.error("ingest needs repository paths or --corpus")
