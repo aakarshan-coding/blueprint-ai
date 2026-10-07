@@ -21,6 +21,7 @@ per run; a five-run experiment is five files. Summarise any set with:
 | `exp7_scored/` | exp7 re-scored with partial credit and the report-based judge | D87 |
 | `exp8/`, `exp8_scored/` | the 220-question set, as recorded and after two reference fixes | D89 |
 | `exp9/` | the D90 batch on 220 questions: the current table | D91 |
+| `exp10/` | the same code on a graph rebuilt from the repository (D93); the first measurement anyone can reproduce | D94 |
 | `oracle/` | the runtime oracle: a `sys.settrace` trace of the requests test suite and the graph scored against it | D67, D80 |
 | `stability/` | grader-variance and retrieval-stability probes | D51, D53 |
 

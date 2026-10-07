@@ -3603,6 +3603,46 @@ replayed graph is a measurement, not an argument: a confirmation run is the hone
 step, and until it is done the README should say the numbers were measured on the
 historical graph.
 
+## D94 — Confirmation run on the fresh graph: a drop, and what it was resting on
+
+**Status:** measured. Files `results/exp10/`. Same 220 questions and grader as D91; the
+graph rebuilt from the repository (D93) instead of the historical one; the prompts the
+generalised ones, which insert the corpus's package names where hand-written examples
+used to be. Five runs; two of the five were re-run after the machine slept overnight and
+stalled a run for eight hours (the stalled run was discarded). No errors.
+
+| category | n | D91 (historical graph) | now (fresh graph) |
+|---|---|---|---|
+| single_hop | 45 | 95.1 | 95.1 |
+| two_hop | 45 | 72.4 [68.9..75.6] | 69.3 [66.7..71.1] |
+| three_hop | 45 | 71.1 [68.9..73.3] | **62.2 [57.8..66.7]** |
+| aggregation | 45 | 81.3 [80.0..82.2] | **86.7 [86.7..86.7]** |
+| out_of_scope | 40 | 97.0 | 98.0 |
+| **pooled** | 220 | 83.1 [82.3..84.1] | **81.9 [81.4..82.7]** |
+
+Lead over the baseline: +28.9 [27.8..30.0], against +30.0 before.
+
+**Three-hop fell outside its previous range, and the cause is specific.** Eight questions
+dropped, most anchored at urllib3's `MaxRetryError` (`th-08`, `3h-06` among them). Their
+plans are identical to D91; their contexts have one or two fewer lines. The missing line
+is "RetryError wraps MaxRetryError" and its siblings (`ConnectTimeout`, `ProxyError`,
+`SSLError` wrapping `MaxRetryError`). The parser deliberately did not record those:
+`HTTPAdapter.send` catches `MaxRetryError`, checks `isinstance(e.reason, ResponseError)`,
+and raises `RetryError`; D57 chose to record the narrowed fact, "RetryError wraps
+ResponseError", and not the envelope. The historical graph answered those questions
+through a model-derived edge that supplied the envelope, and the fresh replay did not
+reproduce it. The D91 numbers on those questions were resting on a model edge the parser
+should have provided.
+
+**Aggregation rose** on the cleaner graph: the counting paths are unchanged, and fewer
+stale model edges compete in the context.
+
+**Decision.** Record both facts when an `isinstance` guard narrows on an attribute of the
+caught exception: the envelope that was caught and replaced, and the reason it carried.
+Both are true, and the runtime oracle can judge the envelope edges directly, because the
+trace records the real `__context__` chain. That is D95. The D91 table stays the last
+measurement on the historical graph; this one is the first on a graph anyone can rebuild.
+
 ---
 
 ## Open questions for the Phase 2 sweep
