@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "graphrag"
+version = "0.1.0"
+description = "Knowledge-graph + vector RAG over the requests and urllib3 source, with a benchmark that measures the graph's contribution"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = [
+    "openai>=3.1,<4",
+    "neo4j>=6.3,<7",
+    "psycopg[binary]>=3.3,<4",
+    "pgvector>=0.5,<1",
+    "pydantic>=2.13,<3",
+    "pyyaml>=6.0,<7",
+    "jedi>=0.20,<1",
+]
+
+[project.optional-dependencies]
+# The embedding model (BAAI/bge-small-en-v1.5) pulls in torch; only ingestion
+# and the vector half of retrieval need it. Tests use a fake embedder.
+embed = ["sentence-transformers>=6.1,<7"]
+dev = ["pytest>=8.3,<9"]
+
+[tool.setuptools.packages.find]
+include = ["graphrag*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

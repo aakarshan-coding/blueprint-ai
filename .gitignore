@@ -22,3 +22,4 @@ results/latest_benchmark_results.json
 # console transcripts from benchmark/ingestion runs. The results they describe
 # are committed as JSON; these are just what scrolled past.
 *.log
+results/local/*.json
