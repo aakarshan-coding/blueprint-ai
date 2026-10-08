@@ -35,7 +35,8 @@ graphrag ask "Which exceptions does itsdangerous.exc define, and what does each 
 
 step "4. The context the answer was written from: every fact tagged with where it came from"
 # The raw text passages are left out here; they follow the graph lines in the real context.
-graphrag ask "What does Signer.unsign raise?" --show-plan --show-context \n  | sed '/=== RETRIEVED PASSAGES ===/,/^---$/d'
+graphrag ask "What does Signer.unsign raise?" --show-plan --show-context \
+  | sed '/=== RETRIEVED PASSAGES ===/,/^---$/d'
 
 step "5. Out of scope: an empty graph result is a refusal signal"
 graphrag ask "How do I configure nginx as a reverse proxy?" --show-plan
