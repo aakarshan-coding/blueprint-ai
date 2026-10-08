@@ -47,6 +47,7 @@ graphrag ingest <repo> [<repo>...]     # any Python repo: parser pass + embeddin
 graphrag ingest <repo> --with-llm      # also the model pass over docs (caller's key, logged for replay)
 graphrag ask "question" --show-plan    # one answer with citations
 graphrag ask "question" --compare      # also the vector-only answer, side by side
+graphrag status                        # which repos are ingested; graph and text-index counts
 scripts/demo.sh                        # five-step demo on itsdangerous (replaces the stored corpus)
 python -m graphrag.eval.run_benchmark  # one run on the 220 questions, ~28 min, ~$3
 python -m graphrag.eval.summarize_runs results/exp10/*.json

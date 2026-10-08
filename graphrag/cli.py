@@ -3,12 +3,14 @@
     graphrag ingest ./some-repo [./another-repo ...] [--with-llm] [--reset]
     graphrag ask "What does Session.send call?"
     graphrag ask "What does Session.send call?" --compare   # also the vector-only answer
+    graphrag status                                          # what is ingested right now
 
 Ingest detects each repository's package, source folder, docs and changelog,
 writes data/corpus.json so later commands know the corpus, clears the stores
 (unless --keep), runs the parser pass and the embedding pass, and, with
 --with-llm, the model pass over documentation using the caller's OPENAI_API_KEY.
 Ask runs the full pipeline for one question and prints the cited answer.
+Status reports which repositories are ingested and what the stores hold.
 """
 
 from __future__ import annotations
@@ -137,6 +139,101 @@ def _ask(args: argparse.Namespace) -> int:
     return 0
 
 
+PARSER_SOURCES = ("ast", "jedi", "override")
+
+
+def gather_store_stats(session, conn) -> dict:
+    """What the two stores hold right now. Read-only."""
+    one = lambda q: session.run(q).single()["n"]  # noqa: E731
+    by_source = {
+        r["src"]: r["n"]
+        for r in session.run(
+            "MATCH ()-[r]->() RETURN coalesce(r.source, 'llm') AS src, count(*) AS n"
+        ).data()
+    }
+    by_type = [
+        (r["t"], r["n"])
+        for r in session.run(
+            "MATCH ()-[r]->() RETURN type(r) AS t, count(*) AS n ORDER BY n DESC"
+        ).data()
+    ]
+    graph_packages = sorted(
+        r["p"] for r in session.run(
+            "MATCH (m:Module) WHERE NOT m.id CONTAINS '.' RETURN m.id AS p"
+        ).data()
+    )
+    with conn.cursor() as cur:
+        cur.execute("SELECT repo, count(*) FROM chunks GROUP BY repo ORDER BY repo")
+        chunks = {repo: n for repo, n in cur.fetchall()}
+    return {
+        "nodes": one("MATCH (n) RETURN count(n) AS n"),
+        "edges": one("MATCH ()-[r]->() RETURN count(r) AS n"),
+        "parser_edges": sum(n for s, n in by_source.items() if s in PARSER_SOURCES),
+        "model_edges": sum(n for s, n in by_source.items() if s not in PARSER_SOURCES),
+        "by_type": by_type,
+        "graph_packages": graph_packages,
+        "chunks": chunks,
+    }
+
+
+def format_status(corpus: Corpus, *, from_last_ingest: bool, stats: dict) -> str:
+    """The `graphrag status` report, as text."""
+    origin = (
+        "from the last `graphrag ingest`, saved in data/corpus.json" if from_last_ingest
+        else "the default corpora/requests-urllib3.yaml; nothing has been ingested on this machine yet"
+    )
+    lines = [f"Corpus: {corpus.name}  ({origin})"]
+    for r in corpus.repos:
+        lines.append(
+            f"  {r.name:<14} {r.root}   source: {r.src}   docs: {r.docs or '-'}   changelog: {r.changelog or '-'}"
+        )
+    lines += [
+        "",
+        f"Graph (Neo4j): {stats['nodes']:,} nodes, {stats['edges']:,} relationships",
+        f"  extracted from the code by the parser: {stats['parser_edges']:,}",
+        f"  read from the documentation by a model: {stats['model_edges']:,}",
+    ]
+    if stats["by_type"]:
+        top = ", ".join(f"{t} {n:,}" for t, n in stats["by_type"][:6])
+        lines.append(f"  most common: {top}")
+    total_chunks = sum(stats["chunks"].values())
+    per_repo = ", ".join(f"{repo} {n:,}" for repo, n in stats["chunks"].items())
+    lines += ["", f"Text index (pgvector): {total_chunks:,} chunks" + (f"  ({per_repo})" if per_repo else "")]
+
+    stored = set(stats["graph_packages"]) | set(stats["chunks"])
+    if stats["nodes"] == 0 and total_chunks == 0:
+        lines += ["", "The stores are empty. Run `graphrag ingest <repo>`."]
+    elif stored != set(corpus.packages):
+        lines += [
+            "",
+            f"Warning: the stores hold {sorted(stored)} but the corpus is {list(corpus.packages)}.",
+            "Re-run `graphrag ingest` so answers and the corpus agree.",
+        ]
+    return "\n".join(lines)
+
+
+def _status(args: argparse.Namespace) -> int:
+    try:
+        corpus = get_corpus()
+    except RuntimeError:
+        print("No corpus yet. Run `graphrag ingest <repo>` to build one.")
+        return 1
+    from graphrag.settings import neo4j_driver, postgres_conn
+
+    try:
+        driver = neo4j_driver()
+        conn = postgres_conn()
+        with driver.session() as session:
+            stats = gather_store_stats(session, conn)
+    except Exception as e:  # the stores are a separate process the user starts
+        print(f"Corpus: {corpus.name}")
+        print(f"Could not read the stores ({type(e).__name__}). Are the databases running? `docker compose up -d`")
+        return 1
+    driver.close(); conn.close()
+    print(format_status(corpus, from_last_ingest=ACTIVE_FILE.exists(), stats=stats))
+    return 0
+
+
 def format_answer(label: str, out: dict) -> str:
     """One labelled answer block for --compare."""
     facts = out.get("graph_facts_used", 0)
@@ -167,6 +264,9 @@ def build_parser() -> argparse.ArgumentParser:
     ask.add_argument("--compare", action="store_true",
                      help="also answer with the vector-only baseline (no graph) and print both")
     ask.set_defaults(func=_ask)
+
+    status = sub.add_parser("status", help="show which repositories are ingested and what the stores hold")
+    status.set_defaults(func=_status)
     return parser
 
 

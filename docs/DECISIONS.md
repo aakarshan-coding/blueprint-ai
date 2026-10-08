@@ -3679,6 +3679,29 @@ decisions because a model edge filled it, and the gap appeared the first time th
 graph was rebuilt from scratch (D94). That is the argument for rebuilding from scratch
 before every claim, which the tool now makes a one-line command.
 
+## D96 — `graphrag status`, and tests pinned to the measured corpus
+
+**Status:** applied; 394 tests.
+
+**Why.** Using the tool for the first time, the user asked it "which codebase do you have
+context on?" and got the refusal. That is the router doing its job: `ask` answers only
+questions about the ingested code, and a question about the tool is out of scope. But the
+tool had no other way to say what it holds; the answer lived in `data/corpus.json`.
+
+**What changed.** `graphrag status` prints the active corpus (and whether it came from the
+last ingest or is the default), the graph's node and relationship counts split into
+parser-extracted and model-read, the most common relationship types, and the text-index
+chunk count per repository. It warns when the stores hold a different corpus from the one
+on record, and says so plainly when the databases are not running. `ask` is unchanged:
+answering questions about the tool inside the code-question path would blur the refusal
+behaviour the benchmark measures.
+
+**A test-isolation bug it surfaced.** Three tests of the package-scoped template assumed
+the corpus packages are `requests` and `urllib3`, and read them from the working
+directory's `data/corpus.json`. After the user ingested itsdangerous they failed locally
+while passing in CI, which has no such file. `tests/conftest.py` now pins every test to
+`corpora/requests-urllib3.yaml`, so no test depends on what was last ingested.
+
 ---
 
 ## Open questions for the Phase 2 sweep

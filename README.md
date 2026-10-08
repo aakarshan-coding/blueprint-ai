@@ -297,7 +297,10 @@ graphrag ask "What does Session.send call?" --show-plan
 `--with-llm` to also run the model pass over documentation and docstrings; it costs a
 few dollars for a library-sized repository and its edges are logged so a re-ingest can
 replay them. `ask --show-context` prints the context the answer was written from, and
-`ask --compare` prints the vector-only baseline's answer to the same question beneath
+`graphrag status` shows which repositories are ingested and how much the graph and text
+index hold, which is the way to ask the tool about itself: `ask` only answers questions
+about the ingested code, and refuses anything else. `ask --compare` prints the vector-only
+baseline's answer to the same question beneath
 the graph's, which is the benchmark's comparison on a single question.
 
 `scripts/demo.sh` runs a five-step demo on `itsdangerous`, a library the system was
