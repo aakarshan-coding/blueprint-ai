@@ -69,57 +69,65 @@ Tools write scratch output under `results/` (gitignored); kept runs live under
 
 ## Communication style
 
-When explaining work you performed on this project, optimize for clarity and continuity, not brevity.
+These rules apply when you explain your work on this project. Clarity and continuity are more important than a short text.
 
-Assume I understand the project technically, but I do NOT necessarily remember every experiment ID, implementation detail, previous debugging decision, or piece of terminology from earlier in the conversation.
+I know the project technically. I possibly do not remember the experiment IDs, the implementation details, the past debugging decisions or the terms from earlier in the conversation.
 
-For any substantial change, investigation, experiment, or debugging result, explain it in this order:
+For each large change, investigation, experiment or debugging result, give the explanation in this sequence:
 
-1. **What we were trying to figure out**
-   - Briefly remind me what question or problem motivated the work.
-   - Do not start with an experiment ID or metric without first explaining what the experiment was testing.
+1. **The question**
+   - Tell me again which question or problem started the work.
+   - Do not start with an experiment ID or a metric.
+   - First, tell me what the experiment tested.
 
-2. **What happened**
-   - State the important result in plain English first.
-   - Then give the relevant numbers.
+2. **The result**
+   - Give the important result in plain words first.
+   - Then give the numbers.
 
-3. **Why it happened**
-   - Walk through the causal chain.
-   - Explicitly connect components instead of assuming I remember how they interact.
-   - If a specific edge, parser behavior, retrieval step, or data structure caused the issue, explain what it represents and why its absence/presence affects the final result.
+3. **The cause**
+   - Give each step of the cause, in sequence.
+   - Tell me how the components connect. Do not think that I remember this.
+   - Sometimes an edge, a parser behavior, a retrieval step or a data structure causes the problem. Tell me what that item is.
+   - Tell me how its presence or its absence changes the final result.
 
-4. **What you changed**
-   - Explain the actual code/system change and where it fits into the architecture.
-   - Distinguish clearly between:
-     - what was already true,
-     - what was broken or missing,
-     - what you changed now.
+4. **The change**
+   - Tell me what you changed in the code or in the system.
+   - Tell me where the change is in the architecture.
+   - Keep these three items separate:
+     - what was already true
+     - what was broken or missing
+     - what you changed now
 
-5. **How we know the change is correct**
-   - Explain what test, benchmark, trace, or measurement supports the conclusion.
-   - Give metrics after explaining what they measure.
+5. **The evidence**
+   - Tell me which test, benchmark, trace or measurement shows that the change is correct.
+   - Tell me what a metric measures before you give its value.
 
-6. **Current state**
-   - Clearly state what is now fixed, what is still uncertain, and what has not yet been tested.
+6. **The current state**
+   - Tell me what is now fixed.
+   - Tell me what is not certain yet.
+   - Tell me what is not tested yet.
 
-7. **Next step**
-   - State the most logical next action and why it matters.
+7. **The next step**
+   - Tell me the best next action.
+   - Tell me why it is important.
 
-### Writing rules
+### Rules for the text
 
-- Prefer complete, conversational technical explanations over compressed changelog prose.
-- Do not write sentences like "Three-hop fell to 62.2. That drop is real, and it was the point of the run" without explaining what the run was designed to test.
-- Do not introduce experiment IDs such as D94 or D95 before explaining what those experiments actually did.
-- Do not assume terms like "historical graph," "oracle," "envelope," or "model edge" are self-explanatory. Briefly remind me what they mean in this specific context.
-- Make causal connections explicit using language like:
-  - "This matters because…"
-  - "The reason this affected three-hop retrieval is…"
-  - "Previously, the system…"
-  - "After this change…"
-- Avoid vague references such as "that shape," "the gap," "the envelope," "those questions," or "that number" when a specific noun would be clearer.
-- Do not optimize for token efficiency at the expense of understanding.
-- Use paragraphs rather than terse bullet fragments when explaining reasoning.
-- It is fine to repeat a small amount of context if it makes the explanation understandable without rereading earlier messages.
+- Write full explanations in a conversational, technical style. Do not write short changelog text.
+- Do not give a result without its context. This is a bad example: "Three-hop fell to 62.2. That drop is real, and it was the point of the run." First, tell me what the run tested.
+- Do not use an experiment ID, for example D94 or D95, before you tell me what that experiment did.
+- Do not think that project terms are clear to me. Examples are "historical graph", "oracle", "envelope" and "model edge". Each time, tell me what the term means in this project.
+- Show each cause and its effect clearly. Use phrases like these:
+  - "This is important because..."
+  - "This changed three-hop retrieval because..."
+  - "Before this change, the system..."
+  - "After this change..."
+- Use a specific noun. Do not use a vague reference, for example "that shape", "the gap", "the envelope", "those questions" or "that number".
+- Do not make an explanation shorter if it then becomes less clear.
+- Use paragraphs to explain why something occurred. Do not use short bullet fragments for this.
+- You can repeat a small quantity of context. Do this when it lets me understand the explanation without the earlier messages.
 
-The goal is that I should be able to read your explanation several days later and reconstruct:
-**what problem we had → what caused it → what changed → what evidence supports it → what remains to do.**
+### The objective
+
+Some days later, I must be able to read your explanation and find these five items:
+**the problem → the cause → the change → the evidence → the work that remains.**
