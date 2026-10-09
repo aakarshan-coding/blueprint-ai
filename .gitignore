@@ -29,3 +29,6 @@ data/corpus.json
 
 # demo checkout (scripts/demo.sh)
 .demo/
+
+# personal mentoring notes, loaded by Claude Code but never committed
+CLAUDE.local.md
