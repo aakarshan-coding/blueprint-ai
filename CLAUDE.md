@@ -71,6 +71,8 @@ Tools write scratch output under `results/` (gitignored); kept runs live under
 
 These rules apply when you explain your work on this project. Clarity and continuity are more important than a short text.
 
+Write all responses in Simplified Technical English (ASD-STE100). Use one topic in each sentence. Use active voice and simple words. Use numbered lists for sequences.
+
 I know the project technically. I possibly do not remember the experiment IDs, the implementation details, the past debugging decisions or the terms from earlier in the conversation.
 
 For each large change, investigation, experiment or debugging result, give the explanation in this sequence:
