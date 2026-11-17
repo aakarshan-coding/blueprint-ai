@@ -3942,6 +3942,33 @@ paths. Suite: 416 passed.
 
 **Answers.** Unchanged; no retrieval, ingestion output or prompt changes. Not benchmarked.
 
+## D104 — INHERITS_FROM, RAISES and AST WRAPS_EXCEPTION converge on re-apply
+
+**Wrong.** In `run_full_ingestion` these three parser writers only called `merge_edge`.
+RETURNS, STORED_ON and the jedi CALLS/PASSES_TO writers delete their own edges first
+(D64, D80), so a re-apply converges; these three did not. MERGE never deletes, so an edge
+the parser stopped producing survived any run that does not clear the graph:
+`python -m graphrag.ingest.run_ingestion --ast-only` or `graphrag ingest --keep`. The 16
+wrong parser edges D98 removed would stay in such a graph. That is the D94 failure shape,
+where a graph built from incremental re-applies hid a parser gap.
+
+**Changed.** Before each writer, `MATCH ()-[r:<TYPE>]->() WHERE r.source = 'ast' DELETE r`
+for INHERITS_FROM, RAISES and WRAPS_EXCEPTION, the same form as RETURNS. The model pass and
+`replay_llm_edges` write no `source`, so their edges (counted as
+`coalesce(r.source, 'llm')`) are out of scope. Override CALLS keep their existing delete
+with the jedi edges. The subclasses map is built in Python from `edges["inherits_from"]`,
+not read back from Neo4j, so deleting INHERITS_FROM edges first does not change it.
+
+**Verified.** `test_parser_edge_writers_delete_their_own_ast_edges_before_rewriting` runs
+`run_full_ingestion` on a fake session with one edge of each type. It failed before the
+change (no scoped INHERITS_FROM delete before its first MERGE) and passes after. It also
+checks that every DELETE the run issues is scoped by source or by the placeholder chunk id.
+Suite: 417 passed.
+
+**Answers.** A graph rebuilt from scratch (rule 2) is unchanged, because `graphrag ingest`
+without `--keep` clears it first. Only graphs re-applied in place change: stale parser
+edges of these three types are now removed. Not benchmarked.
+
 ---
 
 ## Open questions for the Phase 2 sweep

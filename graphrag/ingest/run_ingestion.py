@@ -488,7 +488,11 @@ def run_full_ingestion(
             origin="external", type_source="inferred",
         )
 
+    # Deleted and rewritten so a re-apply converges (D104). A model-pass edge
+    # has no source, so the scope leaves it.
     print("Writing AST relationship edges (INHERITS_FROM, RAISES)...")
+    neo4j_session.run("MATCH ()-[r:INHERITS_FROM]->() WHERE r.source = 'ast' DELETE r")
+    neo4j_session.run("MATCH ()-[r:RAISES]->() WHERE r.source = 'ast' DELETE r")
     subclasses: dict[str, list[str]] = {}
     for edge in edges["inherits_from"]:
         for surface in edge.target_surfaces:
@@ -640,6 +644,7 @@ def run_full_ingestion(
     # `source="ast"` marks these apart from the LLM pass's WRAPS edges, which
     # stay: the two describe different code paths and can both be true.
     print("Writing AST WRAPS_EXCEPTION edges...")
+    neo4j_session.run("MATCH ()-[r:WRAPS_EXCEPTION]->() WHERE r.source = 'ast' DELETE r")
     for edge in edges["exception_wrapping"]:
         raised = code_name(edge.source_id, edge.raised_surface)
         caught = code_name(edge.source_id, edge.caught_surface)

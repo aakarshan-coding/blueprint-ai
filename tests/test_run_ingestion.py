@@ -149,3 +149,40 @@ def test_unmatched_flow_keys_land_in_kwargs_and_flows_follow_overrides():
     assert 'n.endswith("kwargs")' in src
     assert "PASSES_TO]->() WHERE r.source IN ['jedi', 'override'] DELETE r" in src
     assert 'target_id=o.target_id' in src
+
+
+def test_parser_edge_writers_delete_their_own_ast_edges_before_rewriting(monkeypatch):
+    """INHERITS_FROM, RAISES and AST WRAPS_EXCEPTION were only merged, so an
+    edge the parser stopped producing (D98 removed 16) survived a re-apply
+    without a clear, the D94 shape. Each writer must first delete its own
+    parser edges, and no delete may reach the model pass's edges, whose
+    source is null (D104)."""
+    from graphrag.ingest import run_ingestion
+    from graphrag.ingest.ast_extract import ExceptionWrapEdge, InheritsFromEdge, RaisesEdge
+
+    monkeypatch.setattr(run_ingestion, "symbol_chunk_ids", lambda corpus=None: {})
+    node_types = {
+        "pkg": "Module", "pkg.m": "Module", "pkg.m.Base": "Class", "pkg.m.Child": "Class",
+        "pkg.m.Err": "Class", "pkg.m.Other": "Class", "pkg.m.f": "Function",
+    }
+    edges = {
+        "parameters": [], "jedi_calls": [], "returns": [], "stores": [],
+        "inherits_from": [InheritsFromEdge("pkg.m.Child", ["pkg.m.Base"], "c1")],
+        "raises": [RaisesEdge("pkg.m.f", ["pkg.m.Err"], "c2")],
+        "exception_wrapping": [ExceptionWrapEdge("pkg.m.f", "pkg.m.Other", "pkg.m.Err", "c2")],
+    }
+    session = _FakeSession()
+
+    run_ingestion.run_full_ingestion(
+        [], set(node_types), {}, edges, node_types,
+        openai_client=None, neo4j_session=session, limit=0,
+    )
+
+    queries = [q for q, _ in session.calls]
+    for rel in ("INHERITS_FROM", "RAISES", "WRAPS_EXCEPTION"):
+        delete = f"MATCH ()-[r:{rel}]->() WHERE r.source = 'ast' DELETE r"
+        first_merge = next(i for i, q in enumerate(queries) if f"[r:{rel} " in q)
+        assert delete in queries[:first_merge], rel
+    for q in queries:
+        if "DELETE" in q:
+            assert "source" in q or "old.chunk_id = 'ast'" in q, q
