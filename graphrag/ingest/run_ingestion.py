@@ -37,7 +37,9 @@ from graphrag.ingest.chunk import (
     iter_symbols,
 )
 from graphrag.ingest.embed import embed_texts, load_model
-from graphrag.ingest.jedi_calls import CallEdge, build_project, expand_overrides, resolve_calls
+from graphrag.ingest.jedi_calls import (
+    CallEdge, build_project, expand_overrides, resolve_calls, resolve_type_names,
+)
 from graphrag.ingest.load_vectors import upsert_chunks
 from graphrag.ingest.load_graph import (
     build_defined_in_edges,
@@ -46,7 +48,7 @@ from graphrag.ingest.load_graph import (
     merge_node,
 )
 from graphrag.ingest.node_ids import concept_id, parameter_id
-from graphrag.ingest.resolve import Resolver
+from graphrag.ingest.resolve import Resolver, resolve_code_name
 
 # The corpus used to be a dict here; it is now graphrag.corpus (D93). Every
 # function below takes an optional `corpus` and falls back to the active one.
@@ -114,6 +116,8 @@ def run_ast_pass(corpus: Corpus | None = None) -> tuple[
     edges = {
         "inherits_from": [], "raises": [], "parameters": [], "calls": [],
         "exception_wrapping": [], "jedi_calls": [], "returns": [], "stores": [],
+        # (symbol id, written name) -> the classes jedi resolves it to.
+        "type_names": {},
     }
 
     # One jedi project per repo, the other repo importable from it — jedi
@@ -165,15 +169,32 @@ def run_ast_pass(corpus: Corpus | None = None) -> tuple[
                 )
             }
 
-            edges["inherits_from"] += extract_inherits_from(
-                text, repo=repo, path=str(p), dotted_module=dotted
-            )
-            edges["raises"] += extract_raises(
-                text, repo=repo, path=str(p), dotted_module=dotted
-            )
-            edges["returns"] += extract_returns(
-                text, repo=repo, path=str(p), dotted_module=dotted
-            )
+            inherits = extract_inherits_from(text, repo=repo, path=str(p), dotted_module=dotted)
+            raises = extract_raises(text, repo=repo, path=str(p), dotted_module=dotted)
+            returns = extract_returns(text, repo=repo, path=str(p), dotted_module=dotted)
+            wraps = extract_exception_wrapping(text, repo=repo, path=str(p), dotted_module=dotted)
+            edges["inherits_from"] += inherits
+            edges["raises"] += raises
+            edges["returns"] += returns
+            # Unwired until D57. Every WRAPS_EXCEPTION edge in the first
+            # graph came from the LLM reading docstrings, which describe the
+            # common path and miss the rest — see ExceptionWrapEdge.
+            edges["exception_wrapping"] += wraps
+
+            # Every class name those four extractors wrote, asked of jedi at
+            # the place it was written (D98).
+            wanted: dict[str, set[str]] = {}
+            for e in inherits:
+                wanted.setdefault(e.source_id, set()).update(e.target_surfaces)
+            for e in raises:
+                wanted.setdefault(e.source_id, set()).update(e.exceptions_raised)
+            for e in returns:
+                wanted.setdefault(e.source_id, set()).update(e.type_surfaces)
+            for e in wraps:
+                wanted.setdefault(e.source_id, set()).update((e.caught_surface, e.raised_surface))
+            edges["type_names"].update(resolve_type_names(
+                text, path=str(p), dotted_module=dotted, project=projects[repo], wanted=wanted,
+            ))
             edges["stores"] += extract_stores(
                 text, repo=repo, path=str(p), dotted_module=dotted
             )
@@ -187,12 +208,6 @@ def run_ast_pass(corpus: Corpus | None = None) -> tuple[
                 text, repo=repo, path=str(p), dotted_module=dotted,
                 project=projects[repo], packages=packages,
                 summaries=summaries, callee_params=callee_params,
-            )
-            # Unwired until D57. Every WRAPS_EXCEPTION edge in the first
-            # graph came from the LLM reading docstrings, which describe the
-            # common path and miss the rest — see ExceptionWrapEdge.
-            edges["exception_wrapping"] += extract_exception_wrapping(
-                text, repo=repo, path=str(p), dotted_module=dotted
             )
 
             # A Parameter's identity is fully determined once we know its
@@ -371,6 +386,9 @@ def _write_parameters(session, parameter_edges: list, chunk_ids: dict[str, str] 
     return count
 
 
+_TYPING_MODULES = frozenset({"typing", "typing_extensions", "_typing"})
+
+
 def run_full_ingestion(
     chunks: list[Chunk],
     node_universe: set[str],
@@ -397,7 +415,7 @@ def run_full_ingestion(
     from graphrag.ingest.llm_extract import extract_relationships
 
     stats = {
-        "ast_edges_written": 0, "ast_edges_unresolved": 0,
+        "ast_edges_written": 0, "ast_edges_unresolved": 0, "ast_edges_ambiguous": 0,
         "llm_calls_ok": 0, "llm_calls_failed": 0,
         "llm_edges_written": 0, "llm_edges_unresolved_docsection_release": 0,
         "llm_edges_unresolved_other": 0,
@@ -435,6 +453,23 @@ def run_full_ingestion(
             "DELETE old"
         )
 
+    type_names = edges.get("type_names", {})
+
+    def code_name(source_id: str, surface: str, *, returns: bool = False):
+        """A class name the parser read, resolved by jedi where it was
+        written (D98). A return annotation's jedi answer in typing is a
+        TypeVar or an alias (`_VT` is "typing.TypeVar"), never the type."""
+        classes = type_names.get((source_id, surface), set())
+        if returns:
+            classes = {c for c in classes if c.split(".")[0] not in _TYPING_MODULES}
+        r = resolve_code_name(
+            resolver, surface, module_context=module_of(source_id, node_types),
+            jedi_classes=classes,
+        )
+        if r.method == "ambiguous":
+            stats["ast_edges_ambiguous"] += 1
+        return r
+
     def type_if_external(canonical_id: str, relationship: str) -> None:
         """Label a node that resolved to something outside our own corpus.
 
@@ -455,9 +490,8 @@ def run_full_ingestion(
     print("Writing AST relationship edges (INHERITS_FROM, RAISES)...")
     subclasses: dict[str, list[str]] = {}
     for edge in edges["inherits_from"]:
-        module_context = module_of(edge.source_id, node_types)
         for surface in edge.target_surfaces:
-            r = resolver.resolve(surface, module_context=module_context)
+            r = code_name(edge.source_id, surface)
             if r.canonical_id is None:
                 stats["ast_edges_unresolved"] += 1
                 continue
@@ -471,9 +505,8 @@ def run_full_ingestion(
             stats["ast_edges_written"] += 1
 
     for edge in edges["raises"]:
-        module_context = module_of(edge.source_id, node_types)
         for surface in edge.exceptions_raised:
-            r = resolver.resolve(surface, module_context=module_context)
+            r = code_name(edge.source_id, surface)
             if r.canonical_id is None:
                 stats["ast_edges_unresolved"] += 1
                 continue
@@ -491,9 +524,8 @@ def run_full_ingestion(
     print("Writing RETURNS edges...")
     neo4j_session.run("MATCH ()-[r:RETURNS]->() WHERE r.source = 'ast' DELETE r")
     for edge in edges.get("returns", []):
-        module_context = module_of(edge.source_id, node_types)
         for surface in edge.type_surfaces:
-            r = resolver.resolve(surface, module_context=module_context)
+            r = code_name(edge.source_id, surface, returns=True)
             if r.canonical_id is None:
                 stats["ast_edges_unresolved"] += 1
                 continue
@@ -608,9 +640,8 @@ def run_full_ingestion(
     # stay: the two describe different code paths and can both be true.
     print("Writing AST WRAPS_EXCEPTION edges...")
     for edge in edges["exception_wrapping"]:
-        module_context = module_of(edge.source_id, node_types)
-        raised = resolver.resolve(edge.raised_surface, module_context=module_context)
-        caught = resolver.resolve(edge.caught_surface, module_context=module_context)
+        raised = code_name(edge.source_id, edge.raised_surface)
+        caught = code_name(edge.source_id, edge.caught_surface)
         if raised.canonical_id is None or caught.canonical_id is None:
             stats["ast_edges_unresolved"] += 1
             continue

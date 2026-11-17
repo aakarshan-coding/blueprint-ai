@@ -1765,10 +1765,10 @@
   },
   "override": {
    "observed": 397,
-   "in_graph": 95,
+   "in_graph": 84,
    "confirmed": 9,
    "recall": 0.023,
-   "observed_precision": 0.095,
+   "observed_precision": 0.107,
    "missing_from_graph": [
     [
      "requests.adapters.HTTPAdapter.__init__",
@@ -3357,28 +3357,12 @@
      "urllib3.poolmanager.ProxyManager.urlopen"
     ],
     [
-     "urllib3.connection.HTTPConnection.request",
-     "urllib3.http2.connection.HTTP2Connection.putheader"
-    ],
-    [
-     "urllib3.connection.HTTPConnection.request",
-     "urllib3.http2.connection.HTTP2Connection.putrequest"
-    ],
-    [
-     "urllib3.connection.HTTPConnection.request_chunked",
-     "urllib3.http2.connection.HTTP2Connection.request"
-    ],
-    [
      "urllib3.connection.HTTPSConnection.__init__",
      "urllib3.connection.HTTPSConnection.__init__"
     ],
     [
      "urllib3.connection.HTTPSConnection.__init__",
      "urllib3.contrib.socks.SOCKSConnection.__init__"
-    ],
-    [
-     "urllib3.connection.HTTPSConnection.__init__",
-     "urllib3.http2.connection.HTTP2Connection.__init__"
     ],
     [
      "urllib3.connectionpool.ConnectionPool.__exit__",
@@ -3421,14 +3405,6 @@
      "urllib3.connectionpool.HTTPSConnectionPool.__init__"
     ],
     [
-     "urllib3.connectionpool.HTTPSConnectionPool._prepare_proxy",
-     "urllib3.http2.connection.HTTP2Connection.connect"
-    ],
-    [
-     "urllib3.connectionpool.HTTPSConnectionPool._prepare_proxy",
-     "urllib3.http2.connection.HTTP2Connection.set_tunnel"
-    ],
-    [
      "urllib3.connectionpool.HTTPSConnectionPool._validate_conn",
      "urllib3.connectionpool.HTTPSConnectionPool._validate_conn"
     ],
@@ -3455,10 +3431,6 @@
     [
      "urllib3.contrib.socks.SOCKSConnection.__init__",
      "urllib3.contrib.socks.SOCKSConnection.__init__"
-    ],
-    [
-     "urllib3.contrib.socks.SOCKSConnection.__init__",
-     "urllib3.http2.connection.HTTP2Connection.__init__"
     ],
     [
      "urllib3.contrib.socks.SOCKSProxyManager.__init__",
@@ -3499,14 +3471,6 @@
     [
      "urllib3.exceptions.RequestError.__init__",
      "urllib3.exceptions.RequestError.__init__"
-    ],
-    [
-     "urllib3.http2.connection.HTTP2Connection.close",
-     "urllib3.http2.connection.HTTP2Connection.close"
-    ],
-    [
-     "urllib3.http2.connection.HTTP2Connection.connect",
-     "urllib3.http2.connection.HTTP2Connection.connect"
     ],
     [
      "urllib3.http2.connection.HTTP2Response.__init__",
@@ -3633,14 +3597,6 @@
      "urllib3.response.HTTPResponse.__init__"
     ],
     [
-     "urllib3.response.HTTPResponse._error_catcher",
-     "urllib3.http2.connection.HTTP2Connection.close"
-    ],
-    [
-     "urllib3.response.HTTPResponse.close",
-     "urllib3.http2.connection.HTTP2Connection.close"
-    ],
-    [
      "urllib3.response.MultiDecoder.decompress",
      "urllib3.response.DeflateDecoder.decompress"
     ],
@@ -3672,10 +3628,10 @@
   },
   "all": {
    "observed": 397,
-   "in_graph": 778,
+   "in_graph": 767,
    "confirmed": 330,
    "recall": 0.831,
-   "observed_precision": 0.424,
+   "observed_precision": 0.43,
    "missing_from_graph": [
     [
      "requests.adapters.HTTPAdapter.__init__",
@@ -4344,20 +4300,8 @@
      "urllib3._base_connection._ResponseOptions"
     ],
     [
-     "urllib3.connection.HTTPConnection.request",
-     "urllib3.http2.connection.HTTP2Connection.putheader"
-    ],
-    [
-     "urllib3.connection.HTTPConnection.request",
-     "urllib3.http2.connection.HTTP2Connection.putrequest"
-    ],
-    [
      "urllib3.connection.HTTPConnection.request_chunked",
      "urllib3.connection.HTTPConnection.request"
-    ],
-    [
-     "urllib3.connection.HTTPConnection.request_chunked",
-     "urllib3.http2.connection.HTTP2Connection.request"
     ],
     [
      "urllib3.connection.HTTPSConnection.__init__",
@@ -4370,10 +4314,6 @@
     [
      "urllib3.connection.HTTPSConnection.__init__",
      "urllib3.contrib.socks.SOCKSConnection.__init__"
-    ],
-    [
-     "urllib3.connection.HTTPSConnection.__init__",
-     "urllib3.http2.connection.HTTP2Connection.__init__"
     ],
     [
      "urllib3.connection.HTTPSConnection.__init__",
@@ -4598,14 +4538,6 @@
     [
      "urllib3.connectionpool.HTTPSConnectionPool._prepare_proxy",
      "urllib3.connection.HTTPSConnection.connect"
-    ],
-    [
-     "urllib3.connectionpool.HTTPSConnectionPool._prepare_proxy",
-     "urllib3.http2.connection.HTTP2Connection.connect"
-    ],
-    [
-     "urllib3.connectionpool.HTTPSConnectionPool._prepare_proxy",
-     "urllib3.http2.connection.HTTP2Connection.set_tunnel"
     ],
     [
      "urllib3.connectionpool.HTTPSConnectionPool._validate_conn",
@@ -4964,10 +4896,6 @@
      "urllib3.contrib.socks.SOCKSConnection.__init__"
     ],
     [
-     "urllib3.contrib.socks.SOCKSConnection.__init__",
-     "urllib3.http2.connection.HTTP2Connection.__init__"
-    ],
-    [
      "urllib3.contrib.socks.SOCKSConnection._new_conn",
      "urllib3.exceptions.ConnectTimeoutError"
     ],
@@ -5064,16 +4992,8 @@
      "urllib3.http2.connection.HTTP2Connection._new_h2_conn"
     ],
     [
-     "urllib3.http2.connection.HTTP2Connection.close",
-     "urllib3.http2.connection.HTTP2Connection.close"
-    ],
-    [
      "urllib3.http2.connection.HTTP2Connection.connect",
      "urllib3.connection.HTTPSConnection.connect"
-    ],
-    [
-     "urllib3.http2.connection.HTTP2Connection.connect",
-     "urllib3.http2.connection.HTTP2Connection.connect"
     ],
     [
      "urllib3.http2.connection.HTTP2Connection.endheaders",
@@ -5416,10 +5336,6 @@
      "urllib3.exceptions.SSLError"
     ],
     [
-     "urllib3.response.HTTPResponse._error_catcher",
-     "urllib3.http2.connection.HTTP2Connection.close"
-    ],
-    [
      "urllib3.response.HTTPResponse._init_length",
      "urllib3.exceptions.InvalidHeader"
     ],
@@ -5438,10 +5354,6 @@
     [
      "urllib3.response.HTTPResponse._update_chunk_length",
      "urllib3.exceptions.ProtocolError"
-    ],
-    [
-     "urllib3.response.HTTPResponse.close",
-     "urllib3.http2.connection.HTTP2Connection.close"
     ],
     [
      "urllib3.response.HTTPResponse.data",
@@ -5745,10 +5657,10 @@
  "raises": {
   "ast": {
    "observed": 76,
-   "in_graph": 178,
+   "in_graph": 184,
    "confirmed": 48,
    "recall": 0.632,
-   "observed_precision": 0.275,
+   "observed_precision": 0.266,
    "missing_from_graph": [
     [
      "requests._internal_utils.unicode_is_ascii",
@@ -6053,8 +5965,20 @@
      "urllib3.exceptions.InvalidHeader"
     ],
     [
+     "urllib3.contrib.pyopenssl.PyOpenSSLContext.load_cert_chain",
+     "ssl.SSLError"
+    ],
+    [
+     "urllib3.contrib.pyopenssl.PyOpenSSLContext.load_verify_locations",
+     "ssl.SSLError"
+    ],
+    [
      "urllib3.contrib.pyopenssl.PyOpenSSLContext.wrap_socket",
-     "urllib3.exceptions.TimeoutError"
+     "builtins.TimeoutError"
+    ],
+    [
+     "urllib3.contrib.pyopenssl.PyOpenSSLContext.wrap_socket",
+     "ssl.SSLError"
     ],
     [
      "urllib3.contrib.pyopenssl.WrappedSocket._send_until_done",
@@ -6062,7 +5986,7 @@
     ],
     [
      "urllib3.contrib.pyopenssl.WrappedSocket._send_until_done",
-     "urllib3.exceptions.TimeoutError"
+     "builtins.TimeoutError"
     ],
     [
      "urllib3.contrib.pyopenssl.WrappedSocket.recv",
@@ -6070,7 +5994,11 @@
     ],
     [
      "urllib3.contrib.pyopenssl.WrappedSocket.recv",
-     "urllib3.exceptions.TimeoutError"
+     "builtins.TimeoutError"
+    ],
+    [
+     "urllib3.contrib.pyopenssl.WrappedSocket.recv",
+     "ssl.SSLError"
     ],
     [
      "urllib3.contrib.pyopenssl.WrappedSocket.recv_into",
@@ -6078,7 +6006,15 @@
     ],
     [
      "urllib3.contrib.pyopenssl.WrappedSocket.recv_into",
-     "urllib3.exceptions.TimeoutError"
+     "builtins.TimeoutError"
+    ],
+    [
+     "urllib3.contrib.pyopenssl.WrappedSocket.recv_into",
+     "ssl.SSLError"
+    ],
+    [
+     "urllib3.contrib.pyopenssl.WrappedSocket.shutdown",
+     "ssl.SSLError"
     ],
     [
      "urllib3.contrib.pyopenssl._validate_dependencies_met",
@@ -6094,7 +6030,7 @@
     ],
     [
      "urllib3.http2.connection.HTTP2Connection.endheaders",
-     "urllib3.exceptions.ConnectionError"
+     "urllib3.exceptions.ProtocolError"
     ],
     [
      "urllib3.http2.connection.HTTP2Connection.putheader",
@@ -6110,7 +6046,7 @@
     ],
     [
      "urllib3.http2.connection.HTTP2Connection.send",
-     "urllib3.exceptions.ConnectionError"
+     "urllib3.exceptions.ProtocolError"
     ],
     [
      "urllib3.http2.connection.HTTP2Connection.set_tunnel",
@@ -6384,10 +6320,10 @@
   },
   "all": {
    "observed": 76,
-   "in_graph": 178,
+   "in_graph": 184,
    "confirmed": 48,
    "recall": 0.632,
-   "observed_precision": 0.275,
+   "observed_precision": 0.266,
    "missing_from_graph": [
     [
      "requests._internal_utils.unicode_is_ascii",
@@ -6692,8 +6628,20 @@
      "urllib3.exceptions.InvalidHeader"
     ],
     [
+     "urllib3.contrib.pyopenssl.PyOpenSSLContext.load_cert_chain",
+     "ssl.SSLError"
+    ],
+    [
+     "urllib3.contrib.pyopenssl.PyOpenSSLContext.load_verify_locations",
+     "ssl.SSLError"
+    ],
+    [
      "urllib3.contrib.pyopenssl.PyOpenSSLContext.wrap_socket",
-     "urllib3.exceptions.TimeoutError"
+     "builtins.TimeoutError"
+    ],
+    [
+     "urllib3.contrib.pyopenssl.PyOpenSSLContext.wrap_socket",
+     "ssl.SSLError"
     ],
     [
      "urllib3.contrib.pyopenssl.WrappedSocket._send_until_done",
@@ -6701,7 +6649,7 @@
     ],
     [
      "urllib3.contrib.pyopenssl.WrappedSocket._send_until_done",
-     "urllib3.exceptions.TimeoutError"
+     "builtins.TimeoutError"
     ],
     [
      "urllib3.contrib.pyopenssl.WrappedSocket.recv",
@@ -6709,7 +6657,11 @@
     ],
     [
      "urllib3.contrib.pyopenssl.WrappedSocket.recv",
-     "urllib3.exceptions.TimeoutError"
+     "builtins.TimeoutError"
+    ],
+    [
+     "urllib3.contrib.pyopenssl.WrappedSocket.recv",
+     "ssl.SSLError"
     ],
     [
      "urllib3.contrib.pyopenssl.WrappedSocket.recv_into",
@@ -6717,7 +6669,15 @@
     ],
     [
      "urllib3.contrib.pyopenssl.WrappedSocket.recv_into",
-     "urllib3.exceptions.TimeoutError"
+     "builtins.TimeoutError"
+    ],
+    [
+     "urllib3.contrib.pyopenssl.WrappedSocket.recv_into",
+     "ssl.SSLError"
+    ],
+    [
+     "urllib3.contrib.pyopenssl.WrappedSocket.shutdown",
+     "ssl.SSLError"
     ],
     [
      "urllib3.contrib.pyopenssl._validate_dependencies_met",
@@ -6733,7 +6693,7 @@
     ],
     [
      "urllib3.http2.connection.HTTP2Connection.endheaders",
-     "urllib3.exceptions.ConnectionError"
+     "urllib3.exceptions.ProtocolError"
     ],
     [
      "urllib3.http2.connection.HTTP2Connection.putheader",
@@ -6749,7 +6709,7 @@
     ],
     [
      "urllib3.http2.connection.HTTP2Connection.send",
-     "urllib3.exceptions.ConnectionError"
+     "urllib3.exceptions.ProtocolError"
     ],
     [
      "urllib3.http2.connection.HTTP2Connection.set_tunnel",
@@ -7023,6 +6983,169 @@
   }
  },
  "wraps": {
+  "ast": {
+   "observed": 28,
+   "in_graph": 56,
+   "confirmed": 23,
+   "recall": 0.821,
+   "observed_precision": 0.411,
+   "missing_from_graph": [
+    [
+     "builtins.ValueError",
+     "builtins.ValueError"
+    ],
+    [
+     "urllib3.exceptions.MaxRetryError",
+     "urllib3.exceptions.ConnectTimeoutError"
+    ],
+    [
+     "urllib3.exceptions.MaxRetryError",
+     "urllib3.exceptions.NameResolutionError"
+    ],
+    [
+     "urllib3.exceptions.MaxRetryError",
+     "urllib3.exceptions.NewConnectionError"
+    ],
+    [
+     "urllib3.exceptions.MaxRetryError",
+     "urllib3.exceptions.SSLError"
+    ]
+   ],
+   "unconfirmed_in_graph": [
+    [
+     "builtins.UnicodeError",
+     "idna.core.IDNAError"
+    ],
+    [
+     "builtins.ValueError",
+     "builtins.TypeError"
+    ],
+    [
+     "http.client.HTTPException",
+     "urllib3.contrib.emscripten.fetch._RequestError"
+    ],
+    [
+     "requests.exceptions.ConnectTimeout",
+     "urllib3.exceptions.ConnectTimeoutError"
+    ],
+    [
+     "requests.exceptions.ConnectionError",
+     "builtins.OSError"
+    ],
+    [
+     "requests.exceptions.ConnectionError",
+     "urllib3.exceptions.ClosedPoolError"
+    ],
+    [
+     "requests.exceptions.InvalidURL",
+     "builtins.UnicodeError"
+    ],
+    [
+     "requests.exceptions.JSONDecodeError",
+     "json.decoder.JSONDecodeError"
+    ],
+    [
+     "requests.exceptions.ProxyError",
+     "urllib3.exceptions.ProxyError"
+    ],
+    [
+     "requests.exceptions.RetryError",
+     "urllib3.exceptions.ResponseError"
+    ],
+    [
+     "ssl.SSLError",
+     "builtins.TypeError"
+    ],
+    [
+     "ssl.SSLError",
+     "builtins.ValueError"
+    ],
+    [
+     "urllib3.contrib.emscripten.fetch._RequestError",
+     "pyodide.ffi.JsException"
+    ],
+    [
+     "urllib3.contrib.emscripten.fetch._TimeoutError",
+     "pyodide.ffi.JsException"
+    ],
+    [
+     "urllib3.exceptions.ClosedPoolError",
+     "builtins.AttributeError"
+    ],
+    [
+     "urllib3.exceptions.ConnectTimeoutError",
+     "socks.ProxyError"
+    ],
+    [
+     "urllib3.exceptions.EmptyPoolError",
+     "_queue.Empty"
+    ],
+    [
+     "urllib3.exceptions.FullPoolError",
+     "queue.Full"
+    ],
+    [
+     "urllib3.exceptions.InvalidChunkLength",
+     "builtins.ValueError"
+    ],
+    [
+     "urllib3.exceptions.LocationParseError",
+     "builtins.ImportError"
+    ],
+    [
+     "urllib3.exceptions.LocationParseError",
+     "builtins.UnicodeError"
+    ],
+    [
+     "urllib3.exceptions.LocationParseError",
+     "idna.core.IDNAError"
+    ],
+    [
+     "urllib3.exceptions.NameResolutionError",
+     "socket.gaierror"
+    ],
+    [
+     "urllib3.exceptions.NewConnectionError",
+     "socks.ProxyError"
+    ],
+    [
+     "urllib3.exceptions.ProtocolError",
+     "http.client.HTTPException"
+    ],
+    [
+     "urllib3.exceptions.ProtocolError",
+     "urllib3.exceptions.IncompleteRead"
+    ],
+    [
+     "urllib3.exceptions.SSLError",
+     "binascii.Error"
+    ],
+    [
+     "urllib3.exceptions.SSLError",
+     "builtins.OSError"
+    ],
+    [
+     "urllib3.exceptions.SSLError",
+     "urllib3.exceptions.NewConnectionError"
+    ],
+    [
+     "urllib3.exceptions.SSLError",
+     "urllib3.exceptions.TimeoutError"
+    ],
+    [
+     "urllib3.exceptions.SSLError",
+     "urllib3.util.ssl_match_hostname.CertificateError"
+    ],
+    [
+     "urllib3.exceptions.TimeoutError",
+     "urllib3.contrib.emscripten.fetch._TimeoutError"
+    ],
+    [
+     "urllib3.exceptions.UnrewindableBodyError",
+     "builtins.OSError"
+    ]
+   ]
+  },
   "llm": {
    "observed": 28,
    "in_graph": 54,
@@ -7330,167 +7453,16 @@
     ]
    ]
   },
-  "ast": {
-   "observed": 28,
-   "in_graph": 48,
-   "confirmed": 21,
-   "recall": 0.75,
-   "observed_precision": 0.438,
-   "missing_from_graph": [
-    [
-     "builtins.ValueError",
-     "builtins.ValueError"
-    ],
-    [
-     "urllib3.exceptions.ConnectTimeoutError",
-     "builtins.TimeoutError"
-    ],
-    [
-     "urllib3.exceptions.MaxRetryError",
-     "urllib3.exceptions.ConnectTimeoutError"
-    ],
-    [
-     "urllib3.exceptions.MaxRetryError",
-     "urllib3.exceptions.NameResolutionError"
-    ],
-    [
-     "urllib3.exceptions.MaxRetryError",
-     "urllib3.exceptions.NewConnectionError"
-    ],
-    [
-     "urllib3.exceptions.MaxRetryError",
-     "urllib3.exceptions.SSLError"
-    ],
-    [
-     "urllib3.exceptions.ReadTimeoutError",
-     "builtins.TimeoutError"
-    ]
-   ],
-   "unconfirmed_in_graph": [
-    [
-     "builtins.ValueError",
-     "builtins.TypeError"
-    ],
-    [
-     "http.client.HTTPException",
-     "urllib3.contrib.emscripten.fetch._RequestError"
-    ],
-    [
-     "requests.exceptions.ConnectTimeout",
-     "urllib3.exceptions.ConnectTimeoutError"
-    ],
-    [
-     "requests.exceptions.ConnectionError",
-     "builtins.OSError"
-    ],
-    [
-     "requests.exceptions.ConnectionError",
-     "urllib3.exceptions.ClosedPoolError"
-    ],
-    [
-     "requests.exceptions.InvalidURL",
-     "builtins.UnicodeError"
-    ],
-    [
-     "requests.exceptions.JSONDecodeError",
-     "requests.compat.JSONDecodeError"
-    ],
-    [
-     "requests.exceptions.ProxyError",
-     "urllib3.exceptions.ProxyError"
-    ],
-    [
-     "requests.exceptions.RetryError",
-     "urllib3.exceptions.ResponseError"
-    ],
-    [
-     "urllib3.contrib.emscripten.fetch._RequestError",
-     "pyodide.ffi.JsException"
-    ],
-    [
-     "urllib3.contrib.emscripten.fetch._TimeoutError",
-     "pyodide.ffi.JsException"
-    ],
-    [
-     "urllib3.exceptions.ClosedPoolError",
-     "builtins.AttributeError"
-    ],
-    [
-     "urllib3.exceptions.ConnectTimeoutError",
-     "socket.timeout"
-    ],
-    [
-     "urllib3.exceptions.InvalidChunkLength",
-     "builtins.ValueError"
-    ],
-    [
-     "urllib3.exceptions.LocationParseError",
-     "builtins.ImportError"
-    ],
-    [
-     "urllib3.exceptions.LocationParseError",
-     "builtins.UnicodeError"
-    ],
-    [
-     "urllib3.exceptions.ProtocolError",
-     "urllib3.connection.HTTPException"
-    ],
-    [
-     "urllib3.exceptions.ProtocolError",
-     "urllib3.exceptions.IncompleteRead"
-    ],
-    [
-     "urllib3.exceptions.ReadTimeoutError",
-     "socket.timeout"
-    ],
-    [
-     "urllib3.exceptions.SSLError",
-     "binascii.Error"
-    ],
-    [
-     "urllib3.exceptions.SSLError",
-     "builtins.OSError"
-    ],
-    [
-     "urllib3.exceptions.SSLError",
-     "urllib3.connection.BaseSSLError"
-    ],
-    [
-     "urllib3.exceptions.SSLError",
-     "urllib3.exceptions.NewConnectionError"
-    ],
-    [
-     "urllib3.exceptions.SSLError",
-     "urllib3.exceptions.TimeoutError"
-    ],
-    [
-     "urllib3.exceptions.SSLError",
-     "urllib3.util.ssl_match_hostname.CertificateError"
-    ],
-    [
-     "urllib3.exceptions.TimeoutError",
-     "urllib3.contrib.emscripten.fetch._TimeoutError"
-    ],
-    [
-     "urllib3.exceptions.UnrewindableBodyError",
-     "builtins.OSError"
-    ]
-   ]
-  },
   "all": {
    "observed": 28,
-   "in_graph": 99,
-   "confirmed": 21,
-   "recall": 0.75,
-   "observed_precision": 0.212,
+   "in_graph": 107,
+   "confirmed": 23,
+   "recall": 0.821,
+   "observed_precision": 0.215,
    "missing_from_graph": [
     [
      "builtins.ValueError",
      "builtins.ValueError"
-    ],
-    [
-     "urllib3.exceptions.ConnectTimeoutError",
-     "builtins.TimeoutError"
     ],
     [
      "urllib3.exceptions.MaxRetryError",
@@ -7507,10 +7479,6 @@
     [
      "urllib3.exceptions.MaxRetryError",
      "urllib3.exceptions.SSLError"
-    ],
-    [
-     "urllib3.exceptions.ReadTimeoutError",
-     "builtins.TimeoutError"
     ]
    ],
    "unconfirmed_in_graph": [
@@ -7537,6 +7505,10 @@
     [
      "builtins.OverflowError",
      "urllib3.response.HTTPResponse.read"
+    ],
+    [
+     "builtins.UnicodeError",
+     "idna.core.IDNAError"
     ],
     [
      "builtins.UnicodeError",
@@ -7664,7 +7636,7 @@
     ],
     [
      "requests.exceptions.JSONDecodeError",
-     "requests.compat.JSONDecodeError"
+     "json.decoder.JSONDecodeError"
     ],
     [
      "requests.exceptions.JSONDecodeError",
@@ -7715,6 +7687,14 @@
      "requests.exceptions.HTTPError"
     ],
     [
+     "ssl.SSLError",
+     "builtins.TypeError"
+    ],
+    [
+     "ssl.SSLError",
+     "builtins.ValueError"
+    ],
+    [
      "urllib3",
      "urllib3.exceptions.LocationParseError"
     ],
@@ -7744,7 +7724,15 @@
     ],
     [
      "urllib3.exceptions.ConnectTimeoutError",
-     "socket.timeout"
+     "socks.ProxyError"
+    ],
+    [
+     "urllib3.exceptions.EmptyPoolError",
+     "_queue.Empty"
+    ],
+    [
+     "urllib3.exceptions.FullPoolError",
+     "queue.Full"
     ],
     [
      "urllib3.exceptions.HeaderParsingError",
@@ -7771,8 +7759,20 @@
      "builtins.ValueError"
     ],
     [
+     "urllib3.exceptions.LocationParseError",
+     "idna.core.IDNAError"
+    ],
+    [
+     "urllib3.exceptions.NameResolutionError",
+     "socket.gaierror"
+    ],
+    [
+     "urllib3.exceptions.NewConnectionError",
+     "socks.ProxyError"
+    ],
+    [
      "urllib3.exceptions.ProtocolError",
-     "urllib3.connection.HTTPException"
+     "http.client.HTTPException"
     ],
     [
      "urllib3.exceptions.ProtocolError",
@@ -7783,20 +7783,12 @@
      "concept:parameter:ssl_context"
     ],
     [
-     "urllib3.exceptions.ReadTimeoutError",
-     "socket.timeout"
-    ],
-    [
      "urllib3.exceptions.SSLError",
      "binascii.Error"
     ],
     [
      "urllib3.exceptions.SSLError",
      "builtins.OSError"
-    ],
-    [
-     "urllib3.exceptions.SSLError",
-     "urllib3.connection.BaseSSLError"
     ],
     [
      "urllib3.exceptions.SSLError",

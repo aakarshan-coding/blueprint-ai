@@ -22,11 +22,12 @@ that jedi lacked were mostly false -- `getattr` matched to
 over recall is the standard for a graph an answer model will trust (D56,
 D57), so the resolver-based CALLS write is retired rather than merged.
 
-What jedi is NOT used for: RAISES, INHERITS_FROM and WRAPS_EXCEPTION still
-go through the resolver, because their surfaces are class names written in
-the same module or imported by name, which name matching handles, and
-because each of those edges also carries an LLM-side counterpart resolved
-the same way. Changing one path at a time keeps the benchmark attributable.
+The class names that RAISES, INHERITS_FROM, WRAPS_EXCEPTION and RETURNS
+write are resolved here too, by `resolve_type_names` (D98). Name matching
+handled the common case and guessed on the rest: `set` became
+RequestsCookieJar.set, `TimeoutError` in a module that never imported
+urllib3's became urllib3's. The LLM pass still goes through the resolver,
+because a name read from prose has no position in the code to ask jedi at.
 """
 
 import ast
@@ -99,6 +100,58 @@ def _definitions(script: jedi.Script, func: ast.expr) -> set[str]:
         # an unresolvable call is a missing edge, never a crash.
         return set()
     return {v.full_name for v in values if v.full_name and v.type in _CALLABLE_KINDS}
+
+
+def _classes(defs) -> set[str]:
+    return {d.full_name for d in defs if d.full_name and d.type == "class"}
+
+
+def resolve_type_names(
+    text: str,
+    *,
+    path: str,
+    dotted_module: str,
+    project: jedi.Project,
+    wanted: dict[str, set[str]],
+) -> dict[tuple[str, str], set[str]]:
+    """The classes each written name means, by asking jedi at the name itself.
+
+    `wanted` maps a symbol id to the surfaces its extracted edges wrote. A
+    class is searched in its bases only, a function in its whole body. Every
+    occurrence of a surface in its symbol is asked, and the answers are
+    unioned, so a name bound to different classes on different branches comes
+    back with all of them for the caller to refuse.
+
+    infer first, goto second: infer follows `ConnectionError = ProtocolError`
+    to the class it names, while goto stops at the assignment. Only classes
+    count: a module (`cabc`) or a function is never a type.
+    """
+    script = jedi.Script(text, path=path, project=project)
+    found: dict[tuple[str, str], set[str]] = {}
+    for name, node, _start, _end in iter_symbols(ast.parse(text)):
+        source_id = f"{dotted_module}.{name}"
+        surfaces = wanted.get(source_id)
+        if not surfaces:
+            continue
+        roots = node.bases if isinstance(node, ast.ClassDef) else [node]
+        for root in roots:
+            for expr in ast.walk(root):
+                if not isinstance(expr, (ast.Name, ast.Attribute)):
+                    continue
+                surface = ast.unparse(expr)
+                if surface not in surfaces:
+                    continue
+                line, col = expr.end_lineno, expr.end_col_offset - 1
+                try:
+                    classes = _classes(script.infer(line, col)) or _classes(
+                        script.goto(line, col, follow_imports=True)
+                    )
+                except Exception:
+                    # As in _definitions: a cursor jedi can't place is a
+                    # missing answer, never a crash.
+                    classes = set()
+                found.setdefault((source_id, surface), set()).update(classes)
+    return found
 
 
 def _dict_flows(

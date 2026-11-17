@@ -278,3 +278,68 @@ def test_a_parameter_flows_through_a_returned_dict_an_update_and_a_spread(tmp_pa
     assert ("cert", "cert", None) in by[("pkg.s.Session.request", "pkg.s.Session.send")]
     assert ("timeout", "timeout", None) in by[("pkg.s.Session.request", "pkg.s.Session.send")]
     assert ("kwargs", None, None) in by[("pkg.s.Session.send", "pkg.s.adapter_send")]
+
+
+def _typed_package(tmp_path):
+    src = tmp_path / "src"
+    pkg = src / "pkg"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("")
+    (pkg / "base.py").write_text(textwrap.dedent('''\
+        import typing as t
+        T = t.TypeVar("T")
+
+        class Serializer(t.Generic[T]): ...
+        class BadSignature(Exception): ...
+
+        class Jar:
+            def set(self, key, value): ...
+
+        try:
+            import ssl
+            Conn = ssl.SSLSocket
+        except ImportError:
+            class Conn: ...
+    '''))
+    (pkg / "use.py").write_text(textwrap.dedent('''\
+        import typing as t
+        from pkg.base import Serializer, BadSignature, Conn
+
+        class Local: ...
+        class Child(Local): ...
+        class Timed(Serializer): ...
+        class Reader(t.Protocol): ...
+        class View(set): ...
+        class Wrapped(Conn): ...
+
+        def check(err):
+            raise t.cast(BadSignature, err)
+    '''))
+    return src
+
+
+def test_type_names_resolve_by_position_to_exactly_the_classes_jedi_finds(tmp_path):
+    """The resolver matched names: `set` became a method called set, and
+    `t.Protocol` matched nothing. jedi reads the scope and the imports (D98)."""
+    from graphrag.ingest.jedi_calls import resolve_type_names
+
+    src = _typed_package(tmp_path)
+    path = src / "pkg" / "use.py"
+    wanted = {
+        "pkg.use.Child": {"Local"}, "pkg.use.Timed": {"Serializer"},
+        "pkg.use.Reader": {"t.Protocol"}, "pkg.use.View": {"set"},
+        "pkg.use.Wrapped": {"Conn"}, "pkg.use.check": {"BadSignature"},
+    }
+
+    found = resolve_type_names(
+        path.read_text(), path=str(path), dotted_module="pkg.use",
+        project=build_project(src, others=[]), wanted=wanted,
+    )
+
+    assert found[("pkg.use.Child", "Local")] == {"pkg.use.Local"}
+    assert found[("pkg.use.Timed", "Serializer")] == {"pkg.base.Serializer"}
+    assert found[("pkg.use.Reader", "t.Protocol")] == {"typing.Protocol"}
+    assert found[("pkg.use.View", "set")] == {"builtins.set"}
+    assert found[("pkg.use.check", "BadSignature")] == {"pkg.base.BadSignature"}
+    # Bound to a different class on each branch: two answers, never one guess.
+    assert found[("pkg.use.Wrapped", "Conn")] == {"ssl.SSLSocket", "pkg.base.Conn"}

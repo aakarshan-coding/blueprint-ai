@@ -54,6 +54,19 @@ def test_inherits_from_records_every_base_by_surface_name():
     ]
 
 
+def test_inherits_from_names_a_generic_base_without_its_type_arguments():
+    """`class S(Serializer[_TSerialized])` inherits from Serializer. The written
+    form with brackets names no class, so the resolver dropped the edge (D97)."""
+    edges = extract_inherits_from(
+        "class CaseInsensitiveDict(MutableMapping[str, _VT], typing.Generic[_VT]):\n    pass\n",
+        repo="requests",
+        path="src/requests/structures.py",
+        dotted_module="requests.structures",
+    )
+
+    assert edges[0].target_surfaces == ["MutableMapping", "typing.Generic"]
+
+
 def test_inherits_from_edge_cites_the_same_chunk_id_as_its_class_chunk():
     edges = extract_inherits_from(
         EXC_SOURCE,
@@ -434,6 +447,37 @@ def test_extract_returns_reads_the_annotation_and_ignores_typing_scaffolding():
     assert edges["pkg.m.maybe"] == ["Response"]
     assert edges["pkg.m.quoted"] == ["urllib3.response.HTTPResponse"]
     assert "pkg.m.plain" not in edges and "pkg.m.none" not in edges and "pkg.m.untyped" not in edges
+
+
+def test_a_raise_through_typing_cast_raises_the_cast_type():
+    """`raise t.cast(BadSignature, err)` raises a BadSignature. The call's
+    target is `cast`, which is not an exception, so itsdangerous's
+    TimedSerializer.loads had no RAISES edge (D98)."""
+    source = (
+        "def a(err):\n    raise t.cast(BadSignature, err)\n"
+        "def b(err):\n    raise typing.cast(BadData, err)\n"
+        "def c(err):\n    raise cast(SignatureExpired, err)\n"
+    )
+    by_fn = {e.source_id: e.exceptions_raised
+             for e in extract_raises(source, repo="r", path="p.py", dotted_module="m")}
+
+    assert by_fn == {"m.a": ["BadSignature"], "m.b": ["BadData"], "m.c": ["SignatureExpired"]}
+
+
+def test_extract_returns_never_names_the_module_alias_of_a_typing_word():
+    """`cabc.Iterator[bytes]` names Iterator, a typing word, through the alias
+    `cabc` for collections.abc. The alias alone survived the filter and became
+    a RETURNS edge to the module collections.abc (D98)."""
+    from graphrag.ingest.ast_extract import extract_returns
+    src = (
+        "import collections.abc as cabc\n"
+        "def items(self) -> cabc.Iterator[bytes]: ...\n"
+        "def nested(self) -> cabc.Mapping[str, Response]: ...\n"
+    )
+    edges = {e.source_id: e.type_surfaces for e in extract_returns(src, repo="r", path="m.py", dotted_module="pkg.m")}
+
+    assert "pkg.m.items" not in edges
+    assert edges["pkg.m.nested"] == ["Response"]
 
 
 def test_extract_stores_records_self_attribute_assignments_from_parameters():

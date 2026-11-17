@@ -49,8 +49,12 @@ def _base_surface(expr: ast.expr) -> str:
     """Render a base-class expression back to its written form.
 
     Usually a bare Name ("ConnectionError"). Occasionally an Attribute
-    ("compat.CompatJSONDecodeError") — ast.unparse handles both.
+    ("compat.CompatJSONDecodeError") — ast.unparse handles both. A generic
+    base ("Serializer[_TSerialized]") is the class before the brackets: the
+    written form names no class, and the resolver dropped it (D97).
     """
+    while isinstance(expr, ast.Subscript):
+        expr = expr.value
     return ast.unparse(expr)
 
 
@@ -195,6 +199,13 @@ def _raised_name(raise_node: ast.Raise, *, scope: ast.AST | None = None) -> str 
     exc = raise_node.exc
     if exc is None:
         return None
+    # `raise t.cast(BadSignature, err)` raises a BadSignature: cast returns
+    # its second argument unchanged and only tells the type checker its type.
+    if (
+        isinstance(exc, ast.Call) and exc.args
+        and ast.unparse(exc.func) in ("cast", "t.cast", "typing.cast")
+    ):
+        exc = exc.args[0]
     if isinstance(exc, ast.Call):
         exc = exc.func
     surface = ast.unparse(exc)
@@ -267,7 +278,7 @@ def _annotation_surfaces(annotation: ast.expr) -> list[str]:
             annotation = ast.parse(annotation.value, mode="eval").body
         except SyntaxError:
             return []
-    surfaces = []
+    written = []
     for node in ast.walk(annotation):
         if isinstance(node, ast.Name):
             surface = node.id
@@ -275,15 +286,18 @@ def _annotation_surfaces(annotation: ast.expr) -> list[str]:
             surface = ast.unparse(node)
         else:
             continue
-        leaf = surface.split(".")[-1]
-        if leaf in _TYPING_WORDS or surface.split(".")[0] in ("t", "typing"):
-            continue
-        if surface not in surfaces:
-            surfaces.append(surface)
+        if surface not in written:
+            written.append(surface)
     # ast.walk visits an Attribute, then its inner Attribute, then its Name:
     # `urllib3.response.HTTPResponse` yields three surfaces. Keep only the
     # outermost: a surface that is a dotted prefix of another is dropped.
-    return [s for s in surfaces if not any(o != s and o.startswith(s + ".") for o in surfaces)]
+    # The prefixes are dropped before typing words are, or `cabc` outlives
+    # `cabc.Iterator` and names the module collections.abc (D98).
+    outermost = [s for s in written if not any(o != s and o.startswith(s + ".") for o in written)]
+    return [
+        s for s in outermost
+        if s.split(".")[-1] not in _TYPING_WORDS and s.split(".")[0] not in ("t", "typing")
+    ]
 
 
 def extract_returns(

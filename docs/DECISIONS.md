@@ -3702,6 +3702,129 @@ directory's `data/corpus.json`. After the user ingested itsdangerous they failed
 while passing in CI, which has no such file. `tests/conftest.py` now pins every test to
 `corpora/requests-urllib3.yaml`, so no test depends on what was last ingested.
 
+## D97 — Generic base classes keep their parent, and a builtin base is the builtin
+
+**Status:** applied; 397 tests; graph rebuilt from scratch and LLM edges replayed; oracle
+re-scored on the saved trace. Not benchmarked.
+
+**The bug.** `_base_surface` rendered a base with `ast.unparse`, so `class
+CaseInsensitiveDict(MutableMapping[str, _VT])` produced the surface
+`MutableMapping[str, _VT]`. That names no class. The resolver dropped it, and the class had
+no parent. The corpus has 11 such bases (requests: `CaseInsensitiveDict`, `LookupDict`,
+`RequestsCookieJar`, `SupportsRead`, `SupportsItems`; urllib3: `RecentlyUsedContainer`,
+`HTTPHeaderDict`, `HTTPHeaderDictItemView`, `_LockedObject`). On itsdangerous the same bug
+removed `TimedSerializer`'s parent `Serializer`, and with it every override CALLS edge
+into `TimedSerializer.loads`, because `expand_overrides` builds its subclass map from
+INHERITS_FROM.
+
+**The fix, part 1.** A base that is a subscript is the expression before the brackets.
+
+**What part 1 exposed.** With the brackets gone, `class HTTPHeaderDictItemView(set[...])`
+resolved `set` to `requests.cookies.RequestsCookieJar.set`, a method: a false base. The
+resolver checked builtins only for exception names and only on its last rung, after the
+cross-package rungs, and the normalized rung matched the one corpus symbol whose leaf is
+`set`. `bool` matches `Response.__bool__` the same way; RETURNS never sees it because
+`_annotation_surfaces` filters builtin names out first.
+
+**The fix, part 2.** Python's own scoping: in a module that neither imports nor defines
+the name, a bare builtin type name (`set`, `dict`, `object`) is the builtin. This rung
+runs right after the import and same-module rungs, only with a module context, and only
+for non-exception types. Exceptions keep their last-rung place (D57). Without a module
+context (query-time mentions, the replay's first resolver) nothing changes.
+
+**Measured.**
+
+| | before | after |
+|---|---|---|
+| resolved INHERITS_FROM edges (requests + urllib3) | 117 | 124 |
+| bases pointing at a Function node | 0 (1 with part 1 alone) | 0 |
+| parser-pass resolutions changed by the part 2 rung | | 2 of 716, both bases (`dict`, `set`) |
+| override CALLS | 95 | 95 |
+| oracle CALLS / RAISES / WRAPS | unchanged | unchanged |
+
+The 7 new edges: `CaseInsensitiveDict → requests.compat.MutableMapping` and
+`→ typing.Generic`, `LookupDict → builtins.dict`, `RequestsCookieJar →
+collections.abc.MutableMapping`, `SupportsRead`/`SupportsItems → typing.Protocol`,
+`HTTPHeaderDictItemView → builtins.set`. Every new parent is outside the corpus, so no
+override edge and no oracle number moves on this corpus. On itsdangerous (offline parse),
+`TimedSerializer` and `URLSafeSerializerMixin` now resolve to
+`itsdangerous.serializer.Serializer`, which restores the cascade described above.
+
+**Left alone.** 4 of the 11 generic bases still do not resolve: `typing.MutableMapping`,
+`typing.Generic` (twice) and itsdangerous's `t.Generic`/`t.Protocol`. A surface of the
+form `<module alias>.<name>` has no rung: the reexport rung looks up the alias's
+*target* module's own imports, and `typing` imports nothing by those names. A rung that
+maps `alias.rest` to `<aliased module>.rest` would fix it. It would also touch raises and
+wraps written as `exceptions.SSLError`, so it needs its own blast-radius check.
+
+## D98 — Class names read from code are resolved by jedi; an ambiguous name gets no edge
+
+**Status:** applied; 404 tests; graph rebuilt from scratch and LLM edges replayed; oracle
+re-scored on the saved trace. Not benchmarked.
+
+**Why.** D97 showed that the resolver guesses. It matches a name across packages when the
+name has one unique leaf, and that is how `set` became a method. A comparison of all 563
+distinct (symbol, written name) pairs that INHERITS_FROM, RAISES, RETURNS and
+WRAPS_EXCEPTION send to the resolver, against jedi asked at the position of each name,
+found the same failure elsewhere: `TimeoutError` in `urllib3.contrib.pyopenssl` (never
+imported there, so Python's) resolved to urllib3's; the TypeVar `_D` in
+`LookupDict.get -> _D` resolved to the local variable `requests.utils.dict_to_sequence.d`;
+`ConnectionError` in the HTTP/2 module resolved to an alias id instead of
+`ProtocolError`, the class `ConnectionError = ProtocolError` names. jedi and the resolver
+agreed on 442 pairs, jedi alone answered 50, the resolver alone 7 (all explicit imports
+of uninstalled packages: pyodide, `typing_extensions.TypeIs`), and jedi returned two
+classes for 4.
+
+**The rule** (`resolve_code_name`). A name the parser read from code is looked up by
+jedi where it was written (`resolve_type_names`, infer then goto, classes only). One
+class: that class. Two or more: no edge and no fallback; counted as `ast_edges_ambiguous`.
+None: the resolver may answer only with a rung the code states (`PROVEN_BY_CODE`: exact,
+self reference, import, same module, re-export, builtin), never with a cross-package name
+match. RETURNS drops jedi answers in `typing`, because there a TypeVar or an alias
+(`_VT`, `_TYPE_BODY_POSITION`) infers to `typing.TypeVar` or `typing.Union`. The LLM pass
+and question-time mentions keep the resolver: a name from prose has no position to ask
+jedi at.
+
+**Two extractor bugs, fixed with it.** `raise t.cast(BadSignature, err)` recorded the
+surface `t.cast`; it now records the cast's first argument, so itsdangerous's
+`TimedSerializer.loads` raises `BadSignature`. `_annotation_surfaces` filtered typing words
+before dropping dotted prefixes, so `cabc.Iterator[bytes]` left `cabc`, which resolved to
+the module `collections.abc` as a return type; the prefixes are now dropped first.
+
+**Measured** (rebuilt graph; oracle on the 2026-09-26 trace).
+
+| | D97 graph | now |
+|---|---|---|
+| INHERITS_FROM / RAISES / RETURNS (ast) | 124 / 178 / 124 (offline) | 127 / 185 / 141 |
+| WRAPS_EXCEPTION (ast) | 48 | 65 |
+| names left ambiguous, no edge | (resolver chose one) | 4 |
+| override CALLS | 95 | 84 |
+| oracle WRAPS ast: confirmed, recall, observed precision | 21, 0.750, 0.438 | 23, 0.821, 0.411 |
+| oracle RAISES ast | 48, 0.632, 0.275 | 48, 0.632, 0.266 |
+| oracle CALLS override | 9, 0.023, 0.095 | 9, 0.023, 0.107 |
+
+Of the 16 edges removed, 7 were wrong guesses, 5 are the same fact under the class's real
+id (`IOError` is `builtins.OSError`, `socket.timeout` is `builtins.TimeoutError`, which is
+also how the runtime trace names them; that is the 2 new oracle confirmations), and 4 are
+the ambiguous names. The 46 added (`typing.Generic` and `io.IOBase` bases, `ssl.SSLError`
+raises in pyopenssl, `socket.gaierror` and `queue.Full` wraps, `socket.socket` returns)
+were read one by one; none is false. Observed precision falls a little because most new
+RAISES and WRAPS edges are in `urllib3.contrib`, which requests' tests do not run.
+
+**What the ambiguity rule costs.** `SOCKSHTTPSConnection(HTTPSConnection)` and
+`HTTP2Connection(HTTPSConnection)` lose their parent: urllib3 binds `HTTPSConnection` to
+`DummyConnection` when `ssl` is missing, and jedi reports both. With the parent gone, 11
+override CALLS into those classes go too; none had been confirmed by the oracle. The
+same holds for two wraps of `BaseSSLError` (`ssl.SSLError` or urllib3's fallback class).
+The rule is that a name bound differently on different paths is not chosen for.
+
+**Kept.** 13 RETURNS edges to `typing_extensions.Self` and `TypeIs` still arrive through
+the import fallback, as they did before. They are true annotations; they are not removed
+here.
+
+**Benchmark questions touched.** The IOError questions already accept "IOError" or
+"OSError". No question names `socket.timeout` or the pyopenssl functions.
+
 ---
 
 ## Open questions for the Phase 2 sweep

@@ -144,6 +144,28 @@ def test_a_corpus_name_that_shadows_a_builtin_wins_over_the_builtin():
     assert result.canonical_id == "requests.exceptions.ConnectionError"
 
 
+def test_a_builtin_type_named_in_a_module_that_does_not_bind_it_is_the_builtin():
+    """`class HTTPHeaderDictItemView(set[...])` in urllib3 inherits from Python's
+    set. The cross-package rung matched the one corpus symbol whose leaf is
+    `set`, a method of RequestsCookieJar, and wrote a false base (D97)."""
+    resolver = Resolver(
+        node_universe={"requests.cookies.RequestsCookieJar.set"}, import_aliases={},
+    )
+
+    result = resolver.resolve("set", module_context="urllib3._collections")
+
+    assert result.canonical_id == "builtins.set"
+    assert result.method == "builtin"
+
+
+def test_a_module_that_imports_a_builtin_name_means_its_import():
+    resolver = Resolver(
+        node_universe=set(), import_aliases={"pkg.mod": {"dict": "pkg.compat.dict"}},
+    )
+
+    assert resolver.resolve("dict", module_context="pkg.mod").canonical_id == "pkg.compat.dict"
+
+
 def test_a_name_that_is_not_a_builtin_exception_is_still_unresolved():
     resolver = Resolver(node_universe=set(), import_aliases={})
 
@@ -402,3 +424,55 @@ def test_self_call_to_a_method_the_class_does_not_have_stays_unresolved():
     )
 
     assert result.canonical_id is None
+
+
+def test_a_name_jedi_pins_to_one_class_resolves_to_it():
+    from graphrag.ingest.resolve import resolve_code_name
+    resolver = Resolver(node_universe={"requests.cookies.RequestsCookieJar.set"}, import_aliases={})
+
+    r = resolve_code_name(resolver, "set", module_context="m", jedi_classes={"builtins.set"})
+
+    assert (r.canonical_id, r.method) == ("builtins.set", "jedi")
+
+
+def test_a_name_jedi_finds_two_classes_for_gets_no_edge_and_no_fallback():
+    """`HTTPSConnection` is DummyConnection when ssl is missing. The import
+    rung would answer HTTPSConnection; choosing is a guess, so nothing is
+    written and the candidates are kept for the count (D98)."""
+    from graphrag.ingest.resolve import resolve_code_name
+    resolver = Resolver(
+        node_universe=set(),
+        import_aliases={"m": {"HTTPSConnection": "urllib3.connection.HTTPSConnection"}},
+    )
+
+    r = resolve_code_name(
+        resolver, "HTTPSConnection", module_context="m",
+        jedi_classes={"urllib3.connection.HTTPSConnection", "urllib3.connection.DummyConnection"},
+    )
+
+    assert r.canonical_id is None
+    assert r.method == "ambiguous"
+    assert set(r.candidates) == {"urllib3.connection.HTTPSConnection", "urllib3.connection.DummyConnection"}
+
+
+def test_when_jedi_finds_nothing_an_import_still_proves_the_name():
+    """pyodide is not installed, so jedi cannot see JsException. The module's
+    own import statement still names it."""
+    from graphrag.ingest.resolve import resolve_code_name
+    resolver = Resolver(node_universe=set(), import_aliases={"m": {"JsException": "pyodide.ffi.JsException"}})
+
+    r = resolve_code_name(resolver, "JsException", module_context="m", jedi_classes=set())
+
+    assert r.canonical_id == "pyodide.ffi.JsException"
+
+
+def test_when_jedi_finds_nothing_a_cross_package_guess_is_refused():
+    """`TimeoutError` in a module that never imported urllib3's is Python's.
+    The name-matching rung said urllib3.exceptions.TimeoutError (D98)."""
+    from graphrag.ingest.resolve import resolve_code_name
+    resolver = Resolver(node_universe={"urllib3.exceptions.TimeoutError"}, import_aliases={})
+
+    assert resolver.resolve("TimeoutError", module_context="m").method == "normalized"
+    r = resolve_code_name(resolver, "TimeoutError", module_context="m", jedi_classes=set())
+
+    assert r.canonical_id is None

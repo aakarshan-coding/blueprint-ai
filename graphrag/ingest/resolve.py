@@ -14,7 +14,13 @@ from typing import Literal
 Method = Literal[
     "exact", "self_reference", "import_alias", "same_module", "reexport", "qualified",
     "normalized", "public_api", "call_graph", "builtin", "unresolved",
+    "jedi", "ambiguous",
 ]
+
+# The rungs a name read from code may fall back on when jedi has no answer:
+# each is a binding the code itself states. The others match a name across
+# packages, which a name with a position in the code no longer needs (D98).
+PROVEN_BY_CODE = frozenset({"exact", "self_reference", "import_alias", "same_module", "reexport", "builtin"})
 
 # Python's own exception classes, by name. `except OSError: raise
 # ConnectionError(e)` is a wrap the AST extractor finds and the graph could
@@ -25,6 +31,16 @@ Method = Literal[
 BUILTIN_EXCEPTIONS = frozenset(
     name for name, obj in vars(builtins).items()
     if isinstance(obj, type) and issubclass(obj, BaseException)
+)
+
+# Python's other builtin types: set, dict, object. In a module that neither
+# imports nor defines the name, Python means the builtin, so this resolves
+# right after the module's own bindings. Ahead of the cross-package rungs,
+# which matched `set` to RequestsCookieJar.set and wrote it as a base class
+# (D97). Exceptions keep their last-rung place (D57).
+BUILTIN_TYPES = frozenset(
+    name for name, obj in vars(builtins).items()
+    if isinstance(obj, type) and not issubclass(obj, BaseException)
 )
 
 
@@ -133,6 +149,9 @@ class Resolver:
             if local in self.node_universe:
                 return Resolution(surface, local, "same_module")
 
+            if surface in BUILTIN_TYPES:
+                return Resolution(surface, f"builtins.{surface}", "builtin")
+
         if "." in surface:
             package, _, leaf = surface.rpartition(".")
             aliases = self.import_aliases.get(package, {})
@@ -231,3 +250,24 @@ class Resolver:
         }
         winners = [c for c in candidates if c not in called_by_another]
         return winners[0] if len(winners) == 1 else None
+
+
+def resolve_code_name(
+    resolver: Resolver, surface: str, *, module_context: str | None, jedi_classes: set[str],
+) -> Resolution:
+    """Resolve a class name the parser read from code (D98).
+
+    jedi's answer at the name's position decides. One class: that class. Two
+    or more: the name is bound differently on different paths, so no edge,
+    and no fallback that would pick one. None: jedi could not see the
+    definition (an uninstalled package), and the resolver may answer only
+    with a rung the code proves, never with a name match across packages.
+    """
+    if len(jedi_classes) == 1:
+        return Resolution(surface, next(iter(jedi_classes)), "jedi")
+    if jedi_classes:
+        return Resolution(surface, None, "ambiguous", candidates=tuple(sorted(jedi_classes)))
+    fallback = resolver.resolve(surface, module_context=module_context)
+    if fallback.method in PROVEN_BY_CODE:
+        return fallback
+    return Resolution(surface, None, "unresolved", candidates=fallback.candidates)
