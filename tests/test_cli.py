@@ -1,5 +1,7 @@
 """The graphrag command parses its two subcommands (D93)."""
 
+import json
+
 import pytest
 
 from graphrag.cli import main
@@ -73,3 +75,55 @@ def test_status_explains_unreachable_databases(monkeypatch, capsys):
     finally:
         set_corpus(None)
     assert "docker compose up -d" in capsys.readouterr().out
+
+
+@pytest.fixture
+def tiny_repo(tmp_path, monkeypatch):
+    """A one-package repo, ACTIVE_FILE redirected, and chunk/parse stubbed out."""
+    import graphrag.cli
+    import graphrag.ingest.run_ingestion as run_ingestion
+
+    (tmp_path / "repo" / "widget").mkdir(parents=True)
+    (tmp_path / "repo" / "widget" / "__init__.py").write_text("", encoding="utf-8")
+    active = tmp_path / "data" / "corpus.json"
+    monkeypatch.setattr(graphrag.cli, "ACTIVE_FILE", active)
+    monkeypatch.setattr(run_ingestion, "chunk_corpus", lambda corpus: [])
+    monkeypatch.setattr(run_ingestion, "run_ast_pass", lambda corpus: ({}, {}, [], {}))
+    return tmp_path / "repo", active
+
+
+def test_a_dry_run_does_not_switch_the_active_corpus(tiny_repo):
+    repo, active = tiny_repo
+    assert main(["ingest", str(repo), "--dry-run"]) == 0
+    assert not active.exists()
+
+
+def test_a_failed_store_write_does_not_switch_the_active_corpus(tiny_repo, monkeypatch):
+    import graphrag.settings
+
+    repo, active = tiny_repo
+
+    def down():
+        raise ConnectionRefusedError()
+
+    monkeypatch.setattr(graphrag.settings, "neo4j_driver", down)
+    with pytest.raises(ConnectionRefusedError):
+        main(["ingest", str(repo)])
+    assert not active.exists()
+
+
+def test_a_completed_ingest_records_the_corpus(tiny_repo, monkeypatch):
+    from unittest.mock import MagicMock
+
+    import graphrag.ingest.embed
+    import graphrag.ingest.run_ingestion as run_ingestion
+    import graphrag.settings
+
+    repo, active = tiny_repo
+    monkeypatch.setattr(graphrag.settings, "neo4j_driver", MagicMock)
+    monkeypatch.setattr(graphrag.settings, "postgres_conn", MagicMock)
+    monkeypatch.setattr(graphrag.ingest.embed, "load_model", lambda: None)
+    monkeypatch.setattr(run_ingestion, "run_full_ingestion", lambda *a, **k: {})
+    monkeypatch.setattr(run_ingestion, "write_vectors", lambda **k: 0)
+    assert main(["ingest", str(repo)]) == 0
+    assert json.loads(active.read_text(encoding="utf-8"))["repos"][0]["name"] == "widget"

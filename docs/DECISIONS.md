@@ -3898,6 +3898,28 @@ in the report. Suite: 410 passed.
 re-scored for these fields, since the answers were recorded without them. The next
 benchmark run is the first to show how often the graph path fails or is repaired.
 
+## D102 — `graphrag ingest` records the corpus only after both stores are written
+
+**Wrong.** `_ingest` in `graphrag/cli.py` wrote `data/corpus.json` right after it built
+the corpus, before chunking, parsing or any store write, and before the `--dry-run`
+return. `--dry-run` says "write nothing", yet it switched the active corpus. A dry run
+of another repo therefore made the next `graphrag ask` build its resolver from the new
+repo while it queried stores that still held the old one. An ingest that failed while
+writing Neo4j or Postgres left the file naming a corpus the stores did not hold.
+
+**Changed.** The file is written after `write_vectors` returns, so a dry run or a failed
+store write leaves the previous record. `set_corpus(corpus)` stays where it was, since
+the later steps in the same process read it. The module docstring now gives this order.
+
+**Verified.** `test_a_dry_run_does_not_switch_the_active_corpus` and
+`test_a_failed_store_write_does_not_switch_the_active_corpus` failed before the change
+(the file existed) and pass after. `test_a_completed_ingest_records_the_corpus` guards
+that a completed ingest still writes it. All three redirect `ACTIVE_FILE` to a temp path
+and stub the stores. Suite: 413 passed.
+
+**Answers.** Unchanged; ingestion and retrieval write and read the same data. Only which
+corpus `ask` and `status` load after a dry run or a failed ingest changes. Not benchmarked.
+
 ---
 
 ## Open questions for the Phase 2 sweep

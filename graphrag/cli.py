@@ -6,9 +6,10 @@
     graphrag status                                          # what is ingested right now
 
 Ingest detects each repository's package, source folder, docs and changelog,
-writes data/corpus.json so later commands know the corpus, clears the stores
-(unless --keep), runs the parser pass and the embedding pass, and, with
---with-llm, the model pass over documentation using the caller's OPENAI_API_KEY.
+clears the stores (unless --keep), runs the parser pass and the embedding pass,
+and, with --with-llm, the model pass over documentation using the caller's
+OPENAI_API_KEY. Only after both stores are written does it save data/corpus.json,
+so later commands know the corpus.
 Ask runs the full pipeline for one question and prints the cited answer.
 Status reports which repositories are ingested and what the stores hold.
 """
@@ -36,8 +37,6 @@ def _ingest(args: argparse.Namespace) -> int:
         print("corpus not found on disk:", corpus.to_dict(), file=sys.stderr)
         return 2
     set_corpus(corpus)
-    ACTIVE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    ACTIVE_FILE.write_text(json.dumps(corpus.to_dict(), indent=2), encoding="utf-8")
     print(f"corpus: {corpus.name}")
     for r in corpus.repos:
         print(f"  {r.name}: {r.src_root}  docs={r.docs or '-'}  changelog={r.changelog or '-'}")
@@ -87,6 +86,9 @@ def _ingest(args: argparse.Namespace) -> int:
         conn.commit()
     stats["chunks_embedded"] = write_vectors(conn=conn, chunks=chunks, model=load_model())
     conn.close()
+    # Recorded last: `ask` and `status` trust this file to name what the stores hold.
+    ACTIVE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    ACTIVE_FILE.write_text(json.dumps(corpus.to_dict(), indent=2), encoding="utf-8")
     for k, v in stats.items():
         print(f"  {k}: {v}")
     return 0
