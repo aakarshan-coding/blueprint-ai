@@ -3825,6 +3825,31 @@ here.
 **Benchmark questions touched.** The IOError questions already accept "IOError" or
 "OSError". No question names `socket.timeout` or the pyopenssl functions.
 
+## D99 — The placeholder chunk id "ast" is not a citable id
+
+**Wrong.** An edge with no chunk of its own carries the chunk id `"ast"`: the 589
+IMPLEMENTS edges the replay writes from candidate parameters to a parameter concept, and
+the 52 Module-to-Module DEFINED_IN edges (a Module has no chunk, D73). `assemble_context`
+added every fact's chunk id to `retrieved_ids`, so `"ast"` was one, and an answer that
+cited `[ast]` passed `validate_citations`. In `results/exp10`, 11 hybrid answers cite
+`[ast]` (ag-06 and ag-38 in all five runs, ag-24 once), and all 11 are recorded valid.
+
+**Changed.** The placeholder is named once, `PLACEHOLDER_CHUNK_ID` in
+`graphrag/ingest/chunk.py`, and used where it is written (`run_ingestion.py`,
+`replay_llm_edges.py`) and where it is skipped: `assemble_context` no longer adds it to
+`retrieved_ids`. The graph is not changed. The context text is not changed: the line
+still starts with `[ast]`, so the answer model sees the same prompt.
+
+**Verified.** Two tests in `tests/test_merge.py`: a fact with chunk id `"ast"` gives
+`retrieved_ids` without it, and an answer whose only citation is `[ast]` is invalid
+against those ids. Both failed before the change (`{'ast', 'c1'} == {'c1'}`; `valid`
+was True). Suite: 406 passed.
+
+**Answers.** Unchanged, because the prompt is unchanged. Only `citations_valid` changes:
+the 11 exp10 answers above would now be recorded invalid. `citations_valid` is not
+graded, so no accuracy number moves. Not benchmarked. The real fix, replay citing the
+logged chunk id of the fact that produced the IMPLEMENTS edge, is a graph change for later.
+
 ---
 
 ## Open questions for the Phase 2 sweep

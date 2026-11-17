@@ -663,3 +663,27 @@ def test_package_listing_rows_verbalize_with_the_relationships_verb():
          "chunk_id": "c1", "source": "ast"},
     ], relationship="WRAPS_EXCEPTION")
     assert facts[0].statement == "requests.exceptions.ConnectionError wraps urllib3.exceptions.ProtocolError."
+
+
+def test_the_placeholder_chunk_id_is_not_a_retrieved_id():
+    facts = [
+        GraphFact("A implements B.", "ast", relationship="IMPLEMENTS"),
+        GraphFact("C calls D.", "c1", relationship="CALLS"),
+    ]
+
+    context, retrieved_ids = assemble_context(graph_facts=facts, vector_passages=[])
+
+    assert retrieved_ids == {"c1"}
+    assert "[ast] A implements B." in context
+
+
+def test_an_answer_citing_only_the_placeholder_fails_validation():
+    from graphrag.answer.citations import validate_citations
+
+    facts = [GraphFact("A implements B.", "ast", relationship="IMPLEMENTS")]
+    _context, retrieved_ids = assemble_context(graph_facts=facts, vector_passages=[])
+
+    result = validate_citations("A implements B [ast].", retrieved_ids=retrieved_ids)
+
+    assert result.valid is False
+    assert result.invalid_citations == ["ast"]

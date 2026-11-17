@@ -7,6 +7,7 @@ already-paid-for raw facts through the fix instead of re-paying for them.
 
 import json
 
+from graphrag.ingest.chunk import PLACEHOLDER_CHUNK_ID
 from graphrag.ingest.load_graph import merge_edge, merge_node
 from graphrag.ingest.doc_release_index import lookup
 from graphrag.ingest.node_ids import concept_id, parameter_concept_id
@@ -37,7 +38,7 @@ def _resolve_endpoint(surface: str, entity_type: str, *, resolver: Resolver, ses
         for candidate in resolution.candidates:
             merge_edge(
                 session, source_id=candidate, relationship="IMPLEMENTS",
-                target_id=cid, chunk_id="ast", confidence=1.0,
+                target_id=cid, chunk_id=PLACEHOLDER_CHUNK_ID, confidence=1.0,
             )
         return cid, None
 

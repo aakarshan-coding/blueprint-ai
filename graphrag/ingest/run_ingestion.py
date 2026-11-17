@@ -35,6 +35,7 @@ from graphrag.ingest.chunk import (
     chunk_rst,
     iter_docstrings_for_llm,
     iter_symbols,
+    PLACEHOLDER_CHUNK_ID,
 )
 from graphrag.ingest.embed import embed_texts, load_model
 from graphrag.ingest.jedi_calls import (
@@ -364,7 +365,7 @@ def _write_parameters(session, parameter_edges: list, chunk_ids: dict[str, str] 
     chunk_ids = chunk_ids or {}
     count = 0
     for edge in parameter_edges:
-        chunk_id = chunk_ids.get(edge.source_id, "ast")
+        chunk_id = chunk_ids.get(edge.source_id, PLACEHOLDER_CHUNK_ID)
         for param in edge.parameters:
             pid = parameter_id(edge.source_id, param.name)
             merge_node(session, "Parameter", pid)
@@ -438,7 +439,7 @@ def run_full_ingestion(
         # a submodule has none, so its edge keeps the placeholder (D73).
         merge_edge(
             neo4j_session, source_id=child, relationship="DEFINED_IN",
-            target_id=parent, chunk_id=chunk_ids.get(child, "ast"), confidence=1.0,
+            target_id=parent, chunk_id=chunk_ids.get(child, PLACEHOLDER_CHUNK_ID), confidence=1.0,
             source="ast",
         )
     # MERGE keys on chunk_id, so an edge whose chunk id changed from the

@@ -5,6 +5,7 @@ to a sentence before it ever reaches the model.
 
 from dataclasses import dataclass
 
+from graphrag.ingest.chunk import PLACEHOLDER_CHUNK_ID
 from graphrag.ontology import RELATIONSHIP_MEANINGS
 
 REL_PHRASES = {
@@ -397,7 +398,7 @@ def assemble_context(
         if fact.statement in stated:
             continue
         stated.add(fact.statement)
-        if fact.chunk_id is not None:
+        if fact.chunk_id not in (None, PLACEHOLDER_CHUNK_ID):
             retrieved_ids.add(fact.chunk_id)
         tag = _provenance_tag(fact.source)
         body = f"{tag} {fact.statement}" if tag else fact.statement

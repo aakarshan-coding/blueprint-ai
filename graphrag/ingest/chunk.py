@@ -21,6 +21,11 @@ _ADORNMENT = re.compile(r"""^([=\-`:.'"~^_*+#])\1+\s*$""")
 
 DEFAULT_MAX_CHARS = 2000
 
+# The chunk id an edge carries when no chunk holds its evidence: a Module's
+# DEFINED_IN (no module-level chunk) and the replayed IMPLEMENTS edges. It
+# names no stored chunk, so it is never a citable id (D99).
+PLACEHOLDER_CHUNK_ID = "ast"
+
 
 @dataclass(frozen=True)
 class Chunk:
