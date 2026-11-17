@@ -55,6 +55,12 @@ class RetrievalResult:
     expanded: int = 0
 
 
+def _record_error(result: RetrievalResult, e: Exception) -> None:
+    # Joined, not replaced: a later step failing must not hide an earlier one.
+    message = f"{type(e).__name__}: {e}"
+    result.graph_error = f"{result.graph_error}; {message}" if result.graph_error else message
+
+
 def _seed_from_passages(passages: list[dict], *, resolver) -> list[str]:
     """Canonical ids of the code symbols the top passages define."""
     ids: list[str] = []
@@ -320,7 +326,7 @@ def retrieve(
             # A graph path that can't plan or run is a real outcome worth
             # recording, not a crash -- the benchmark needs to see it rather
             # than lose the whole question.
-            result.graph_error = f"{type(e).__name__}: {e}"
+            _record_error(result, e)
 
     # Keep the facts most related to the question (fix 2, D64); eight is the
     # cap -- on the unfiltered neighbourhood and the chains. T8 is already
@@ -376,7 +382,7 @@ def retrieve(
                 result.expanded += len(flow)
                 same_named = _nodes_of(flow)
             except Exception as e:
-                result.graph_error = f"{type(e).__name__}: {e}"
+                _record_error(result, e)
     hops = _EXPANSIONS.get((template_id, key_relationship), [])
     if hops and result.graph_facts:
         try:
@@ -397,7 +403,7 @@ def retrieve(
                 result.expanded += len(added)
                 last_added = added
         except Exception as e:
-            result.graph_error = f"{type(e).__name__}: {e}"
+            _record_error(result, e)
 
     # A members plan followed by parents can hand the model sixty lines and
     # a question that is a count over them ("how many warning classes",

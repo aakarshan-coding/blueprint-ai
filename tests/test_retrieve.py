@@ -76,6 +76,24 @@ def test_a_graph_failure_is_recorded_not_raised():
     assert len(result.passages) == 1
 
 
+
+def test_two_graph_failures_in_one_retrieve_keep_both_messages():
+    """The plan fails, then the parameter-flow hop fails. The second error
+    must not overwrite the first."""
+    class FailsEachTemplate(FakeSession):
+        def run(self, query, **params):
+            if "labels(n)" in query:
+                return super().run(query, **params)
+            raise RuntimeError("flow failed" if "$name" in query else "plan failed")
+
+    session = FailsEachTemplate(descriptions={"requests.sessions.Session.request.verify": (["Parameter"], 12)})
+    resolver = FakeResolver({"Session": "requests.sessions.Session.request.verify"})
+    client = FakeOpenAI(plan={"template_id": "T1_NEIGHBORS", "entity_id": "requests.sessions.Session.request.verify"})
+
+    result = _retrieve(neo4j_session=session, resolver=resolver, openai_client=client)
+
+    assert result.graph_error == "RuntimeError: plan failed; RuntimeError: flow failed"
+
 # --- fix 3: seed the graph from the passages when the question names nothing -----
 
 def test_when_nothing_resolves_the_passages_seed_the_graph():

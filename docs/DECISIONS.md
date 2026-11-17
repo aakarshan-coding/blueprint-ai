@@ -3871,6 +3871,33 @@ pass unchanged. Suite: 407 passed.
 **Answers.** Unchanged; this is reporting only. Every kept five-run summary covers one
 question set, so no recorded number moves. Not benchmarked.
 
+## D101 — graph errors and plan repairs reach the benchmark rows
+
+**Wrong.** `retrieve` in `graphrag/retrieval/retrieve.py` catches graph failures in three
+places (the plan run, the parameter-flow hop, the expansion hops) and stores each in
+`result.graph_error` "so the benchmark can see it". Each assignment replaced the last, so
+a later failure hid an earlier one. `_report` in `graphrag/answer/pipeline.py` passed
+`graph_error` but not `plan_repair`, though `repair_plan` says the repair is recorded so
+the benchmark can see how often it fired. The benchmark row in
+`graphrag/eval/run_benchmark.py` kept neither, and `results/exp10` has no `graph_error`
+key. A graph-side failure was therefore invisible in every recorded run: the question
+was answered from passages only and graded like any other.
+
+**Changed.** `_record_error` joins messages with `"; "`; the field stays `str | None`, so
+`retrieval_stability` (which reads the first error type) is unaffected. `_report` adds
+`plan_repair`. The benchmark row adds `plan_repair` and `graph_error`. No control flow,
+prompt or context changed; `eval/baseline.py` is untouched.
+
+**Verified.** `test_two_graph_failures_in_one_retrieve_keep_both_messages` failed before
+the change (only `flow failed` survived) and passes after.
+`test_a_plan_repair_reaches_the_report` failed with `KeyError: 'plan_repair'` and passes
+after. `test_a_graph_failure_reaches_the_report` guards the existing `graph_error` field
+in the report. Suite: 410 passed.
+
+**Answers.** Unchanged; this is recording only. Runs made before this change cannot be
+re-scored for these fields, since the answers were recorded without them. The next
+benchmark run is the first to show how often the graph path fails or is repaired.
+
 ---
 
 ## Open questions for the Phase 2 sweep

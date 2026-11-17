@@ -31,6 +31,7 @@ def _report(r: RetrievalResult, *, answer: str, citations_valid: bool, invalid: 
         "refused": r.refused,
         "graph_error": r.graph_error,
         "graph_plan": r.plan,
+        "plan_repair": r.plan_repair,
         "seeded_from_passages": r.seeded_from_passages,
     }
 

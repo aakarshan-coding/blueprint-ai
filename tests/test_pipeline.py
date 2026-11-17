@@ -61,3 +61,31 @@ def test_the_answer_is_written_from_the_assembled_context():
     assert result["citations_valid"] is True
     assert "=== GRAPH RELATIONSHIPS ===" in client.responses.last_input
     assert "=== RETRIEVED PASSAGES ===" in client.responses.last_input
+
+
+def test_a_graph_failure_reaches_the_report():
+    class Boom(FakeSession):
+        def run(self, query, **params):
+            raise RuntimeError("neo4j down")
+
+    result = _answer(neo4j_session=Boom())
+
+    assert result["graph_error"] == "RuntimeError: neo4j down"
+
+
+def test_a_plan_repair_reaches_the_report():
+    # A Module has no INHERITS_FROM edges; repair_plan runs DEFINED_IN (D73).
+    result = answer_hybrid(
+        "What does requests.exceptions define?",
+        conn=FakeConn([PASSAGE_ROW]),
+        neo4j_session=FakeSession([], descriptions={"requests.exceptions": (["Module"], 40)}),
+        openai_client=FakeOpenAI(
+            mentions=[{"surface": "requests.exceptions", "package": "requests"}],
+            plan={"template_id": "T8_RELATED_BY", "entity_id": "requests.exceptions",
+                  "relationship": "INHERITS_FROM"},
+        ),
+        resolver=FakeResolver({"requests.exceptions": "requests.exceptions"}),
+        embedding_model=FakeEmbed(),
+    )
+
+    assert result["plan_repair"]

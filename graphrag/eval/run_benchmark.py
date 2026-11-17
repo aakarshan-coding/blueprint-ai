@@ -194,6 +194,8 @@ def main() -> None:
                     "citations_valid": out.get("citations_valid"),
                     "route": out.get("route"),
                     "graph_plan": out.get("graph_plan"),
+                    "plan_repair": out.get("plan_repair"),
+                    "graph_error": out.get("graph_error"),
                     "graph_facts_used": out.get("graph_facts_used", 0),
                     "error": error,
                 }
