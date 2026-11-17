@@ -1,6 +1,6 @@
 """The `graphrag` command (D93): ingest any Python repository, then ask it questions.
 
-    graphrag ingest ./some-repo [./another-repo ...] [--with-llm [--overwrite-llm-log]] [--reset]
+    graphrag ingest ./some-repo [./another-repo ...] [--with-llm [--overwrite-llm-log]] [--keep]
     graphrag ask "What does Session.send call?"
     graphrag ask "What does Session.send call?" --compare   # also the vector-only answer
     graphrag status                                          # what is ingested right now

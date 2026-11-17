@@ -412,7 +412,7 @@ MODULE_RELATIONSHIPS = frozenset({"DEFINED_IN", "IMPORTS"})
 def repair_plan(
     template_id: str, values: dict, candidates: list[Candidate]
 ) -> tuple[str, dict, str | None]:
-    """Correct the two plan shapes the model gets structurally wrong, from
+    """Correct the plan shapes the model gets structurally wrong, from
     what the graph knows about the anchor rather than from the question.
 
     Told in its prompt that a module's contents are DEFINED_IN, gpt-4o-mini
@@ -422,8 +422,8 @@ def repair_plan(
     detectable without the question: a Module has no INHERITS_FROM edges,
     and a corpus-wide count is never what a question naming one module
     wants. The repair is recorded on the result so the benchmark can see
-    how often it fired. `candidates` are the question's own, not the ones
-    seeded from passages.
+    how often it fired. `candidates` include the ones seeded from passages,
+    so a seeded anchor's kind is known too (D76).
     """
     kinds = {c.canonical_id: c.kind for c in candidates}
     entity = values.get("entity_id")
@@ -441,7 +441,7 @@ def repair_plan(
     if "Parameter" in kind and template_id != "T1_NEIGHBORS":
         return (
             "T1_NEIGHBORS", {"entity_id": entity},
-            "a Parameter has only DEFINED_IN and CONTROLS edges; its neighbourhood instead",
+            "a Parameter has no CALLS or RAISES edges; its whole neighbourhood instead",
         )
     # RAISES edges hang off methods. A raises plan anchored on a class
     # ("which Session method raises it") walks nothing; what its methods

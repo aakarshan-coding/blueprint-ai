@@ -3971,6 +3971,33 @@ edges of these three types are now removed. Not benchmarked.
 
 ---
 
+## D105 — Text that contradicted the code
+
+**Wrong.** Four texts described an older state of the code.
+
+1. The Parameter repair in `repair_plan` recorded "a Parameter has only DEFINED_IN and
+   CONTROLS edges". The graph's Parameter nodes also carry HAS_PARAMETER, PASSES_TO,
+   IMPLEMENTS, STORED_ON, CHANGED_IN, CONSTRAINS and DOCUMENTED_IN (read-only count,
+   2026-11-17). The rule sends any non-T1 plan on a Parameter to T1 because a Parameter has
+   no CALLS or RAISES edges (CLAUDE.md rule 4).
+2. The `repair_plan` docstring said it corrects "the two plan shapes"; it has seven rules
+   now (D73, D74, D76, D82, D90). It also said `candidates` exclude the ones seeded from
+   passages; `retrieve()` passes them on purpose (D76).
+3. The `graphrag/cli.py` usage line listed `--reset`. No such flag exists; `--keep` skips
+   the clear.
+4. The README stated 380 unit tests.
+
+**Changed.** The repair message is now "a Parameter has no CALLS or RAISES edges; its whole
+neighbourhood instead". The docstring says "the plan shapes" and that `candidates` include
+the seeded ones (D76). The usage line shows `[--keep]`. The README states 417 unit tests.
+The repair message is stored as `plan_repair` in the result and the benchmark row; no
+prompt reads it, so no model input changes.
+
+**Verified.** No test asserts the old message text. Suite: 417 passed. No behavior change,
+so no benchmark run.
+
+---
+
 ## Open questions for the Phase 2 sweep
 
 All of these are recall@k questions. None should be settled by argument.
