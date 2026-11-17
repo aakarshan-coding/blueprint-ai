@@ -3920,6 +3920,28 @@ and stub the stores. Suite: 413 passed.
 **Answers.** Unchanged; ingestion and retrieval write and read the same data. Only which
 corpus `ask` and `status` load after a dry run or a failed ingest changes. Not benchmarked.
 
+## D103 — `graphrag ingest --with-llm` refuses to overwrite an existing model-edge log
+
+**Wrong.** `--llm-log` defaults to `data/llm_edges_log.jsonl`, and `run_full_ingestion`
+opens that path with mode `"w"`. That file is the 2276-line log of the paid model pass
+over requests+urllib3, the input `replay_llm_edges` reads to rebuild the graph (rule 2).
+`graphrag ingest <any repo> --with-llm` therefore truncated it without a word, and
+getting it back means paying for the extraction again.
+
+**Changed.** `_ingest` in `graphrag/cli.py` checks right after the corpus is validated,
+before any store is cleared or any model is called. With `--with-llm` and an existing log
+path it prints the reason to stderr and returns 2, unless the new `--overwrite-llm-log`
+is given. Without `--with-llm` nothing changes. `run_ingestion`'s own `__main__` full pass
+still rewrites the log, since producing it is that command's purpose.
+
+**Verified.** `test_with_llm_refuses_to_overwrite_an_existing_model_edge_log` failed
+before the change (ingest returned 0) and passes after; it checks the log bytes are
+unchanged and the Neo4j driver is never reached. `test_overwrite_llm_log_lets_the_model_pass_replace_the_log`
+and `test_an_existing_model_edge_log_does_not_matter_without_with_llm` cover the other two
+paths. Suite: 416 passed.
+
+**Answers.** Unchanged; no retrieval, ingestion output or prompt changes. Not benchmarked.
+
 ---
 
 ## Open questions for the Phase 2 sweep

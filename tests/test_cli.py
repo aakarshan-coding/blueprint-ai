@@ -127,3 +127,54 @@ def test_a_completed_ingest_records_the_corpus(tiny_repo, monkeypatch):
     monkeypatch.setattr(run_ingestion, "write_vectors", lambda **k: 0)
     assert main(["ingest", str(repo)]) == 0
     assert json.loads(active.read_text(encoding="utf-8"))["repos"][0]["name"] == "widget"
+
+
+@pytest.fixture
+def stub_stores(monkeypatch):
+    """The stores, the embedder and the model client replaced; returns the driver mock."""
+    from unittest.mock import MagicMock
+
+    import openai
+
+    import graphrag.ingest.embed
+    import graphrag.ingest.run_ingestion as run_ingestion
+    import graphrag.settings
+
+    driver = MagicMock()
+    monkeypatch.setattr(graphrag.settings, "neo4j_driver", driver)
+    monkeypatch.setattr(graphrag.settings, "postgres_conn", MagicMock)
+    monkeypatch.setattr(openai, "OpenAI", MagicMock)
+    monkeypatch.setattr(graphrag.ingest.embed, "load_model", lambda: None)
+    monkeypatch.setattr(run_ingestion, "run_full_ingestion", lambda *a, **k: {})
+    monkeypatch.setattr(run_ingestion, "write_vectors", lambda **k: 0)
+    return driver
+
+
+def test_with_llm_refuses_to_overwrite_an_existing_model_edge_log(tiny_repo, stub_stores, tmp_path, capsys):
+    repo, active = tiny_repo
+    log = tmp_path / "llm_edges_log.jsonl"
+    log.write_text('{"measured": true}\n', encoding="utf-8")
+    assert main(["ingest", str(repo), "--with-llm", "--llm-log", str(log)]) == 2
+    assert log.read_text(encoding="utf-8") == '{"measured": true}\n'
+    assert not stub_stores.called
+    assert not active.exists()
+    assert "--overwrite-llm-log" in capsys.readouterr().err
+
+
+def test_overwrite_llm_log_lets_the_model_pass_replace_the_log(tiny_repo, stub_stores, tmp_path):
+    repo, active = tiny_repo
+    log = tmp_path / "llm_edges_log.jsonl"
+    log.write_text('{"measured": true}\n', encoding="utf-8")
+    args = ["ingest", str(repo), "--with-llm", "--llm-log", str(log), "--overwrite-llm-log"]
+    assert main(args) == 0
+    assert stub_stores.called
+    assert active.exists()
+
+
+def test_an_existing_model_edge_log_does_not_matter_without_with_llm(tiny_repo, stub_stores, tmp_path):
+    repo, active = tiny_repo
+    log = tmp_path / "llm_edges_log.jsonl"
+    log.write_text('{"measured": true}\n', encoding="utf-8")
+    assert main(["ingest", str(repo), "--llm-log", str(log)]) == 0
+    assert stub_stores.called
+    assert log.read_text(encoding="utf-8") == '{"measured": true}\n'

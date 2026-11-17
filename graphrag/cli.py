@@ -1,6 +1,6 @@
 """The `graphrag` command (D93): ingest any Python repository, then ask it questions.
 
-    graphrag ingest ./some-repo [./another-repo ...] [--with-llm] [--reset]
+    graphrag ingest ./some-repo [./another-repo ...] [--with-llm [--overwrite-llm-log]] [--reset]
     graphrag ask "What does Session.send call?"
     graphrag ask "What does Session.send call?" --compare   # also the vector-only answer
     graphrag status                                          # what is ingested right now
@@ -35,6 +35,11 @@ def _ingest(args: argparse.Namespace) -> int:
         corpus = Corpus(name=args.name or "+".join(r.name for r in repos), repos=tuple(repos))
     if not corpus.exists():
         print("corpus not found on disk:", corpus.to_dict(), file=sys.stderr)
+        return 2
+    if args.with_llm and not args.overwrite_llm_log and Path(args.llm_log).exists():
+        # The log is the replay source for a paid model pass; the run below would truncate it.
+        print(f"{args.llm_log} already exists and --with-llm would overwrite it. "
+              "Pass a different --llm-log, or --overwrite-llm-log to replace it.", file=sys.stderr)
         return 2
     set_corpus(corpus)
     print(f"corpus: {corpus.name}")
@@ -254,7 +259,8 @@ def build_parser() -> argparse.ArgumentParser:
     ing.add_argument("--package", action="append", help="package name for the matching repo, when detection is ambiguous")
     ing.add_argument("--name", help="a name for this corpus")
     ing.add_argument("--with-llm", action="store_true", help="also run the model pass over documentation (uses OPENAI_API_KEY)")
-    ing.add_argument("--llm-log", default="data/llm_edges_log.jsonl", help="where the model pass logs its edges for replay")
+    ing.add_argument("--llm-log", default="data/llm_edges_log.jsonl", help="where the model pass logs its edges for replay; an existing file is refused unless --overwrite-llm-log")
+    ing.add_argument("--overwrite-llm-log", action="store_true", help="let --with-llm replace an existing --llm-log")
     ing.add_argument("--keep", action="store_true", help="do not clear the stores first")
     ing.add_argument("--dry-run", action="store_true", help="chunk and parse only; write nothing")
     ing.set_defaults(func=_ingest)
