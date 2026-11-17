@@ -5,6 +5,8 @@ is only reportable with its spread beside it. This is the pure part: given
 N result files, what is the table and which questions are stable.
 """
 
+import pytest
+
 from graphrag.eval.summarize_runs import aggregate, format_table, stability
 
 
@@ -46,6 +48,15 @@ def test_aggregate_reports_mean_and_range_per_category_and_pooled():
     assert pooled["hybrid"]["values"] == [75.0, 50.0]
     assert pooled["baseline"]["values"] == [25.0, 50.0]
     assert pooled["delta"]["values"] == [50.0, 0.0]
+
+
+def test_aggregate_refuses_runs_over_different_question_sets():
+    """A `--limit 10` run pooled with a full run used to report the full n and a
+    mean over two different question sets. Only runs over one set compare."""
+    truncated = {"results": RUN_1["results"][:2]}
+
+    with pytest.raises(ValueError, match=r"4 questions.*2 questions.*b1"):
+        aggregate([RUN_1, truncated])
 
 
 def test_aggregate_counts_only_correct_not_partial():

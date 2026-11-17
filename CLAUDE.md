@@ -41,7 +41,7 @@ place to look before proposing something that may have been tried.
 
 ```bash
 pip install -e ".[embed,dev]"          # embed = sentence-transformers/torch; dev = pytest
-pytest                                 # 406 unit tests, no database, no model calls
+pytest                                 # 407 unit tests, no database, no model calls
 docker compose up -d                   # Neo4j 5 and Postgres with pgvector
 graphrag ingest <repo> [<repo>...]     # any Python repo: parser pass + embeddings, no model calls
 graphrag ingest <repo> --with-llm      # also the model pass over docs (caller's key, logged for replay)

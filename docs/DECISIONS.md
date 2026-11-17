@@ -3850,6 +3850,27 @@ the 11 exp10 answers above would now be recorded invalid. `citations_valid` is n
 graded, so no accuracy number moves. Not benchmarked. The real fix, replay citing the
 logged chunk id of the fact that produced the IMPLEMENTS edge, is a graph change for later.
 
+## D100 — summarize_runs refuses runs over different question sets
+
+**Wrong.** `aggregate` in `graphrag/eval/summarize_runs.py` pooled whatever runs it was
+given. It took `n` from the first run and never checked that the runs covered the same
+questions, and `run_benchmark --limit N` writes exactly such runs. A probe that
+aggregated `results/exp10/1.json` with a copy cut to 10 rows reported pooled n=220 and a
+hybrid mean of 91.3 [82.7..100.0], with no warning. Rule 1 says only means over one
+question set compare.
+
+**Changed.** `_require_same_questions` compares each run's set of question ids with the
+first run's and raises `ValueError` naming both counts and up to five ids missing from,
+or only in, the mismatched run. `aggregate` and `stability` both call it, so `main`
+stops before printing either table.
+
+**Verified.** `test_aggregate_refuses_runs_over_different_question_sets` failed before
+the change (`DID NOT RAISE`) and passes after. The existing tests over identical runs
+pass unchanged. Suite: 407 passed.
+
+**Answers.** Unchanged; this is reporting only. Every kept five-run summary covers one
+question set, so no recorded number moves. Not benchmarked.
+
 ---
 
 ## Open questions for the Phase 2 sweep

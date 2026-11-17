@@ -52,9 +52,25 @@ def _stats(values: list[float]) -> dict:
     }
 
 
+def _require_same_questions(runs: list[dict]) -> None:
+    """A spread is only meaningful across runs of one question set; a
+    `--limit N` run pooled with a full run would report a mean over neither."""
+    first = {row["id"] for row in runs[0]["results"]}
+    for i, run in enumerate(runs[1:], start=1):
+        ids = {row["id"] for row in run["results"]}
+        if ids != first:
+            missing = ", ".join(sorted(first - ids)[:5]) or "none"
+            extra = ", ".join(sorted(ids - first)[:5]) or "none"
+            raise ValueError(
+                f"run 0 has {len(first)} questions, run {i} has {len(ids)} questions; "
+                f"missing from run {i}: {missing}; only in run {i}: {extra}"
+            )
+
+
 def aggregate(runs: list[dict]) -> dict:
     """Per category and pooled: hybrid, baseline and delta as mean/min/max
     across runs, plus the raw per-run values so nothing is hidden."""
+    _require_same_questions(runs)
     per_run_by_cat: dict[str, list[list[dict]]] = defaultdict(list)
     for run in runs:
         by_cat: dict[str, list[dict]] = defaultdict(list)
@@ -89,6 +105,7 @@ def aggregate(runs: list[dict]) -> dict:
 def stability(runs: list[dict]) -> dict:
     """Which questions each system always gets right, always gets wrong, and
     flips on. The flipping set is where the spread comes from."""
+    _require_same_questions(runs)
     verdicts: dict[str, dict[str, list[str]]] = {s: defaultdict(list) for s in SYSTEMS}
     for run in runs:
         for row in run["results"]:
