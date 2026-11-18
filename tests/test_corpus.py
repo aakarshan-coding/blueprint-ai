@@ -108,6 +108,32 @@ def test_ingestion_walks_a_detected_repo_end_to_end_without_stores(tmp_path):
     assert isinstance(public, set)
 
 
+def test_resolver_inputs_match_the_full_parser_pass(tmp_path):
+    from graphrag.ingest.run_ingestion import resolver_inputs, run_ast_pass
+    root = _repo(tmp_path, "widget")
+    pkg = root / "src" / "widget"
+    (pkg / "__init__.py").write_text("from .core import Impl as Public\nfrom . import core\n")
+    (pkg / "core.py").write_text(textwrap.dedent("""
+        import os.path as osp
+        from collections import abc
+
+        class Base:
+            def run(self, timeout=None, *args, **kw):
+                raise NotImplementedError()
+
+        class Impl(Base):
+            def run(self, timeout=None, *args, **kw):
+                return helper(osp.join("a", "b"))
+
+        def helper(x, *, verify=True):
+            return x
+    """))
+    corpus = Corpus(name="demo", repos=(detect_repo(root),))
+    nodes, aliases, _edges, types = run_ast_pass(corpus)
+    assert "widget.core.helper.verify" in nodes and aliases["widget"]["Public"] == "widget.core.Impl"
+    assert resolver_inputs(corpus) == (nodes, aliases, types)
+
+
 def test_detect_repo_skips_a_benchmarks_package_beside_the_real_one(tmp_path):
     root = _repo(tmp_path, "rich", src=False, docs=False, changelog=None)
     (root / "benchmarks").mkdir()

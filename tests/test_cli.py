@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+import graphrag.cli
 from graphrag.cli import main
 
 
@@ -178,3 +179,43 @@ def test_an_existing_model_edge_log_does_not_matter_without_with_llm(tiny_repo, 
     assert main(["ingest", str(repo), "--llm-log", str(log)]) == 0
     assert stub_stores.called
     assert log.read_text(encoding="utf-8") == '{"measured": true}\n'
+
+
+def test_ask_builds_the_resolver_without_the_full_parser_pass(tmp_path, monkeypatch, capsys):
+    from unittest.mock import MagicMock
+
+    import graphrag.answer.pipeline
+    import graphrag.ingest.embed
+    import graphrag.ingest.run_ingestion as run_ingestion
+    import graphrag.settings
+    import openai
+    from graphrag.corpus import Corpus, Repo
+
+    def full_pass(*a, **k):
+        raise AssertionError("ask ran the whole parser pass, jedi included")
+
+    pkg = tmp_path / "widget"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("def f(x):\n    return x\n", encoding="utf-8")
+    monkeypatch.setattr(graphrag.cli, "get_corpus", lambda: Corpus(name="demo", repos=(Repo(name="widget", root=str(tmp_path), src="."),)))
+    monkeypatch.setattr(run_ingestion, "run_ast_pass", full_pass)
+    monkeypatch.setattr(run_ingestion, "resolve_calls", full_pass)
+    monkeypatch.setattr(run_ingestion, "resolve_type_names", full_pass)
+    monkeypatch.setattr(openai, "OpenAI", MagicMock)
+    monkeypatch.setattr(graphrag.ingest.embed, "load_model", lambda: None)
+    monkeypatch.setattr(graphrag.settings, "neo4j_driver", MagicMock)
+    monkeypatch.setattr(graphrag.settings, "postgres_conn", MagicMock)
+    seen = {}
+
+    def answer(question, *, resolver, **k):
+        seen["resolver"] = resolver
+        return {"answer": "ok"}
+
+    monkeypatch.setattr(graphrag.answer.pipeline, "answer_hybrid", answer)
+    try:
+        assert main(["ask", "What does f take?"]) == 0
+    finally:
+        from graphrag.corpus import set_corpus
+        set_corpus(None)
+    assert "widget.f.x" in seen["resolver"].node_universe
+    assert capsys.readouterr().out.strip() == "ok"

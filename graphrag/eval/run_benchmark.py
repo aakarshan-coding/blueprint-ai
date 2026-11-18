@@ -124,10 +124,10 @@ def main() -> None:
     )
     from graphrag.ingest.embed import load_model
     from graphrag.ingest.resolve import Resolver
-    from graphrag.ingest.run_ingestion import build_public_and_doc_index, run_ast_pass
+    from graphrag.ingest.run_ingestion import build_public_and_doc_index, resolver_inputs
 
     print("Building resolver...")
-    node_universe, import_aliases, _edges, _types = run_ast_pass()
+    node_universe, import_aliases, _types = resolver_inputs()
     public_ids, documented = build_public_and_doc_index(import_aliases)
     resolver = Resolver(
         node_universe=node_universe, import_aliases=import_aliases,

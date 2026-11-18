@@ -4079,6 +4079,28 @@ vendored trees excluded. The measured corpus gives the identical list of Python 
 changelog for both. Clones after: rich, click, httpx, poetry-core and more-itertools
 detect; attrs asks for `--package`. poetry-core: 77 files, 827 code chunks, 0 vendored.
 No rebuild or benchmark is needed for the measured corpus.
+
+## D109 — `graphrag ask` builds its resolver without the full parser pass
+
+**Wrong.** `graphrag ask` called `run_ast_pass` for each question, only to get the node
+universe and import tables for the `Resolver`. `run_ast_pass` also runs every edge
+extractor and jedi call and type resolution: about a minute per question on
+requests+urllib3, 181 s on poetry-core. `run_benchmark` and `retrieval_stability` did the
+same once per run.
+
+**Changed.** `resolver_inputs(corpus)` in `run_ingestion.py` returns the node universe,
+import tables and node types from modules, `iter_symbols`, `extract_parameters` and
+`extract_imports` only. `run_ast_pass` uses the same per-module helper, `_module_nodes`,
+so the two cannot drift. `cli._ask`, `run_benchmark` and `retrieval_stability` call
+`resolver_inputs`. `replay_llm_edges` stays on `run_ast_pass`: it needs `edges["calls"]`.
+
+**Verified.** Two tests failed before and pass after: `resolver_inputs` equals
+`run_ast_pass`'s three outputs on a tmp package, and `ask` runs with `run_ast_pass` and
+both jedi resolvers patched to raise. On requests+urllib3 the three outputs are identical
+(2023 nodes, 54 import tables); `resolver_inputs` took 0.41 s, `run_ast_pass` 31 s on that
+run. Retrieval sees the same resolver, so no rebuild or benchmark is needed.
+
+**Checked by the lead: run_ast_pass is unchanged, and jedi is not deterministic.** The full parser-pass output of the previous commit and of this one, on the measured corpus, is identical for every extractor that does not use jedi. Two runs of the *previous* code differ from each other by one jedi CALLS edge: `HTTP2Connection.__init__` -> `HTTPSConnection.__init__` through `super().__init__` is present in one run and absent in the next. jedi sometimes returns one definition for `HTTPSConnection` (bound to DummyConnection when ssl is missing) and sometimes two, and resolve_calls skips a call with two. This explains the jedi CALLS count moving 683 -> 684 between rebuilds in D106. Not fixed here.
 ---
 
 ## Open questions for the Phase 2 sweep

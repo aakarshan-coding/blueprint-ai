@@ -102,6 +102,51 @@ def chunk_corpus(corpus: Corpus | None = None) -> list[Chunk]:
     return chunks
 
 
+def _module_nodes(
+    text: str, dotted: str, is_package: bool,
+    node_types: dict[str, str], import_aliases: dict[str, dict[str, str]],
+) -> list:
+    """Register one module's nodes (the module, its symbols, its parameters)
+    and its import table. Returns the parameter edges, which the full pass
+    also writes to the graph."""
+    node_types[dotted] = "Module"
+    for name, node, _start, _end in iter_symbols(ast.parse(text)):
+        node_types[f"{dotted}.{name}"] = (
+            "Class" if isinstance(node, ast.ClassDef) else "Function"
+        )
+    import_aliases[dotted] = {
+        e.local_name: e.imported
+        for e in extract_imports(text, dotted_module=dotted, is_package=is_package)
+    }
+    param_edges = extract_parameters(text, dotted_module=dotted)
+    # A Parameter's identity is fully determined once we know its
+    # function — registering it here means an LLM-extracted fact
+    # like "verify controls certificate verification" can actually
+    # resolve, instead of the Resolver never having heard of "verify"
+    # at all. See D33 — this was missing in the first full run.
+    for param_edge in param_edges:
+        for param in param_edge.parameters:
+            node_types[parameter_id(param_edge.source_id, param.name)] = "Parameter"
+    return param_edges
+
+
+def resolver_inputs(corpus: Corpus | None = None) -> tuple[
+    set[str], dict[str, dict[str, str]], dict[str, str]
+]:
+    """The node universe, import tables and node types of run_ast_pass,
+    without jedi or the edge extractors. A question needs only these to
+    build its Resolver; the full pass took about a minute per question (D109)."""
+    node_types: dict[str, str] = {}
+    import_aliases: dict[str, dict[str, str]] = {}
+    corpus = corpus or get_corpus()
+    for repo_cfg in corpus.repos:
+        for p in collect_python_files(repo_cfg):
+            text = p.read_text(encoding="utf-8", errors="replace")
+            dotted = module_dotted_name(str(p), src_root=str(repo_cfg.src_root), package_root=repo_cfg.name)
+            _module_nodes(text, dotted, p.name == "__init__.py", node_types, import_aliases)
+    return set(node_types), import_aliases, node_types
+
+
 def run_ast_pass(corpus: Corpus | None = None) -> tuple[
     set[str], dict[str, dict[str, str]], dict[str, list], dict[str, str]
 ]:
@@ -115,7 +160,6 @@ def run_ast_pass(corpus: Corpus | None = None) -> tuple[
     class transitively derives from a real exception base, which isn't
     knowable until resolution has already run. See D31.
     """
-    node_universe: set[str] = set()
     node_types: dict[str, str] = {}
     import_aliases: dict[str, dict[str, str]] = {}
     edges = {
@@ -157,22 +201,9 @@ def run_ast_pass(corpus: Corpus | None = None) -> tuple[
             dotted = module_dotted_name(
                 str(p), src_root=str(src_root), package_root=repo
             )
-            node_universe.add(dotted)
-            node_types[dotted] = "Module"
-
-            for name, node, _start, _end in iter_symbols(ast.parse(text)):
-                symbol_id = f"{dotted}.{name}"
-                node_universe.add(symbol_id)
-                node_types[symbol_id] = (
-                    "Class" if isinstance(node, ast.ClassDef) else "Function"
-                )
-
-            import_aliases[dotted] = {
-                e.local_name: e.imported
-                for e in extract_imports(
-                    text, dotted_module=dotted, is_package=(p.name == "__init__.py")
-                )
-            }
+            param_edges = _module_nodes(
+                text, dotted, p.name == "__init__.py", node_types, import_aliases
+            )
 
             inherits = extract_inherits_from(text, repo=repo, path=str(p), dotted_module=dotted)
             raises = extract_raises(text, repo=repo, path=str(p), dotted_module=dotted)
@@ -203,7 +234,6 @@ def run_ast_pass(corpus: Corpus | None = None) -> tuple[
             edges["stores"] += extract_stores(
                 text, repo=repo, path=str(p), dotted_module=dotted
             )
-            param_edges = extract_parameters(text, dotted_module=dotted)
             edges["parameters"] += param_edges
             # The surface-name inventory is still collected — replay's
             # call_graph rung and the D46 resolution stats read it — but it
@@ -215,18 +245,7 @@ def run_ast_pass(corpus: Corpus | None = None) -> tuple[
                 summaries=summaries, callee_params=callee_params,
             )
 
-            # A Parameter's identity is fully determined once we know its
-            # function — registering it here means an LLM-extracted fact
-            # like "verify controls certificate verification" can actually
-            # resolve, instead of the Resolver never having heard of "verify"
-            # at all. See D33 — this was missing in the first full run.
-            for param_edge in param_edges:
-                for param in param_edge.parameters:
-                    pid = parameter_id(param_edge.source_id, param.name)
-                    node_universe.add(pid)
-                    node_types[pid] = "Parameter"
-
-    return node_universe, import_aliases, edges, node_types
+    return set(node_types), import_aliases, edges, node_types
 
 
 _PARAM_DOC_PATTERN = re.compile(r":param\s+(\w+)\s*:")

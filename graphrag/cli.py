@@ -107,10 +107,10 @@ def _ask(args: argparse.Namespace) -> int:
     from graphrag.answer.pipeline import answer_hybrid
     from graphrag.ingest.embed import load_model
     from graphrag.ingest.resolve import Resolver
-    from graphrag.ingest.run_ingestion import build_public_and_doc_index, run_ast_pass
+    from graphrag.ingest.run_ingestion import build_public_and_doc_index, resolver_inputs
     from graphrag.settings import neo4j_driver, postgres_conn
 
-    node_universe, import_aliases, _edges, _types = run_ast_pass(corpus)
+    node_universe, import_aliases, _types = resolver_inputs(corpus)
     public_ids, documented = build_public_and_doc_index(import_aliases, corpus)
     resolver = Resolver(node_universe=node_universe, import_aliases=import_aliases,
                         public_ids=public_ids, documented_params=documented)
