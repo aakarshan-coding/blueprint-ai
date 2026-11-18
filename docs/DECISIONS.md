@@ -4030,6 +4030,31 @@ benchmarked.
 
 
 **Rebuilt and re-scored (lead).** Graph rebuilt from scratch, LLM edges replayed, oracle on the saved trace: override CALLS 84 -> 40, confirmed 9 -> 9, observed precision 0.107 -> 0.225; jedi CALLS 683 -> 684 (not touched by this change and unexplained; recall unchanged at 0.809).
+
+## D107 — Markdown changelogs split into releases
+
+**Wrong.** `chunk_changelog` found releases only among underlined (RST or setext) headings,
+and `_RELEASE_TITLE` accepted only `N.N` with an optional `(...)`. A Markdown changelog
+marks releases with `#` headings, so it gave zero chunks and no Release nodes. Measured on
+shallow clones: click `CHANGES.md` (`## Version 8.6.0`), httpx `CHANGELOG.md`
+(`## 0.28.1 (6th December, 2024)`), rich (`## [15.0.0] - 2026-04-12`), poetry-core
+(`## [2.5.0] - 2026-09-19`) and attrs (`## [26.1.0](https://...) - 2026-03-19`) all gave 0.
+
+**Changed.** `chunk_changelog` uses `#` headings when no underlined heading is a release.
+The `#` heading scan moved out of `chunk_markdown` into `_find_md_headings`, so both skip
+fenced code the same way. `_RELEASE_TITLE` also accepts a `Version ` or `v` prefix, square
+brackets with an optional link, a date after ` - `, and a PEP 440 pre-release suffix
+(`1.1.0rc3`, `0.13.0.dev2`). The section stays the bare version, so `release_id` and
+`build_doc_release_index` see the same kind of string as before.
+
+**Verified.** Seven tests in `tests/test_chunk.py`: the six Markdown styles failed before
+the change (zero chunks); the underlined changelog with stray `#` headings passed before
+and after. `requests_repo/HISTORY.md` (165 chunks) and `urllib3_repo/CHANGES.rst` (118)
+give byte-identical chunks before and after (ids, sections, lines, text). Clones after:
+click 71 chunks / 55 releases, httpx 87 / 78, rich 193 / 191, poetry-core 65 / 54,
+attrs 56 / 35. Every versioned `##` heading in those files is now a release.
+
+The measured corpus does not change, so no rebuild or benchmark is needed for it.
 ---
 
 ## Open questions for the Phase 2 sweep

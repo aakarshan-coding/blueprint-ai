@@ -1,3 +1,5 @@
+import pytest
+
 from graphrag.ingest.chunk import (
     chunk_changelog,
     chunk_python,
@@ -141,6 +143,46 @@ Release History
 
 def test_chunk_changelog_sections_by_release_version():
     chunks = chunk_changelog(CHANGELOG, repo="requests", path="HISTORY.md")
+
+    assert [c.section for c in chunks] == ["2.34.2", "2.34.1"]
+
+
+@pytest.mark.parametrize(
+    "first, second, versions",
+    [
+        ("## Version 8.6.0", "## Version 8.5.1", ["8.6.0", "8.5.1"]),
+        (
+            "## 0.28.1 (6th December, 2024)",
+            "## 0.28.0 (28th November, 2024)",
+            ["0.28.1", "0.28.0"],
+        ),
+        ("## [14.0.0] - 2025-03-30", "## [13.9.4] - 2024-11-01", ["14.0.0", "13.9.4"]),
+        (
+            "## [26.1.0](https://example.org/tree/26.1.0) - 2026-03-19",
+            "## [25.4.0](https://example.org/tree/25.4.0) - 2025-10-06",
+            ["26.1.0", "25.4.0"],
+        ),
+        ("## v2.1.0", "## v2.0.0", ["2.1.0", "2.0.0"]),
+        ("## [1.1.0] - 2022-08-31", "## [1.1.0rc3] - 2022-08-26", ["1.1.0", "1.1.0rc3"]),
+    ],
+)
+def test_chunk_changelog_splits_markdown_releases(first, second, versions):
+    text = (
+        "# Changelog\n\nIntro prose.\n\n## Unreleased\n\n- Pending.\n\n"
+        f"{first}\n\n### Fixed\n\n- First fix.\n\n"
+        f"{second}\n\n### Added\n\n- Second change.\n"
+    )
+    chunks = chunk_changelog(text, repo="pkg", path="CHANGELOG.md")
+
+    assert [c.section for c in chunks] == versions
+    assert chunks[0].text.startswith(first) and "First fix." in chunks[0].text
+    assert "Second change." not in chunks[0].text
+    assert "Pending." not in chunks[0].text + chunks[1].text
+
+
+def test_chunk_changelog_ignores_markdown_headings_when_releases_are_underlined():
+    text = "## Notes\n\n" + CHANGELOG + "\n## 9.9.9\n\n- Not a release here.\n"
+    chunks = chunk_changelog(text, repo="requests", path="HISTORY.md")
 
     assert [c.section for c in chunks] == ["2.34.2", "2.34.1"]
 

@@ -318,11 +318,33 @@ def chunk_python(text: str, *, repo: str, path: str) -> list[Chunk]:
     ]
 
 
-# A release heading looks like "2.34.2 (2026-05-14)" or plain "2.8.0".
-_RELEASE_TITLE = re.compile(r"^(\d+(?:\.\d+)+)(?:\s*\(.*\))?$")
+# A release heading looks like "2.34.2 (2026-05-14)" or plain "2.8.0", and in
+# Markdown also "Version 8.6.0", "v2.1.0", "[14.0.0] - 2025-03-30" or
+# "[26.1.0](https://...) - 2026-03-19". The version alone is the section; a
+# pre-release ("1.1.0rc3", "0.13.0.dev2") is a release of its own.
+_RELEASE_TITLE = re.compile(
+    r"^(?:[Vv]ersion\s+|v)?\[?(\d+(?:\.\d+)+(?:(?:a|b|rc|\.dev)\d+)?)\]?(?:\([^)]*\))?"
+    r"(?:\s*\(.*\)|\s+-\s+.*)?$"
+)
 
 
 _MD_HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
+
+
+def _find_md_headings(lines: list[str]) -> list[tuple[int, str, int]]:
+    """Return (line_index, title, level) for each `#` heading outside a fence."""
+    headings = []
+    in_fence = False
+    for i, line in enumerate(lines):
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        m = _MD_HEADING.match(line)
+        if m:
+            headings.append((i, m.group(2).strip(), len(m.group(1))))
+    return headings
 
 
 def chunk_markdown(
@@ -340,17 +362,7 @@ def chunk_markdown(
     not split on headings-looking lines inside them.
     """
     lines = text.splitlines()
-    headings: list[tuple[int, str, int]] = []
-    in_fence = False
-    for i, line in enumerate(lines):
-        if line.lstrip().startswith("```"):
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
-        m = _MD_HEADING.match(line)
-        if m:
-            headings.append((i, m.group(2).strip(), len(m.group(1))))
+    headings = _find_md_headings(lines)
     if not headings:
         headings = [(0, Path(path).stem, 1)]
         if lines and _MD_HEADING.match(lines[0]) is None:
@@ -391,14 +403,21 @@ def chunk_changelog(
     Both corpora mark releases as headings with an underline, so heading
     detection is shared with chunk_rst. Only headings that parse as a version
     number become releases — prose headings like "Release History" are not
-    releases and must not become Release nodes in the graph.
+    releases and must not become Release nodes in the graph. A changelog with
+    no underlined release falls back to `#` headings, the Markdown form (D107).
     """
     lines = text.splitlines()
-    releases = [
-        (line_index, match.group(1))
-        for line_index, title, _char in _find_headings(lines)
-        if (match := _RELEASE_TITLE.match(title))
-    ]
+
+    def releases_in(headings):
+        return [
+            (line_index, match.group(1))
+            for line_index, title, _ in headings
+            if (match := _RELEASE_TITLE.match(title))
+        ]
+
+    releases = releases_in(_find_headings(lines)) or releases_in(
+        _find_md_headings(lines)
+    )
 
     chunks: list[Chunk] = []
     for position, (line_index, version) in enumerate(releases):
