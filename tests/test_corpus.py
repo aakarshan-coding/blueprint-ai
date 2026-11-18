@@ -106,3 +106,38 @@ def test_ingestion_walks_a_detected_repo_end_to_end_without_stores(tmp_path):
     assert any(e.source_id == "widget.core.Impl.run" and e.target_id == "widget.core.helper" for e in edges["jedi_calls"])
     public, documented = build_public_and_doc_index(aliases, corpus)
     assert isinstance(public, set)
+
+
+def test_detect_repo_skips_a_benchmarks_package_beside_the_real_one(tmp_path):
+    root = _repo(tmp_path, "rich", src=False, docs=False, changelog=None)
+    (root / "benchmarks").mkdir()
+    (root / "benchmarks" / "__init__.py").write_text("")
+    assert detect_repo(root).name == "rich"
+
+
+def test_detect_repo_accepts_a_namespace_package_under_src(tmp_path):
+    from graphrag.ingest.ast_extract import module_dotted_name
+    from graphrag.ingest.run_ingestion import collect_python_files
+    root = tmp_path / "poetry-core"
+    core = root / "src" / "poetry" / "core"
+    core.mkdir(parents=True)
+    (core / "__init__.py").write_text("")
+    (core / "factory.py").write_text("def f():\n    return 1\n")
+    for repo in (detect_repo(root), detect_repo(root, name="poetry")):
+        assert (repo.name, repo.src) == ("poetry", "src")
+        dotted = {
+            module_dotted_name(str(p), src_root=str(repo.src_root), package_root=repo.name)
+            for p in collect_python_files(repo)
+        }
+        assert dotted == {"poetry.core", "poetry.core.factory"}
+
+
+def test_collect_python_files_skips_vendored_and_test_trees(tmp_path):
+    from graphrag.ingest.run_ingestion import collect_python_files
+    root = _repo(tmp_path, "widget")
+    pkg = root / "src" / "widget"
+    for sub in ("_vendor/lark", "vendor/six", "_vendored/x", "vendored/y", "tests"):
+        (pkg / sub).mkdir(parents=True)
+        (pkg / sub / "__init__.py").write_text("")
+    files = collect_python_files(detect_repo(root))
+    assert [p.relative_to(pkg).as_posix() for p in files] == ["__init__.py", "core.py"]

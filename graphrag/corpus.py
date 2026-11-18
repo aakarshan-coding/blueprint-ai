@@ -23,7 +23,10 @@ ACTIVE_FILE = Path("data/corpus.json")
 DEFAULT_FILE = Path("corpora/requests-urllib3.yaml")
 
 CHANGELOG_NAMES = ("HISTORY.md", "HISTORY.rst", "CHANGES.rst", "CHANGES.md", "CHANGELOG.md", "CHANGELOG.rst")
-SKIP_DIRS = {"tests", "test", "docs", "doc", "examples", "scripts", "build", "dist", ".git", "venv", ".venv"}
+SKIP_DIRS = {
+    "tests", "test", "docs", "doc", "examples", "scripts", "build", "dist", ".git", "venv", ".venv",
+    "benchmarks", "bench", "tools", "typings",
+}
 
 
 @dataclass(frozen=True)
@@ -80,7 +83,8 @@ class Corpus:
 
 def detect_repo(path: str | Path, *, name: str | None = None) -> Repo:
     """Describe a repository from its layout: the package is the directory with
-    an __init__.py under src/ or the root; docs is docs/ if present; the
+    an __init__.py under src/ or the root (or a namespace package under src/);
+    docs is docs/ if present; the
     changelog is the first conventional name found."""
     root = Path(path)
     if not root.is_dir():
@@ -92,6 +96,15 @@ def detect_repo(path: str | Path, *, name: str | None = None) -> Repo:
         candidates = sorted(
             p.parent.name for p in base.glob("*/__init__.py") if p.parent.name not in SKIP_DIRS
         )
+        if src == "src":
+            # A namespace package (PEP 420) has no __init__.py: poetry-core
+            # ships src/poetry/core/. Only under src/, where every directory
+            # is meant to be importable.
+            candidates = sorted(candidates + [
+                p.name for p in base.iterdir()
+                if p.is_dir() and p.name not in SKIP_DIRS and not (p / "__init__.py").exists()
+                and (any(p.glob("*/__init__.py")) or any(p.glob("*.py")))
+            ])
         if name and name in candidates:
             pkg = name
         elif candidates:

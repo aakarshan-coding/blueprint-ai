@@ -4055,6 +4055,30 @@ click 71 chunks / 55 releases, httpx 87 / 78, rich 193 / 191, poetry-core 65 / 5
 attrs 56 / 35. Every versioned `##` heading in those files is now a release.
 
 The measured corpus does not change, so no rebuild or benchmark is needed for it.
+
+## D108 — Repository detection and file collection on other layouts
+
+**Wrong.** Measured on the same shallow clones. `detect_repo` on rich found two packages,
+`benchmarks` and `rich`, and refused, because `benchmarks/__init__.py` exists and
+`SKIP_DIRS` lacked it. On poetry-core, `src/poetry/` is a namespace package (no
+`__init__.py`; the code is under `src/poetry/core/`), so detection found nothing and
+`--package poetry` failed the same way. `collect_python_files` skipped only test trees,
+so 1407 of poetry-core's 2234 code chunks came from `_vendor` (lark, packaging).
+
+**Changed.** `SKIP_DIRS` adds `benchmarks`, `bench`, `tools` and `typings`. Under `src/`
+only, a directory without `__init__.py` that holds a package or a module is a candidate,
+so a namespace package detects as `poetry` and `--package poetry` works; its modules get
+ids like `poetry.core.factory` (no `poetry` Module node, since no `__init__.py` exists).
+`collect_python_files` also skips `_vendor`, `vendor`, `_vendored` and `vendored`. A repo
+with two real packages (attrs: `attr`, `attrs`) still refuses and says to pass `--package`.
+
+**Verified.** Three tests in `tests/test_corpus.py` failed before and pass after: a flat
+repo with `benchmarks/`, a `src/` namespace package (detection, `--package`, dotted ids),
+vendored trees excluded. The measured corpus gives the identical list of Python files
+(requests 19, urllib3 35) and `detect_repo` gives the yaml's package, src, docs and
+changelog for both. Clones after: rich, click, httpx, poetry-core and more-itertools
+detect; attrs asks for `--package`. poetry-core: 77 files, 827 code chunks, 0 vendored.
+No rebuild or benchmark is needed for the measured corpus.
 ---
 
 ## Open questions for the Phase 2 sweep

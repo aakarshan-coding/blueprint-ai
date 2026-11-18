@@ -63,10 +63,14 @@ OUTPUT_PRICE_PER_MTOK = 10.00
 EST_OUTPUT_TOKENS_PER_CHUNK = 150  # typical relationships-found response size
 
 
+SKIP_PYTHON_DIRS = {"tests", "test", "_vendor", "vendor", "_vendored", "vendored"}
+
+
 def collect_python_files(repo: Repo) -> list[Path]:
-    """Every .py file under the repository's package, skipping test trees."""
+    """Every .py file under the repository's package, skipping test and
+    vendored trees (vendored code is someone else's library, D108)."""
     package_root = repo.src_root / repo.name
-    return sorted(p for p in package_root.rglob("*.py") if not any(part in ("tests", "test") for part in p.relative_to(package_root).parts))
+    return sorted(p for p in package_root.rglob("*.py") if not SKIP_PYTHON_DIRS.intersection(p.relative_to(package_root).parts))
 
 
 def collect_doc_files(repo: Repo) -> list[Path]:
