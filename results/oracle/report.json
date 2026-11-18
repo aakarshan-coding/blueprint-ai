@@ -2,10 +2,10 @@
  "calls": {
   "jedi": {
    "observed": 397,
-   "in_graph": 683,
+   "in_graph": 684,
    "confirmed": 321,
    "recall": 0.809,
-   "observed_precision": 0.47,
+   "observed_precision": 0.469,
    "missing_from_graph": [
     [
      "requests.adapters.HTTPAdapter.__init__",
@@ -1239,6 +1239,10 @@
     ],
     [
      "urllib3.http2.connection.HTTP2Connection.__init__",
+     "urllib3.connection.HTTPSConnection.__init__"
+    ],
+    [
+     "urllib3.http2.connection.HTTP2Connection.__init__",
      "urllib3.http2.connection.HTTP2Connection._new_h2_conn"
     ],
     [
@@ -1765,10 +1769,10 @@
   },
   "override": {
    "observed": 397,
-   "in_graph": 84,
+   "in_graph": 40,
    "confirmed": 9,
    "recall": 0.023,
-   "observed_precision": 0.107,
+   "observed_precision": 0.225,
    "missing_from_graph": [
     [
      "requests.adapters.HTTPAdapter.__init__",
@@ -3325,14 +3329,6 @@
    ],
    "unconfirmed_in_graph": [
     [
-     "requests.adapters.HTTPAdapter.__init__",
-     "requests.adapters.HTTPAdapter.__init__"
-    ],
-    [
-     "requests.exceptions.JSONDecodeError.__init__",
-     "requests.exceptions.JSONDecodeError.__init__"
-    ],
-    [
      "urllib3._request_methods.RequestMethods.request_encode_body",
      "urllib3.connectionpool.HTTPConnectionPool.urlopen"
     ],
@@ -3355,38 +3351,10 @@
     [
      "urllib3._request_methods.RequestMethods.request_encode_url",
      "urllib3.poolmanager.ProxyManager.urlopen"
-    ],
-    [
-     "urllib3.connection.HTTPSConnection.__init__",
-     "urllib3.connection.HTTPSConnection.__init__"
-    ],
-    [
-     "urllib3.connection.HTTPSConnection.__init__",
-     "urllib3.contrib.socks.SOCKSConnection.__init__"
     ],
     [
      "urllib3.connectionpool.ConnectionPool.__exit__",
      "urllib3.connectionpool.HTTPConnectionPool.close"
-    ],
-    [
-     "urllib3.connectionpool.HTTPConnectionPool.__init__",
-     "urllib3.connectionpool.HTTPConnectionPool.__init__"
-    ],
-    [
-     "urllib3.connectionpool.HTTPConnectionPool.__init__",
-     "urllib3.connectionpool.HTTPSConnectionPool.__init__"
-    ],
-    [
-     "urllib3.connectionpool.HTTPConnectionPool.__init__",
-     "urllib3.contrib.socks.SOCKSProxyManager.__init__"
-    ],
-    [
-     "urllib3.connectionpool.HTTPConnectionPool.__init__",
-     "urllib3.poolmanager.PoolManager.__init__"
-    ],
-    [
-     "urllib3.connectionpool.HTTPConnectionPool.__init__",
-     "urllib3.poolmanager.ProxyManager.__init__"
     ],
     [
      "urllib3.connectionpool.HTTPConnectionPool.urlopen",
@@ -3399,110 +3367,6 @@
     [
      "urllib3.connectionpool.HTTPConnectionPool.urlopen",
      "urllib3.http2.connection.HTTP2Response.get_redirect_location"
-    ],
-    [
-     "urllib3.connectionpool.HTTPSConnectionPool.__init__",
-     "urllib3.connectionpool.HTTPSConnectionPool.__init__"
-    ],
-    [
-     "urllib3.connectionpool.HTTPSConnectionPool._validate_conn",
-     "urllib3.connectionpool.HTTPSConnectionPool._validate_conn"
-    ],
-    [
-     "urllib3.contrib.emscripten.connection.EmscriptenHTTPSConnection.__init__",
-     "urllib3.contrib.emscripten.connection.EmscriptenHTTPSConnection.__init__"
-    ],
-    [
-     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__",
-     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__"
-    ],
-    [
-     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__",
-     "urllib3.http2.connection.HTTP2Response.__init__"
-    ],
-    [
-     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__",
-     "urllib3.response.HTTPResponse.__init__"
-    ],
-    [
-     "urllib3.contrib.socks.SOCKSConnection.__init__",
-     "urllib3.connection.HTTPSConnection.__init__"
-    ],
-    [
-     "urllib3.contrib.socks.SOCKSConnection.__init__",
-     "urllib3.contrib.socks.SOCKSConnection.__init__"
-    ],
-    [
-     "urllib3.contrib.socks.SOCKSProxyManager.__init__",
-     "urllib3.contrib.socks.SOCKSProxyManager.__init__"
-    ],
-    [
-     "urllib3.contrib.socks.SOCKSProxyManager.__init__",
-     "urllib3.poolmanager.ProxyManager.__init__"
-    ],
-    [
-     "urllib3.exceptions.HostChangedError.__init__",
-     "urllib3.exceptions.HostChangedError.__init__"
-    ],
-    [
-     "urllib3.exceptions.HostChangedError.__init__",
-     "urllib3.exceptions.MaxRetryError.__init__"
-    ],
-    [
-     "urllib3.exceptions.MaxRetryError.__init__",
-     "urllib3.exceptions.HostChangedError.__init__"
-    ],
-    [
-     "urllib3.exceptions.MaxRetryError.__init__",
-     "urllib3.exceptions.MaxRetryError.__init__"
-    ],
-    [
-     "urllib3.exceptions.NameResolutionError.__init__",
-     "urllib3.exceptions.NameResolutionError.__init__"
-    ],
-    [
-     "urllib3.exceptions.RequestError.__init__",
-     "urllib3.exceptions.HostChangedError.__init__"
-    ],
-    [
-     "urllib3.exceptions.RequestError.__init__",
-     "urllib3.exceptions.MaxRetryError.__init__"
-    ],
-    [
-     "urllib3.exceptions.RequestError.__init__",
-     "urllib3.exceptions.RequestError.__init__"
-    ],
-    [
-     "urllib3.http2.connection.HTTP2Response.__init__",
-     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__"
-    ],
-    [
-     "urllib3.http2.connection.HTTP2Response.__init__",
-     "urllib3.http2.connection.HTTP2Response.__init__"
-    ],
-    [
-     "urllib3.http2.connection.HTTP2Response.__init__",
-     "urllib3.response.HTTPResponse.__init__"
-    ],
-    [
-     "urllib3.poolmanager.PoolManager.__init__",
-     "urllib3.connectionpool.HTTPConnectionPool.__init__"
-    ],
-    [
-     "urllib3.poolmanager.PoolManager.__init__",
-     "urllib3.connectionpool.HTTPSConnectionPool.__init__"
-    ],
-    [
-     "urllib3.poolmanager.PoolManager.__init__",
-     "urllib3.contrib.socks.SOCKSProxyManager.__init__"
-    ],
-    [
-     "urllib3.poolmanager.PoolManager.__init__",
-     "urllib3.poolmanager.PoolManager.__init__"
-    ],
-    [
-     "urllib3.poolmanager.PoolManager.__init__",
-     "urllib3.poolmanager.ProxyManager.__init__"
     ],
     [
      "urllib3.poolmanager.PoolManager.connection_from_url",
@@ -3527,22 +3391,6 @@
     [
      "urllib3.poolmanager.PoolManager.urlopen",
      "urllib3.response.HTTPResponse.drain_conn"
-    ],
-    [
-     "urllib3.poolmanager.ProxyManager.__init__",
-     "urllib3.contrib.socks.SOCKSProxyManager.__init__"
-    ],
-    [
-     "urllib3.poolmanager.ProxyManager.__init__",
-     "urllib3.poolmanager.ProxyManager.__init__"
-    ],
-    [
-     "urllib3.poolmanager.ProxyManager.connection_from_host",
-     "urllib3.poolmanager.ProxyManager.connection_from_host"
-    ],
-    [
-     "urllib3.poolmanager.ProxyManager.urlopen",
-     "urllib3.poolmanager.ProxyManager.urlopen"
     ],
     [
      "urllib3.response.BaseHTTPResponse._decode",
@@ -3585,28 +3433,12 @@
      "urllib3.response.HTTPResponse.read"
     ],
     [
-     "urllib3.response.HTTPResponse.__init__",
-     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__"
-    ],
-    [
-     "urllib3.response.HTTPResponse.__init__",
-     "urllib3.http2.connection.HTTP2Response.__init__"
-    ],
-    [
-     "urllib3.response.HTTPResponse.__init__",
-     "urllib3.response.HTTPResponse.__init__"
-    ],
-    [
      "urllib3.response.MultiDecoder.decompress",
      "urllib3.response.DeflateDecoder.decompress"
     ],
     [
      "urllib3.response.MultiDecoder.decompress",
      "urllib3.response.GzipDecoder.decompress"
-    ],
-    [
-     "urllib3.response.MultiDecoder.decompress",
-     "urllib3.response.MultiDecoder.decompress"
     ],
     [
      "urllib3.response.MultiDecoder.flush",
@@ -3617,10 +3449,6 @@
      "urllib3.response.GzipDecoder.flush"
     ],
     [
-     "urllib3.response.MultiDecoder.flush",
-     "urllib3.response.MultiDecoder.flush"
-    ],
-    [
      "urllib3.util.retry.Retry.increment",
      "urllib3.http2.connection.HTTP2Response.get_redirect_location"
     ]
@@ -3628,10 +3456,10 @@
   },
   "all": {
    "observed": 397,
-   "in_graph": 767,
+   "in_graph": 724,
    "confirmed": 330,
    "recall": 0.831,
-   "observed_precision": 0.43,
+   "observed_precision": 0.456,
    "missing_from_graph": [
     [
      "requests.adapters.HTTPAdapter.__init__",
@@ -3908,10 +3736,6 @@
      "requests.adapters.BaseAdapter.__init__"
     ],
     [
-     "requests.adapters.HTTPAdapter.__init__",
-     "requests.adapters.HTTPAdapter.__init__"
-    ],
-    [
      "requests.adapters.HTTPAdapter.get_connection",
      "requests.adapters.HTTPAdapter.proxy_manager_for"
     ],
@@ -4014,10 +3838,6 @@
     [
      "requests.cookies.cookiejar_from_dict",
      "requests.cookies.RequestsCookieJar"
-    ],
-    [
-     "requests.exceptions.JSONDecodeError.__init__",
-     "requests.exceptions.JSONDecodeError.__init__"
     ],
     [
      "requests.exceptions.JSONDecodeError.__init__",
@@ -4309,14 +4129,6 @@
     ],
     [
      "urllib3.connection.HTTPSConnection.__init__",
-     "urllib3.connection.HTTPSConnection.__init__"
-    ],
-    [
-     "urllib3.connection.HTTPSConnection.__init__",
-     "urllib3.contrib.socks.SOCKSConnection.__init__"
-    ],
-    [
-     "urllib3.connection.HTTPSConnection.__init__",
      "urllib3.util.ssl_.resolve_cert_reqs"
     ],
     [
@@ -4394,26 +4206,6 @@
     [
      "urllib3.connectionpool.HTTPConnectionPool.__init__",
      "urllib3.connectionpool.ConnectionPool.__init__"
-    ],
-    [
-     "urllib3.connectionpool.HTTPConnectionPool.__init__",
-     "urllib3.connectionpool.HTTPConnectionPool.__init__"
-    ],
-    [
-     "urllib3.connectionpool.HTTPConnectionPool.__init__",
-     "urllib3.connectionpool.HTTPSConnectionPool.__init__"
-    ],
-    [
-     "urllib3.connectionpool.HTTPConnectionPool.__init__",
-     "urllib3.contrib.socks.SOCKSProxyManager.__init__"
-    ],
-    [
-     "urllib3.connectionpool.HTTPConnectionPool.__init__",
-     "urllib3.poolmanager.PoolManager.__init__"
-    ],
-    [
-     "urllib3.connectionpool.HTTPConnectionPool.__init__",
-     "urllib3.poolmanager.ProxyManager.__init__"
     ],
     [
      "urllib3.connectionpool.HTTPConnectionPool._get_conn",
@@ -4528,20 +4320,12 @@
      "urllib3.connectionpool.HTTPConnectionPool.__init__"
     ],
     [
-     "urllib3.connectionpool.HTTPSConnectionPool.__init__",
-     "urllib3.connectionpool.HTTPSConnectionPool.__init__"
-    ],
-    [
      "urllib3.connectionpool.HTTPSConnectionPool._prepare_proxy",
      "urllib3.connection.HTTPConnection.set_tunnel"
     ],
     [
      "urllib3.connectionpool.HTTPSConnectionPool._prepare_proxy",
      "urllib3.connection.HTTPSConnection.connect"
-    ],
-    [
-     "urllib3.connectionpool.HTTPSConnectionPool._validate_conn",
-     "urllib3.connectionpool.HTTPSConnectionPool._validate_conn"
     ],
     [
      "urllib3.connectionpool._url_from_pool",
@@ -4590,10 +4374,6 @@
     [
      "urllib3.contrib.emscripten.connection.EmscriptenHTTPSConnection.__init__",
      "urllib3.contrib.emscripten.connection.EmscriptenHTTPConnection.__init__"
-    ],
-    [
-     "urllib3.contrib.emscripten.connection.EmscriptenHTTPSConnection.__init__",
-     "urllib3.contrib.emscripten.connection.EmscriptenHTTPSConnection.__init__"
     ],
     [
      "urllib3.contrib.emscripten.fetch._JSPIReadStream.__del__",
@@ -4777,23 +4557,11 @@
     ],
     [
      "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__",
-     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__"
-    ],
-    [
-     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__",
      "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper._init_length"
     ],
     [
      "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__",
-     "urllib3.http2.connection.HTTP2Response.__init__"
-    ],
-    [
-     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__",
      "urllib3.response.BaseHTTPResponse.__init__"
-    ],
-    [
-     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__",
-     "urllib3.response.HTTPResponse.__init__"
     ],
     [
      "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper._error_catcher",
@@ -4888,36 +4656,12 @@
      "urllib3.connection.HTTPConnection.__init__"
     ],
     [
-     "urllib3.contrib.socks.SOCKSConnection.__init__",
-     "urllib3.connection.HTTPSConnection.__init__"
-    ],
-    [
-     "urllib3.contrib.socks.SOCKSConnection.__init__",
-     "urllib3.contrib.socks.SOCKSConnection.__init__"
-    ],
-    [
      "urllib3.contrib.socks.SOCKSConnection._new_conn",
      "urllib3.exceptions.ConnectTimeoutError"
     ],
     [
      "urllib3.contrib.socks.SOCKSProxyManager.__init__",
-     "urllib3.contrib.socks.SOCKSProxyManager.__init__"
-    ],
-    [
-     "urllib3.contrib.socks.SOCKSProxyManager.__init__",
      "urllib3.poolmanager.PoolManager.__init__"
-    ],
-    [
-     "urllib3.contrib.socks.SOCKSProxyManager.__init__",
-     "urllib3.poolmanager.ProxyManager.__init__"
-    ],
-    [
-     "urllib3.exceptions.HostChangedError.__init__",
-     "urllib3.exceptions.HostChangedError.__init__"
-    ],
-    [
-     "urllib3.exceptions.HostChangedError.__init__",
-     "urllib3.exceptions.MaxRetryError.__init__"
     ],
     [
      "urllib3.exceptions.HostChangedError.__init__",
@@ -4929,19 +4673,7 @@
     ],
     [
      "urllib3.exceptions.MaxRetryError.__init__",
-     "urllib3.exceptions.HostChangedError.__init__"
-    ],
-    [
-     "urllib3.exceptions.MaxRetryError.__init__",
-     "urllib3.exceptions.MaxRetryError.__init__"
-    ],
-    [
-     "urllib3.exceptions.MaxRetryError.__init__",
      "urllib3.exceptions.RequestError.__init__"
-    ],
-    [
-     "urllib3.exceptions.NameResolutionError.__init__",
-     "urllib3.exceptions.NameResolutionError.__init__"
     ],
     [
      "urllib3.exceptions.NameResolutionError.__init__",
@@ -4949,19 +4681,7 @@
     ],
     [
      "urllib3.exceptions.RequestError.__init__",
-     "urllib3.exceptions.HostChangedError.__init__"
-    ],
-    [
-     "urllib3.exceptions.RequestError.__init__",
-     "urllib3.exceptions.MaxRetryError.__init__"
-    ],
-    [
-     "urllib3.exceptions.RequestError.__init__",
      "urllib3.exceptions.PoolError.__init__"
-    ],
-    [
-     "urllib3.exceptions.RequestError.__init__",
-     "urllib3.exceptions.RequestError.__init__"
     ],
     [
      "urllib3.fields.RequestField.from_tuples",
@@ -4974,6 +4694,10 @@
     [
      "urllib3.fields.format_header_param_html5",
      "urllib3.fields.format_multipart_header_param"
+    ],
+    [
+     "urllib3.http2.connection.HTTP2Connection.__init__",
+     "urllib3.connection.HTTPSConnection.__init__"
     ],
     [
      "urllib3.http2.connection.HTTP2Connection.__init__",
@@ -5045,19 +4769,7 @@
     ],
     [
      "urllib3.http2.connection.HTTP2Response.__init__",
-     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__"
-    ],
-    [
-     "urllib3.http2.connection.HTTP2Response.__init__",
-     "urllib3.http2.connection.HTTP2Response.__init__"
-    ],
-    [
-     "urllib3.http2.connection.HTTP2Response.__init__",
      "urllib3.response.BaseHTTPResponse.__init__"
-    ],
-    [
-     "urllib3.http2.connection.HTTP2Response.__init__",
-     "urllib3.response.HTTPResponse.__init__"
     ],
     [
      "urllib3.poolmanager.PoolManager.__exit__",
@@ -5066,26 +4778,6 @@
     [
      "urllib3.poolmanager.PoolManager.__init__",
      "urllib3._request_methods.RequestMethods.__init__"
-    ],
-    [
-     "urllib3.poolmanager.PoolManager.__init__",
-     "urllib3.connectionpool.HTTPConnectionPool.__init__"
-    ],
-    [
-     "urllib3.poolmanager.PoolManager.__init__",
-     "urllib3.connectionpool.HTTPSConnectionPool.__init__"
-    ],
-    [
-     "urllib3.poolmanager.PoolManager.__init__",
-     "urllib3.contrib.socks.SOCKSProxyManager.__init__"
-    ],
-    [
-     "urllib3.poolmanager.PoolManager.__init__",
-     "urllib3.poolmanager.PoolManager.__init__"
-    ],
-    [
-     "urllib3.poolmanager.PoolManager.__init__",
-     "urllib3.poolmanager.ProxyManager.__init__"
     ],
     [
      "urllib3.poolmanager.PoolManager.__init__",
@@ -5177,10 +4869,6 @@
     ],
     [
      "urllib3.poolmanager.ProxyManager.__init__",
-     "urllib3.contrib.socks.SOCKSProxyManager.__init__"
-    ],
-    [
-     "urllib3.poolmanager.ProxyManager.__init__",
      "urllib3.exceptions.ProxySchemeUnknown"
     ],
     [
@@ -5188,16 +4876,8 @@
      "urllib3.poolmanager.PoolManager.__init__"
     ],
     [
-     "urllib3.poolmanager.ProxyManager.__init__",
-     "urllib3.poolmanager.ProxyManager.__init__"
-    ],
-    [
      "urllib3.poolmanager.ProxyManager._set_proxy_headers",
      "urllib3.util.url.parse_url"
-    ],
-    [
-     "urllib3.poolmanager.ProxyManager.connection_from_host",
-     "urllib3.poolmanager.ProxyManager.connection_from_host"
     ],
     [
      "urllib3.poolmanager.ProxyManager.urlopen",
@@ -5206,10 +4886,6 @@
     [
      "urllib3.poolmanager.ProxyManager.urlopen",
      "urllib3.poolmanager.ProxyManager._set_proxy_headers"
-    ],
-    [
-     "urllib3.poolmanager.ProxyManager.urlopen",
-     "urllib3.poolmanager.ProxyManager.urlopen"
     ],
     [
      "urllib3.poolmanager.ProxyManager.urlopen",
@@ -5301,19 +4977,7 @@
     ],
     [
      "urllib3.response.HTTPResponse.__init__",
-     "urllib3.contrib.emscripten.response.EmscriptenHttpResponseWrapper.__init__"
-    ],
-    [
-     "urllib3.response.HTTPResponse.__init__",
-     "urllib3.http2.connection.HTTP2Response.__init__"
-    ],
-    [
-     "urllib3.response.HTTPResponse.__init__",
      "urllib3.response.BaseHTTPResponse.__init__"
-    ],
-    [
-     "urllib3.response.HTTPResponse.__init__",
-     "urllib3.response.HTTPResponse.__init__"
     ],
     [
      "urllib3.response.HTTPResponse.__init__",
@@ -5444,10 +5108,6 @@
      "urllib3.response.GzipDecoder.decompress"
     ],
     [
-     "urllib3.response.MultiDecoder.decompress",
-     "urllib3.response.MultiDecoder.decompress"
-    ],
-    [
      "urllib3.response.MultiDecoder.flush",
      "urllib3.response.ContentDecoder.flush"
     ],
@@ -5458,10 +5118,6 @@
     [
      "urllib3.response.MultiDecoder.flush",
      "urllib3.response.GzipDecoder.flush"
-    ],
-    [
-     "urllib3.response.MultiDecoder.flush",
-     "urllib3.response.MultiDecoder.flush"
     ],
     [
      "urllib3.response._get_decoder",

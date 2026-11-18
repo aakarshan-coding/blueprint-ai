@@ -269,7 +269,7 @@ graphrag/            the package, about 6,500 lines
   retrieval/         router, anchors, planner and repairs, templates, expansion, context
   answer/            the synthesis prompt and citation validation
   eval/              grader, benchmark, five-run summaries, runtime oracle
-tests/               417 unit tests; no database and no model calls needed, about 5,700 lines
+tests/               421 unit tests; no database and no model calls needed, about 5,700 lines
 docs/DECISIONS.md    the decisions log, D1 to D105
 docs/research/       two research notes: how other tools build code graphs; a close read of code-graph-rag
 results/             every benchmark run the log cites, mapped to its decision

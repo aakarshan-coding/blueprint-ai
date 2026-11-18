@@ -326,12 +326,19 @@ def expand_overrides(
     transitively. A subclass that inherits the method unchanged gets no
     edge: the base edge already covers it. Emitted with method="override"
     so the tier stays visible on the edge (D68).
+
+    Only a call through an instance dispatches. `super().m()` goes up the
+    MRO and `Base.m(self)` names its class, so neither reaches an override,
+    and no function's override edge points at itself (D106).
     """
     extra: list[CallEdge] = []
     seen: set[tuple[str, str]] = set()
     for edge in edges:
         owner, _, method = edge.target_id.rpartition(".")
         if not method or owner not in subclasses:
+            continue
+        receiver = edge.surface.removesuffix(f".{method}")
+        if edge.surface.startswith("super(") or receiver in (owner, owner.rpartition(".")[2]):
             continue
         frontier = list(subclasses.get(owner, []))
         visited: set[str] = set()
@@ -342,7 +349,7 @@ def expand_overrides(
             visited.add(cls)
             frontier.extend(subclasses.get(cls, []))
             override = f"{cls}.{method}"
-            if override in node_universe and override != edge.target_id:
+            if override in node_universe and override not in (edge.target_id, edge.source_id):
                 key = (edge.source_id, override)
                 if key in seen:
                     continue

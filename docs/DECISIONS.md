@@ -3996,6 +3996,40 @@ prompt reads it, so no model input changes.
 **Verified.** No test asserts the old message text. Suite: 417 passed. No behavior change,
 so no benchmark run.
 
+## D106 — Override CALLS only for a call that can dispatch
+
+**Wrong.** `expand_overrides` (D67, D68) followed every call resolved to `Base.m` down to each
+subclass override `Sub.m`. That is correct for `self.m()` and `obj.m()`, where the runtime
+type picks the method. It is false for two call forms that cannot dispatch:
+
+1. `super().m()` inside class C goes to the next class in C's MRO, never to C, its siblings
+   or its subclasses. Example: `HTTPAdapter.__init__` CALLS `HTTPAdapter.__init__`, and
+   `MaxRetryError.__init__` CALLS its subclass `HostChangedError.__init__`.
+2. `Base.m(self, ...)` names the class, so the call goes to `Base.m` only. Example:
+   `HTTPConnectionPool.__init__` calls `ConnectionPool.__init__` and
+   `RequestMethods.__init__`, and the graph had it CALL `PoolManager.__init__`.
+
+A third shape was false for any call form: an override edge from a function to itself
+(`MultiDecoder.decompress` to itself, through `d.decompress`).
+
+**Changed.** `expand_overrides` skips an edge whose surface starts with `super(`, or whose
+receiver (the surface without `.<method>`) is the owner class's name or full id. It never
+emits an override equal to the calling function. The base edge stays, and a call through
+an instance still expands transitively. The PASSES_TO override expansion calls the same
+function with an empty surface, so only the self-edge rule can act on it.
+
+**Verified.** Four tests in `tests/test_jedi_calls.py`: three failed before the change, the
+`self.m()` test passed before and after. An offline probe ran `run_ast_pass` on
+`corpora/requests-urllib3.yaml` and `expand_overrides` as `run_full_ingestion` calls it. Before:
+84 override CALLS edges, the same count the live graph and the runtime oracle report.
+After: 40. The `super` rule removed 36, the explicit-base rule 5, the self-edge rule 3; 22 of
+the 44 were self-loops. The oracle confirmed 9 override edges at runtime; all 9 remain.
+
+This changes the graph: rebuild it and re-score the oracle before claiming a number. Not
+benchmarked.
+
+
+**Rebuilt and re-scored (lead).** Graph rebuilt from scratch, LLM edges replayed, oracle on the saved trace: override CALLS 84 -> 40, confirmed 9 -> 9, observed precision 0.107 -> 0.225; jedi CALLS 683 -> 684 (not touched by this change and unexplained; recall unchanged at 0.809).
 ---
 
 ## Open questions for the Phase 2 sweep

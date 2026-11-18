@@ -182,6 +182,46 @@ def test_the_original_edge_is_not_repeated():
     assert CALL.target_id not in {e.target_id for e in extra}
 
 
+def test_a_super_call_reaches_no_override():
+    """`super().send()` in HTTPAdapter goes up the MRO, never to HTTPAdapter
+    itself or its subclasses; expanding it made HTTPAdapter.__init__ CALL
+    itself (D106)."""
+    edges = [
+        CallEdge(source_id="requests.adapters.HTTPAdapter.send", surface=surface,
+                 target_id="requests.adapters.BaseAdapter.send", chunk_id="c3")
+        for surface in ("super().send", "super(HTTPAdapter, self).send")
+    ]
+
+    assert expand_overrides(edges, subclasses=SUBCLASSES, node_universe=UNIVERSE) == []
+
+
+def test_an_explicit_base_call_reaches_no_override():
+    # `BaseAdapter.send(self, r)` names the class; nothing dispatches.
+    edges = [
+        CallEdge(source_id="app.CachingAdapter.send", surface=surface,
+                 target_id="requests.adapters.BaseAdapter.send", chunk_id="c4")
+        for surface in ("BaseAdapter.send", "requests.adapters.BaseAdapter.send")
+    ]
+
+    assert expand_overrides(edges, subclasses=SUBCLASSES, node_universe=UNIVERSE) == []
+
+
+def test_a_dispatched_call_never_reaches_the_caller_itself():
+    call = CallEdge(source_id="app.CachingAdapter.send", surface="self.inner.send",
+                    target_id="requests.adapters.BaseAdapter.send", chunk_id="c5")
+    targets = {e.target_id for e in expand_overrides([call], subclasses=SUBCLASSES, node_universe=UNIVERSE)}
+
+    assert targets == {"requests.adapters.HTTPAdapter.send"}
+
+
+def test_a_self_call_still_reaches_a_subclass_override():
+    call = CallEdge(source_id="requests.adapters.HTTPAdapter.close", surface="self.send",
+                    target_id="requests.adapters.HTTPAdapter.send", chunk_id="c6")
+    targets = {e.target_id for e in expand_overrides([call], subclasses=SUBCLASSES, node_universe=UNIVERSE)}
+
+    assert targets == {"app.CachingAdapter.send"}
+
+
 def test_a_classmethod_call_resolves_to_the_classmethod_not_its_return_type(tmp_path):
     """`Retry.from_int(n)` evaluates to a Retry, so `infer` returned the
     class (in fact `classmethod.__get__`) and the graph had no edge to
